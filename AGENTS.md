@@ -11,11 +11,15 @@ Prior art is athena-portable; read it, never paste from it without the disclosur
 ```bash
 node scripts/preflight.mjs   # toolchain
 node scripts/check.mjs       # docs gate (links, no machine paths)
+uv sync && pnpm install      # dependencies
+uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy && uv run pytest -q
+pnpm -C apps/desktop typecheck && pnpm -C apps/desktop lint && pnpm -C apps/desktop test
 ```
 
-Product gates (typecheck, lint, test) are added by the first work package that creates code, in
-the same commit, and declared in `.ai/manifest.yaml` `capabilities`. Run the gate before claiming
-anything works; report output faithfully.
+The gates are declared in `.ai/manifest.yaml` `capabilities`. Run them before claiming anything
+works; report output faithfully. Architecture: [ADR 0002](docs/adr/0002-two-windows-over-one-loopback-daemon.md).
+The wire contract is `src/athena/contracts.py` + `apps/desktop/src/lib/contract.ts`; change both
+in one commit (the parity test fails otherwise).
 
 ## Rules
 

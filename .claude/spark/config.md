@@ -1,6 +1,6 @@
 ---
 product: "Athena on Muse"
-stack: "Python daemon + Tauri/React desktop (shape inherited from athena-portable); nothing built yet"
+stack: "Python daemon (uv, Starlette, SQLite) + Tauri 2 / React / TS desktop"
 vault: ["./.spark"]
 vault_subdir: Spark
 base_branch: main
@@ -8,8 +8,9 @@ locale_count: 1
 ---
 
 ## Gates
-always: `node scripts/check.mjs`
-builder: `node scripts/check.mjs` (product gates join here when WP1 lands code)
+always: `node scripts/check.mjs`; `uv run ruff check src tests`; `uv run ruff format --check src tests`; `uv run mypy`; `uv run pytest -q`; `pnpm -C apps/desktop typecheck`; `pnpm -C apps/desktop lint`; `pnpm -C apps/desktop test`
+when src-tauri changed: `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml`
+builder: the `always` set for the side it touched (Python or desktop)
 
 ## Rituals
 none

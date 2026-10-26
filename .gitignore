@@ -17,3 +17,4 @@ dist/
 .contest/
 # spark vault (Obsidian, not version-controlled)
 .spark/
+*.tsbuildinfo

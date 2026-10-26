@@ -17,7 +17,12 @@ skills:
   - uat
   - tiger
 
-# Capabilities are declared by the work package that creates the code. Today only the docs gate exists.
 capabilities:
   docs-check:
     command: node scripts/check.mjs
+  typecheck:
+    command: pnpm -C apps/desktop typecheck && uv run mypy
+  lint:
+    command: pnpm -C apps/desktop lint && uv run ruff check src tests && uv run ruff format --check src tests
+  test:
+    command: pnpm -C apps/desktop test && uv run pytest -q
