@@ -1,0 +1,12 @@
+{
+  "name": "athena-meta",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Athena on Muse - Meta Global AI Developer Hackathon, Startup track",
+  "scripts": {
+    "preflight": "node scripts/preflight.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

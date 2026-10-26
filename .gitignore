@@ -1,0 +1,19 @@
+node_modules/
+.venv/
+__pycache__/
+target/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+# local-only agent state
+.claude/settings.local.json
+.ai/*.local.json
+.ai/*.local.jsonl
+.ai/consults.jsonl
+# contest arenas and vault (large, belong to no commit)
+.contest/
+# spark vault (Obsidian, not version-controlled)
+.spark/
