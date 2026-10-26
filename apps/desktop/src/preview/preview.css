@@ -1,0 +1,131 @@
+/* Layout for the preview page only. The theme itself lives in src/theme. */
+
+.pv {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+}
+.pv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.pv h1 {
+  margin: 0;
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+}
+.pv h2 {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.pv-section {
+  margin-top: var(--sp-6);
+}
+.pv-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.pv-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-3);
+}
+.pv-swatch {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.pv-chip {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-emphasis);
+  border-radius: var(--r-sm);
+}
+.pv-seals {
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-5);
+}
+.pv-seal {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-3);
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+.pv-desk {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-6);
+  border-radius: var(--r-lg);
+  background: linear-gradient(160deg, var(--recessed), var(--card-bg));
+}
+.pv-coat {
+  display: flex;
+  flex-direction: column;
+  width: 400px;
+  height: 620px;
+}
+.pv-coat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  font-weight: 500;
+}
+.pv-coat-head .badge {
+  margin-left: auto;
+}
+.pv-transcript {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: var(--sp-3) var(--sp-5);
+  list-style: none;
+  overflow: auto;
+}
+.pv-transcript li {
+  max-width: 85%;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  font-size: var(--fs-sm);
+}
+.pv-transcript li[data-who="person"] {
+  align-self: flex-end;
+  background: var(--recess);
+  border: 1px solid var(--role-human);
+}
+.pv-coat-foot {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+}
+.pv-backdrop {
+  position: relative;
+  height: 360px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.pv-backdrop-bar {
+  position: absolute;
+  right: var(--sp-3);
+  bottom: var(--sp-3);
+}
+.pv-fields {
+  display: grid;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  max-width: 480px;
+}

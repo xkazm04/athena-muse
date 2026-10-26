@@ -1,0 +1,63 @@
+/* Loop Tide - her window's coat.
+ *
+ * `.coat` is a cobalt lens with a 1 px edge and a shadow. Its rim light is a conic gradient turning
+ * beneath an inset pane of glass, so only a 2 px band of it shows: one arc running the edge every
+ * 9 s, never closed into a shape. Transform only. Corners are 16 px and nothing paints outside
+ * them, so it sits right on a transparent window.
+ *
+ * Put the coat on the root element of her window and let it fill the window. */
+
+.coat {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--edge);
+  box-shadow: var(--coat-shadow);
+  color: var(--foreground);
+  /* the lens itself; the inset pane below repeats it so the arc shows only at the rim */
+  background: var(--glass-solid);
+}
+.coat::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  inset: -100%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 120deg,
+    var(--lt-arc-dim) 160deg,
+    transparent 182deg 290deg,
+    var(--lt-arc-dim) 312deg,
+    var(--lt-arc) 346deg,
+    var(--lt-arc-hot) 354deg,
+    transparent 360deg
+  );
+  animation: lt-orbit 9s linear infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+.coat::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 2px;
+  border-radius: calc(var(--r-lg) - 2px);
+  background: var(--glass);
+  box-shadow: inset 0 1px 0 var(--lt-rim);
+  pointer-events: none;
+}
+
+@keyframes lt-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced motion: the arc parks at the upper left, like a highlight. */
+@media (prefers-reduced-motion: reduce) {
+  .coat::before {
+    animation: none !important;
+    transform: rotate(225deg);
+  }
+}

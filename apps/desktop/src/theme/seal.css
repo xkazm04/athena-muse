@@ -1,0 +1,159 @@
+/* Loop Tide - her seal. Geometry lives in Seal.tsx; this is how it moves.
+ * rest    a small arc of light orbits once every 9 s
+ * working the arc runs about every 2.5 s and the tentacles sway
+ * waiting the person's pink ring takes the orbit and the blue arc steps aside
+ * signed  the check draws, the sign ring draws on; the component settles back to rest
+ * Transform, opacity and stroke-dashoffset (a draw-on) only. */
+
+.seal {
+  position: relative;
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  color: inherit;
+  filter: drop-shadow(0 0 8px var(--seal-glow));
+}
+button.seal {
+  cursor: pointer;
+}
+.seal__svg {
+  overflow: visible;
+}
+
+.seal__orbit,
+.seal__sign {
+  fill: none;
+  stroke-linecap: round;
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+}
+.seal__orbit--arc {
+  stroke: var(--lt-arc);
+  stroke-width: 2;
+  stroke-dasharray: 22 78;
+  animation: seal-orbit 9s linear infinite;
+  transition: opacity 0.4s ease;
+}
+.seal__orbit--human {
+  stroke: var(--role-human);
+  stroke-width: 2.5;
+  stroke-dasharray: 64 36;
+  opacity: 0;
+  animation: seal-orbit 9s linear infinite;
+  transition: opacity 0.4s ease;
+}
+.seal--working .seal__orbit--arc {
+  animation-duration: 2.5s;
+}
+.seal--waiting .seal__orbit--arc,
+.seal--signed .seal__orbit--arc {
+  opacity: 0;
+}
+.seal--waiting .seal__orbit--human {
+  opacity: 1;
+}
+
+.seal__tentacle {
+  fill: none;
+  stroke: var(--seal-orb-core);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+}
+.seal--working .seal__tentacle {
+  animation: seal-sway 1.4s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.35s);
+}
+
+.seal__gleam {
+  fill: none;
+  stroke: var(--seal-gleam);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.seal__ring {
+  fill: none;
+  stroke: var(--seal-mark);
+  stroke-opacity: 0.45;
+  stroke-width: 1;
+}
+.seal__mark,
+.seal__check {
+  fill: none;
+  stroke: var(--seal-mark);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.seal__check {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+.seal__sign {
+  stroke: var(--seal-orb-core);
+  stroke-width: 2;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+.seal--signed .seal__mark {
+  opacity: 0;
+}
+.seal--signed .seal__check {
+  animation: seal-draw 0.45s ease-out 0.1s forwards;
+}
+.seal--signed .seal__sign {
+  animation: seal-draw 0.7s ease-out 0.25s forwards;
+}
+
+.seal__count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--role-human);
+  color: var(--on-human);
+  font: 600 var(--fs-xs) / 20px var(--font-sans);
+  text-align: center;
+}
+
+@keyframes seal-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes seal-sway {
+  from {
+    transform: rotate(-5deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}
+@keyframes seal-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Reduced motion: arcs parked at the upper left, no sway, states switch instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .seal__orbit {
+    animation: none !important;
+    transform: rotate(225deg);
+    transition: none;
+  }
+  .seal--working .seal__tentacle {
+    animation: none !important;
+  }
+  .seal--signed .seal__check,
+  .seal--signed .seal__sign {
+    animation: none !important;
+    stroke-dashoffset: 0;
+  }
+}
