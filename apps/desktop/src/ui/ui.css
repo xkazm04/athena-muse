@@ -1,0 +1,44 @@
+/* Shared pieces both windows use: the project pill and the card. Tokens only. */
+
+.pill { position: relative; display: inline-flex; }
+.pill-button {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  min-height: 32px; padding: 0 var(--sp-3);
+  border: 1px solid var(--border-default); border-radius: var(--r-pill);
+  background: var(--card-bg); color: var(--foreground);
+  font-family: inherit; font-weight: 500; font-size: var(--fs-sm); line-height: 1; cursor: pointer;
+}
+.pill-button:hover { background: var(--hover-wash); border-color: var(--border-emphasis); }
+.pill--compact .pill-button { min-height: 28px; padding: 0 var(--sp-2); font-size: var(--fs-xs); }
+.pill-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pill-name { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pill-pending { color: var(--muted-foreground); font-size: var(--fs-xs); }
+.pill-menu {
+  position: absolute; top: calc(100% + var(--sp-1)); right: 0; z-index: 20;
+  min-width: 220px; max-height: 320px; overflow-y: auto;
+  margin: 0; padding: var(--sp-1); list-style: none;
+}
+.pill-menu button {
+  display: flex; align-items: center; gap: var(--sp-2); width: 100%;
+  padding: var(--sp-2) var(--sp-3); border: 0; border-radius: var(--r-sm);
+  background: transparent; color: var(--foreground); font-family: inherit; font-size: var(--fs-sm); line-height: 1.3;
+  text-align: left; cursor: pointer;
+}
+.pill-menu button:hover, .pill-menu button:focus-visible { background: var(--hover-wash); }
+.pill-menu button[aria-checked="true"] { color: var(--accent-text); font-weight: 600; }
+.pill-sep { margin-top: var(--sp-1); padding-top: var(--sp-1); border-top: 1px solid var(--border-subtle); }
+.pill-empty { padding: var(--sp-2) var(--sp-3); color: var(--muted-foreground); font-size: var(--fs-sm); }
+
+.card {
+  display: grid; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-default); border-radius: var(--r-md);
+  background: var(--card-raised);
+}
+.card--waiting { border-color: color-mix(in srgb, var(--role-human) 55%, transparent); }
+.card-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.card-action { color: var(--muted-foreground); font-size: var(--fs-xs); }
+.card-where { margin-left: auto; color: var(--muted-foreground); font-size: var(--fs-xs); }
+.card-label { margin: 0; font-size: var(--fs-md); line-height: 1.45; overflow-wrap: anywhere; }
+.card-actions { display: flex; gap: var(--sp-2); }
+.card-problem { margin: 0; color: var(--status-error); font-size: var(--fs-sm); }

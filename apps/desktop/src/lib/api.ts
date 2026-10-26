@@ -8,7 +8,6 @@ import {
   ROUTES,
   type ActiveSpace,
   type Card,
-  type CardState,
   type EngineStatus,
   type Health,
   type LedgerPage,
@@ -52,7 +51,7 @@ export const saveKey = (key: string) => request<EngineStatus>("POST", ROUTES.eng
 export const deleteKey = () => request<EngineStatus>("DELETE", ROUTES.engine_key);
 export const probe = () => request<Probe>("POST", ROUTES.engine_probe);
 
-export const spaces = () => request<SpaceSummary[]>("GET", ROUTES.spaces);
+export const spaces = async () => (await request<{ spaces: SpaceSummary[] }>("GET", ROUTES.spaces)).spaces;
 export const createSpace = (draft: SpaceDraft) => request<SpaceSummary>("POST", ROUTES.spaces, draft);
 export const space = (id: string) => request<SpaceSummary>("GET", path(ROUTES.space, { id }));
 export const updateSpace = (id: string, patch: SpacePatch) =>
@@ -68,9 +67,13 @@ export const activeSpace = () => request<ActiveSpace>("GET", ROUTES.active_space
 export const setActiveSpace = (spaceId: string) =>
   request<ActiveSpace>("POST", ROUTES.active_space, { space_id: spaceId });
 
-export const conversation = (spaceId: string) =>
-  request<Turn[]>("GET", ROUTES.conversation + query({ space_id: spaceId }));
-export const cards = (state?: CardState) => request<Card[]>("GET", ROUTES.cards + query({ state }));
+// List routes answer wrapped (`{spaces}`, `{turns}`, `{cards}`); these unwrap them.
+export const conversation = async (spaceId: string) =>
+  (await request<{ turns: Turn[] }>("GET", ROUTES.conversation + query({ space_id: spaceId }))).turns;
+/** `resolved` = approved or declined; omitted = every card. */
+export type CardFilter = "waiting" | "resolved";
+export const cards = async (state?: CardFilter) =>
+  (await request<{ cards: Card[] }>("GET", ROUTES.cards + query({ state }))).cards;
 export const decide = (cardId: string, verdict: Verdict) =>
   request<Card>("POST", path(ROUTES.decision, { card_id: cardId }), { verdict });
 export const ledger = (limit?: number) => request<LedgerPage>("GET", ROUTES.ledger + query({ limit }));

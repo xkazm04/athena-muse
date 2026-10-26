@@ -18,4 +18,3 @@ dist/
 # spark vault (Obsidian, not version-controlled)
 .spark/
 *.tsbuildinfo
-src-tauri/gen/

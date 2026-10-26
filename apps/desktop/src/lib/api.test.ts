@@ -65,3 +65,16 @@ describe("api paths", () => {
     expect((await called(() => api.ledger(50))).url).toBe("/ledger?limit=50");
   });
 });
+
+describe("api list routes", () => {
+  it("unwraps the daemon's {spaces}, {turns} and {cards} answers", async () => {
+    const answer = (body: unknown) =>
+      fetchMock.mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify(body), { status: 200 })));
+    answer({ spaces: [{ id: "spc_1" }] });
+    expect(await api.spaces()).toEqual([{ id: "spc_1" }]);
+    answer({ turns: [{ id: "turn_1" }] });
+    expect(await api.conversation("")).toEqual([{ id: "turn_1" }]);
+    answer({ cards: [{ id: "card_1" }] });
+    expect(await api.cards("resolved")).toEqual([{ id: "card_1" }]);
+  });
+});
