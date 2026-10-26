@@ -76,6 +76,11 @@ export interface SpaceSummary {
   counts: SpaceCounts;
 }
 
+// List routes answer wrapped, never as a bare array.
+export interface SpaceList {
+  spaces: SpaceSummary[];
+}
+
 export interface SpaceErased {
   id: string;
   episodes: number;
@@ -120,6 +125,14 @@ export interface Turn {
   created: string;
   cost_usd?: number;
   card_id?: string;
+}
+
+export interface TurnList {
+  turns: Turn[];
+}
+
+export interface CardList {
+  cards: Card[];
 }
 
 export interface LedgerRow {

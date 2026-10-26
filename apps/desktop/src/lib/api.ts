@@ -8,6 +8,7 @@ import {
   ROUTES,
   type ActiveSpace,
   type Card,
+  type CardList,
   type EngineStatus,
   type Health,
   type LedgerPage,
@@ -16,8 +17,9 @@ import {
   type MemoryRow,
   type Probe,
   type SpaceErased,
+  type SpaceList,
   type SpaceSummary,
-  type Turn,
+  type TurnList,
   type Verdict,
 } from "./contract";
 import { request } from "./daemon";
@@ -51,7 +53,7 @@ export const saveKey = (key: string) => request<EngineStatus>("POST", ROUTES.eng
 export const deleteKey = () => request<EngineStatus>("DELETE", ROUTES.engine_key);
 export const probe = () => request<Probe>("POST", ROUTES.engine_probe);
 
-export const spaces = async () => (await request<{ spaces: SpaceSummary[] }>("GET", ROUTES.spaces)).spaces;
+export const spaces = async () => (await request<SpaceList>("GET", ROUTES.spaces)).spaces;
 export const createSpace = (draft: SpaceDraft) => request<SpaceSummary>("POST", ROUTES.spaces, draft);
 export const space = (id: string) => request<SpaceSummary>("GET", path(ROUTES.space, { id }));
 export const updateSpace = (id: string, patch: SpacePatch) =>
@@ -69,11 +71,11 @@ export const setActiveSpace = (spaceId: string) =>
 
 // List routes answer wrapped (`{spaces}`, `{turns}`, `{cards}`); these unwrap them.
 export const conversation = async (spaceId: string) =>
-  (await request<{ turns: Turn[] }>("GET", ROUTES.conversation + query({ space_id: spaceId }))).turns;
+  (await request<TurnList>("GET", ROUTES.conversation + query({ space_id: spaceId }))).turns;
 /** `resolved` = approved or declined; omitted = every card. */
 export type CardFilter = "waiting" | "resolved";
 export const cards = async (state?: CardFilter) =>
-  (await request<{ cards: Card[] }>("GET", ROUTES.cards + query({ state }))).cards;
+  (await request<CardList>("GET", ROUTES.cards + query({ state }))).cards;
 export const decide = (cardId: string, verdict: Verdict) =>
   request<Card>("POST", path(ROUTES.decision, { card_id: cardId }), { verdict });
 export const ledger = (limit?: number) => request<LedgerPage>("GET", ROUTES.ledger + query({ limit }));

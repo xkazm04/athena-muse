@@ -41,3 +41,9 @@ def test_enums_match() -> None:
     names = ("ErrorWord", "EngineId", "KeySource", "MemoryKind", "Role", "ActionClass", "CardState")
     for name in (*names, "Verdict", "Surface", "ActionName", "AppEventType"):
         assert _ts_union(name) == set(typing.get_args(getattr(contracts, name))), name
+
+
+def test_list_envelopes_match() -> None:
+    for name, key in (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards")):
+        assert list(getattr(contracts, name).__annotations__) == [key], name
+        assert re.search(rf"export interface {name} \{{\s*{key}: \w+\[\];\s*\}}", TS), name

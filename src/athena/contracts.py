@@ -99,6 +99,10 @@ class SpaceSummary(TypedDict):
     counts: SpaceCounts
 
 
+class SpaceList(TypedDict):
+    spaces: list[SpaceSummary]
+
+
 class SpaceErased(TypedDict):
     id: str
     episodes: int
@@ -143,6 +147,14 @@ class Turn(TypedDict):
     created: str
     cost_usd: NotRequired[float]
     card_id: NotRequired[str]
+
+
+class TurnList(TypedDict):
+    turns: list[Turn]
+
+
+class CardList(TypedDict):
+    cards: list[Card]
 
 
 class LedgerRow(TypedDict):
