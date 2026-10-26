@@ -2,13 +2,13 @@
 
 | Requirement | Status | Evidence | Owner |
 |---|---|---|---|
-| Meta model called at runtime | to do | engine `muse`, ledger rows | Director |
+| Meta model called at runtime | built, not yet measured (no key) | engine `muse`, ledger rows | Director |
 | Working demo or test build | to do | | operator |
 | Description of features | to do | | Director |
 | Public repository and licence | to do | Apache-2.0 | operator |
-| README with setup | to do | | Director |
+| README with setup | done | [README](../../README.md) | Director |
 | Video | to do | | operator |
-| Prior work disclosed | to do | the T0 import commit, per ADR 0001 | Director |
+| Prior work disclosed | done | concepts only, no code import ([ADR 0001](../adr/0001-repo-posture.md)) | Director |
 | Feedback on Meta's tools | to do | [feedback.md](feedback.md) | Director |
 
 ## Video pre-flight
