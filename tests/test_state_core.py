@@ -39,10 +39,19 @@ def test_origin_accepted(raw: str, want: str) -> None:
 
 
 @pytest.mark.parametrize(
+    ("raw", "want"),
+    [("Example.com", "https://example.com"), ("app.example.com:8443/", "https://app.example.com:8443")],
+)
+def test_bare_host_reads_as_https(raw: str, want: str) -> None:
+    assert normalise_origin(raw) == want
+
+
+@pytest.mark.parametrize(
     "raw",
     [
         "ftp://x.com",
-        "x.com",
+        "x.com/path",
+        "x .com",
         "https://x.com/path",
         "https://x.com/?q=1",
         "https://x.com#frag",

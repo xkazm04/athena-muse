@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from typing import Any
 from urllib.parse import urlsplit
@@ -31,12 +32,18 @@ def _bad(reason: str) -> ApiError:
     return ApiError("bad_request", reason)
 
 
+_BARE_HOST = re.compile(r"[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*(:\d+)?/?")
+
+
 def normalise_origin(raw: str) -> str:
     """`scheme://host[:port]`, http(s) only, lower-cased, default port dropped; a path, query or user
-    part is refused with ApiError("bad_request")."""
+    part is refused with ApiError("bad_request"). A bare host (`example.com`) is read as https: the
+    person types an address the way a browser accepts it."""
     if not isinstance(raw, str):
         raise _bad("an app must be a web address")
     text = raw.strip()
+    if "://" not in text and _BARE_HOST.fullmatch(text):
+        text = "https://" + text
     try:
         parts = urlsplit(text)
         port = parts.port
