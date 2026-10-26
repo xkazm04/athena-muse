@@ -1,27 +1,117 @@
-"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards and settings.
-
-Owned by WP1. Stub: final signatures, bodies land with WP1.
-"""
+"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards and settings."""
 
 from __future__ import annotations
 
 import sqlite3
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
+
+SCHEMA_VERSION = 1
+
+_TABLES = """
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS spaces (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, brief TEXT NOT NULL, apps TEXT NOT NULL,
+  hue INTEGER NOT NULL, created TEXT NOT NULL, updated TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS memory (
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL, text TEXT NOT NULL, space_id TEXT NOT NULL, created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS memory_space ON memory (space_id, kind);
+CREATE TABLE IF NOT EXISTS turns (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL,
+  created TEXT NOT NULL, cost_usd REAL, card_id TEXT);
+CREATE INDEX IF NOT EXISTS turns_space ON turns (space_id);
+CREATE TABLE IF NOT EXISTS cards (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, action TEXT NOT NULL, label TEXT NOT NULL,
+  args TEXT NOT NULL, state TEXT NOT NULL, created TEXT NOT NULL, resolved TEXT);
+CREATE INDEX IF NOT EXISTS cards_space ON cards (space_id);
+CREATE TABLE IF NOT EXISTS ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, surface TEXT NOT NULL, space_id TEXT NOT NULL,
+  engine TEXT NOT NULL, model TEXT NOT NULL, input_tokens INTEGER, output_tokens INTEGER, cost_usd REAL,
+  cost_estimated INTEGER NOT NULL, latency_ms INTEGER NOT NULL, ok INTEGER NOT NULL, error TEXT);
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+"""
+
+# External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.
+_FTS = """
+CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(text, content='memory', content_rowid='rowid');
+CREATE TRIGGER IF NOT EXISTS memory_ai AFTER INSERT ON memory BEGIN
+  INSERT INTO memory_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS memory_ad AFTER DELETE ON memory BEGIN
+  INSERT INTO memory_fts(memory_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS memory_au AFTER UPDATE OF text ON memory BEGIN
+  INSERT INTO memory_fts(memory_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
+  INSERT INTO memory_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
+"""
 
 
 class Store:
     """One connection, serialised by a lock; the daemon is the only writer."""
 
     def __init__(self, path: Path | str) -> None:
-        """`path` may be ":memory:" in tests. Opens, sets WAL, runs `migrate()`."""
-        raise NotImplementedError
+        self._lock = threading.RLock()
+        self._depth = 0
+        self._db = sqlite3.connect(str(path), check_same_thread=False, isolation_level=None)
+        self._db.row_factory = sqlite3.Row
+        if str(path) != ":memory:":
+            self._db.execute("PRAGMA journal_mode=WAL")
+        self._db.execute("PRAGMA foreign_keys=ON")
+        self.fts = False  # set by migrate(): whether FTS5 is compiled in
+        self.migrate()
 
     @property
     def db(self) -> sqlite3.Connection:
-        raise NotImplementedError
+        return self._db
+
+    @contextmanager
+    def tx(self) -> Iterator[sqlite3.Connection]:
+        """Holds the lock and one transaction; a nested `tx` joins the outer one."""
+        with self._lock:
+            outer = self._depth == 0
+            if outer:
+                self._db.execute("BEGIN IMMEDIATE")
+            self._depth += 1
+            try:
+                yield self._db
+            except BaseException:
+                self._depth -= 1
+                if outer:
+                    self._db.execute("ROLLBACK")
+                raise
+            self._depth -= 1
+            if outer:
+                self._db.execute("COMMIT")
+
+    def query(self, sql: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
+        with self._lock:
+            return self._db.execute(sql, params).fetchall()
+
+    def run(self, sql: str, params: tuple[Any, ...] = ()) -> int:
+        """One write statement in its own transaction (or the open one); answers rowcount."""
+        with self.tx() as db:
+            return db.execute(sql, params).rowcount
 
     def migrate(self) -> None:
-        raise NotImplementedError
+        with self._lock:
+            for stmt in _TABLES.split(";"):
+                if stmt.strip():
+                    self._db.execute(stmt)
+            try:
+                self._db.executescript(_FTS)
+                self.fts = True
+            except sqlite3.OperationalError:  # FTS5 not compiled in: recall falls back to LIKE
+                self.fts = False
+            self._db.execute(
+                "INSERT INTO meta(key, value) VALUES ('schema_version', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (str(SCHEMA_VERSION),),
+            )
 
     def close(self) -> None:
-        raise NotImplementedError
+        with self._lock:
+            self._db.close()
