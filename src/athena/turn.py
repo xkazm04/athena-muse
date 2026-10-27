@@ -186,7 +186,7 @@ def _stream(
             tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
         if portal is not None:
             tools += portal.tools()
-            messages[0]["content"] += "\n\n" + portal.frame()
+            messages[0]["content"] += "\n\n" + portal.frame() + _waiting(daemon, space_id)
 
         reply_parts: list[str] = []
         cards: list[Card] = []
@@ -325,6 +325,30 @@ def _portal_for(args: dict[str, Any]) -> Portal:
     except ChoreError as e:
         raise ApiError("bad_request", f"the chore {chore_id} cannot be loaded: {e}") from e
     return Portal(chore, str(args.get("app", "")))
+
+
+#: How many waiting cards the frame lists; more are counted, not listed.
+WAITING_LISTED = 40
+
+
+def _waiting(daemon: Daemon, space_id: str) -> str:
+    """The portal cards already filed in this space and still unsigned, so a later turn (a nudge,
+    the next phase) does not file one again: the history carries her words, not her cards."""
+    waiting = [
+        c for c in daemon.gate.list("waiting") if c["space_id"] == space_id and c["action"] == "portal_act"
+    ]
+    if not waiting:
+        return ""
+    lines = [
+        "",
+        "",
+        "## Already filed, waiting for the person's signature",
+        "Do not file these again; file only what is not on this list.",
+    ]
+    lines += [f"- {c['label']}" for c in waiting[:WAITING_LISTED]]
+    if len(waiting) > WAITING_LISTED:
+        lines.append(f"- and {len(waiting) - WAITING_LISTED} more")
+    return "\n".join(lines)
 
 
 def _run_auto(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str, str]:

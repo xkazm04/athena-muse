@@ -134,3 +134,20 @@ def test_without_a_portal_its_tools_are_not_offered_or_run(daemon: Daemon, libra
     assert not any(e["type"] == "card" for e in events)
     assert not any(t["function"]["name"].startswith("desk__") for t in engine.seen[0][1])
     assert engine.seen[1][0][-1]["content"] == "There is no such action."
+
+
+def test_the_next_turn_is_told_which_portal_cards_already_wait(daemon: Daemon, library: Path) -> None:
+    """A nudge after filing must not file the same card again: the frame lists what waits."""
+    portal = Portal(load_chore(library), "desk")
+    filing = ToolCall("c1", "desk__dispute_bill", {"bill_id": "B-1", "amount_usd": 10, "reason": "over"})
+    run(daemon, ScriptEngine([[filing]]), portal)
+    label = daemon.gate.list("waiting")[0]["label"]
+    later = ScriptEngine([])
+    run(daemon, later, portal)
+    system = later.seen[0][0][0]["content"]
+    assert "## Already filed, waiting for the person's signature" in system
+    assert f"- {label}" in system
+    first = ScriptEngine([])
+    fresh = Daemon.open(None)
+    run(fresh, first, portal)
+    assert "Already filed" not in first.seen[0][0][0]["content"]
