@@ -18,3 +18,8 @@ dist/
 # spark vault (Obsidian, not version-controlled)
 .spark/
 *.tsbuildinfo
+# bench run reports (transcripts; never committed)
+runs/
+# a chore's rendered sheets and raw media (never committed; only indexes and fixtures are)
+playbooks/*/senses/render/
+playbooks/*/senses/media/
