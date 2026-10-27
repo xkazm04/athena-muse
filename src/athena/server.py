@@ -26,6 +26,7 @@ from starlette.routing import BaseRoute, Route
 
 from athena import routes_state, routes_turn
 from athena.app import Daemon
+from athena.chores import routes_chores
 from athena.contracts import VERSION
 from athena.errors import ApiError
 
@@ -44,6 +45,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         Route("/health", health),
         *routes_state.routes(daemon),
         *routes_turn.routes(daemon),
+        *routes_chores.routes(),
     ]
 
     async def guard(request: Request, call_next: RequestResponseEndpoint) -> Response:

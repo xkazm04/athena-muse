@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from urllib.parse import urlsplit
 
 from athena.app import Daemon
+from athena.chores.portal import Portal
+from athena.chores.spec import ChoreError, library_dir, load_chore
 from athena.clock import mint
 from athena.contracts import (
     APPS_MAX,
@@ -25,9 +27,6 @@ from athena.engine.prices import estimate
 from athena.errors import ApiError
 from athena.memory import visible_spaces
 from athena.spaces import normalise_origin
-
-if TYPE_CHECKING:
-    from athena.chores.portal import Portal
 
 HISTORY_TURNS = 20
 EPISODE_PART_MAX = 600
@@ -105,7 +104,8 @@ def run_turn(
     daemon: Daemon, engine: Engine, text: str, space_id: str, *, portal: Portal | None = None
 ) -> Iterator[dict[str, Any]]:
     """Validates now (so the route can answer a 4xx), streams when iterated. `portal` offers a
-    chore's invented app as tools (ADR 0005; WP2 wires it into the round loop)."""
+    chore's invented app as tools (ADR 0005): its READ tools answer at once, every other files a
+    `portal_act` card without ending the round loop, so one reply can file a pile."""
     text = validate(daemon, text, space_id)
     return _stream(daemon, engine, text, space_id, portal)
 
@@ -184,6 +184,9 @@ def _stream(
         tools = [TOOLS[n] for n in ("recall", "remember", "forget")]
         if space_id != "":
             tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
+        if portal is not None:
+            tools += portal.tools()
+            messages[0]["content"] += "\n\n" + portal.frame()
 
         reply_parts: list[str] = []
         cards: list[Card] = []
@@ -255,6 +258,13 @@ def _stream(
             for call in calls:
                 result = ""
                 name = call.name
+                if portal is not None and portal.owns(name):
+                    (answer, events), filed_card = _run_portal(daemon, space_id, portal, call)
+                    yield from events
+                    if filed_card is not None:
+                        cards.append(filed_card)
+                    messages.append({"role": "tool", "tool_call_id": call.id, "content": answer})
+                    continue
                 if name not in CATALOG:
                     result = "There is no such action."
                 elif CATALOG[name] == "auto":
@@ -279,9 +289,12 @@ def _stream(
 
         reply = "".join(reply_parts).strip()
         if not reply:
-            reply = (
-                f"I filed a card for you to sign: {cards[0]['label']}" if cards else "I have nothing to add."
-            )
+            if len(cards) > 1:
+                reply = f"I filed {len(cards)} cards for you to sign."
+            elif cards:
+                reply = f"I filed a card for you to sign: {cards[0]['label']}"
+            else:
+                reply = "I have nothing to add."
             yield {"type": "text", "delta": reply}
         daemon.conversation.append(
             space_id,
@@ -300,6 +313,19 @@ def _stream(
         yield done
 
 
+def _portal_for(args: dict[str, Any]) -> Portal:
+    """The Portal a signed `portal_act` card was filed through, rebuilt from its args."""
+    chore_id = str(args.get("chore", ""))
+    root = library_dir() / chore_id
+    if not chore_id or "/" in chore_id or "\\" in chore_id or chore_id.startswith(".") or not root.is_dir():
+        raise ApiError("unknown_ref", "the chore that card belongs to is not in the library")
+    try:
+        chore = load_chore(root)
+    except ChoreError as e:
+        raise ApiError("bad_request", f"the chore {chore_id} cannot be loaded: {e}") from e
+    return Portal(chore, str(args.get("app", "")))
+
+
 def _run_auto(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str, str]:
     """(tool result, on-screen label). An empty label means nothing happened worth a line."""
     if call.name == "recall":
@@ -311,6 +337,22 @@ def _run_auto(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str, str]:
         return "Nothing to remember.", ""
     daemon.memory.write_fact(space_id, fact)
     return "Kept.", f"Remembered: {_short(fact)}"
+
+
+def _run_portal(
+    daemon: Daemon, space_id: str, portal: Portal, call: ToolCall
+) -> tuple[tuple[str, list[dict[str, Any]]], Card | None]:
+    """((tool result, events to stream), the card filed if any) for a call the portal owns."""
+    if portal.is_read(call.name):
+        result, label = portal.read(call.name, call.arguments)
+        return (result, [tool_event("portal_read", label)] if label else []), None
+    checked = portal.check(call.name, call.arguments)
+    if isinstance(checked, str):
+        return (checked, []), None
+    label, args = checked
+    card = daemon.gate.file(space_id, "portal_act", args, label)
+    events = [tool_event("portal_act", label), {"type": "card", "card": card}]
+    return ("Filed for the person to sign. Nothing has changed yet.", events), card
 
 
 def execute(daemon: Daemon, card: Card) -> str:
@@ -329,4 +371,6 @@ def execute(daemon: Daemon, card: Card) -> str:
     if card["action"] == "forget":
         daemon.memory.forget(args["id"])
         return "Forgotten."
+    if card["action"] == "portal_act":
+        return _portal_for(args).execute(args)
     raise ApiError("bad_request", "that action cannot be signed")
