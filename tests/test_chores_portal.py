@@ -36,6 +36,8 @@ def test_tools_are_the_open_apps_as_functions(portal: Portal) -> None:
     bills = tools["desk__list_bills"]["parameters"]
     assert bills["properties"] == {"status": {"type": "string"}, "page": {"type": "integer"}}
     assert tools["desk__read_bill"]["parameters"]["required"] == ["bill_id"]
+    dispute = tools["desk__dispute_bill"]["parameters"]
+    assert dispute["required"] == list(dispute["properties"])  # a card is acted on as filed
     assert tools["desk__dispute_bill"]["parameters"]["properties"]["amount_usd"] == {"type": "number"}
     assert "signature" in tools["desk__dispute_bill"]["description"]
 

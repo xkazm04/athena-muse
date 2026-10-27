@@ -116,7 +116,9 @@ class Portal:
                 required = [str(p) for p in t.returns.get("require", []) if p in t.params]
             else:
                 description = f"{t.description} (On {app.name}. Needs the person's signature: files a card.)"
-                required = []
+                # A card is acted on as filed: every declared parameter is asked for (care-circle on
+                # Claude Code left med_id off two of four flags when none was required).
+                required = list(t.params)
             out.append(
                 {
                     "type": "function",
