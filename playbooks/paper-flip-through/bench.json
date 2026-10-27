@@ -1,0 +1,242 @@
+{
+  "verdict": "exceeds",
+  "reasons": [],
+  "found": 9,
+  "eligible": 9,
+  "value_found_usd": 3107.0,
+  "value_total_usd": 3107.0,
+  "false_claims": 0,
+  "duplicates": 0,
+  "traps_filed": 0,
+  "turns": 10,
+  "minutes": 4.68,
+  "engine": "claude_code",
+  "model": "sonnet",
+  "run_at": "2026-10-27T16:32:29Z",
+  "cost_usd": 1.0086,
+  "cards": [
+    {
+      "label": "File an internal appeal of a denied claim, with the reason and the evidence (claim_id H-205)",
+      "args": {
+        "app": "plan",
+        "tool": "file_appeal",
+        "params": {
+          "claim_id": "H-205",
+          "reason": "Denied for no prior authorization, but prior authorization PA-77120 was approved on 2026-09-01 for MRI lumbar spine at Northgate Imaging, valid through 2026-11-30. The date of service 2026-09-15 falls within that approval.",
+          "evidence": "Harbor Health Utilization Management approval letter, authorization number PA-77120, approved 2026-09-01, valid through 2026-11-30, for MRI lumbar spine at Northgate Imaging. Denial notice dated 2026-09-22."
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Pay a statement from the card on file (bill_id RG-1004, amount_usd 210.00)",
+      "args": {
+        "app": "riverside",
+        "tool": "pay_bill",
+        "params": {
+          "bill_id": "RG-1004",
+          "amount_usd": 210.0
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Pay a statement from the card on file (bill_id RG-1006, amount_usd 40.00)",
+      "args": {
+        "app": "riverside",
+        "tool": "pay_bill",
+        "params": {
+          "bill_id": "RG-1006",
+          "amount_usd": 40.0
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Pay a statement from the card on file (bill_id RG-1001, amount_usd 95.00)",
+      "args": {
+        "app": "riverside",
+        "tool": "pay_bill",
+        "params": {
+          "bill_id": "RG-1001",
+          "amount_usd": 95.0
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Pay a statement from the card on file (bill_id RG-1002, amount_usd 71.00)",
+      "args": {
+        "app": "riverside",
+        "tool": "pay_bill",
+        "params": {
+          "bill_id": "RG-1002",
+          "amount_usd": 71.0
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Send the billing office a dispute on one statement (bill_id RG-1001, amount_disputed_usd 291.00)",
+      "args": {
+        "app": "riverside",
+        "tool": "dispute_bill",
+        "params": {
+          "bill_id": "RG-1001",
+          "amount_disputed_usd": 291.0,
+          "reason": "Harbor Health claim H-201 (ED visit 2026-08-03) is Final with patient responsibility of $95.00. The statement bills $386.00, so $291.00 is above what the in-network provider may bill."
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Send the billing office a dispute on one statement (bill_id RG-1002, amount_disputed_usd 71.00)",
+      "args": {
+        "app": "riverside",
+        "tool": "dispute_bill",
+        "params": {
+          "bill_id": "RG-1002",
+          "amount_disputed_usd": 71.0,
+          "reason": "Harbor Health claim H-202 (metabolic panel 80053, 2026-08-10) allowed one unit with patient responsibility of $71.00. The statement bills two lines of $71.00, so one line is a duplicate."
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Pay a statement from the card on file (bill_id KA-2001, amount_usd 120.00)",
+      "args": {
+        "app": "cedar",
+        "tool": "pay_bill",
+        "params": {
+          "bill_id": "KA-2001",
+          "amount_usd": 120.0
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Dispute a statement with its biller (bill_id KA-2001, amount_disputed_usd 1520.00)",
+      "args": {
+        "app": "cedar",
+        "tool": "dispute_bill",
+        "params": {
+          "bill_id": "KA-2001",
+          "amount_disputed_usd": 1520.0,
+          "reason": "Out-of-network anesthesia at in-network Riverside General. Under the No Surprises Act, patient responsibility is limited to in-network cost sharing, $120.00 per the Final EOB for claim H-204. The $1,640.00 balance, also on final notice KA-2002, exceeds that."
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Pay a statement from the card on file (bill_id LD-4002, amount_usd 85.00)",
+      "args": {
+        "app": "cedar",
+        "tool": "pay_bill",
+        "params": {
+          "bill_id": "LD-4002",
+          "amount_usd": 85.0
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Pay a statement from the card on file (bill_id BH-5001, amount_usd 75.00)",
+      "args": {
+        "app": "cedar",
+        "tool": "pay_bill",
+        "params": {
+          "bill_id": "BH-5001",
+          "amount_usd": 75.0
+        },
+        "chore": "paper-flip-through"
+      }
+    },
+    {
+      "label": "Ask a biller to refund an overpayment to the card it came from (bill_id LD-4001, amount_usd 45.00)",
+      "args": {
+        "app": "cedar",
+        "tool": "request_refund",
+        "params": {
+          "bill_id": "LD-4001",
+          "amount_usd": 45.0,
+          "reason": "Claim H-208 was reprocessed on 2026-08-04 and patient responsibility dropped from $160.00 to $115.00. The $160.00 card payment on 2026-06-02 is $45.00 over the corrected amount."
+        },
+        "chore": "paper-flip-through"
+      }
+    }
+  ],
+  "ledger": [
+    {
+      "tool": "file_appeal",
+      "key": "H-205",
+      "judged": "exact",
+      "why": "Denied 09-22 for no prior authorization; the paper holds the plan's own approval PA-77120 of 09-01 for this MRI: day 34 of 180"
+    },
+    {
+      "tool": "pay_bill",
+      "key": "RG-1004",
+      "judged": "exact",
+      "why": "Matches the final EOB (deductible)"
+    },
+    {
+      "tool": "pay_bill",
+      "key": "RG-1006",
+      "judged": "exact",
+      "why": "Matches the final EOB"
+    },
+    {
+      "tool": "pay_bill",
+      "key": "RG-1001",
+      "judged": "neutral",
+      "why": "the answer key leaves this either way"
+    },
+    {
+      "tool": "pay_bill",
+      "key": "RG-1002",
+      "judged": "neutral",
+      "why": "the answer key leaves this either way"
+    },
+    {
+      "tool": "dispute_bill",
+      "key": "RG-1001",
+      "judged": "exact",
+      "why": "Paper bill RG-1001 asks $386 for the 08-03 ER visit; the final EOB (H-201) says $95: $291 over"
+    },
+    {
+      "tool": "dispute_bill",
+      "key": "RG-1002",
+      "judged": "exact",
+      "why": "The panel is printed twice on RG-1002; the EOB (H-202) allowed one unit: $71 duplicate"
+    },
+    {
+      "tool": "pay_bill",
+      "key": "KA-2001",
+      "judged": "neutral",
+      "why": "the answer key leaves this either way"
+    },
+    {
+      "tool": "dispute_bill",
+      "key": "KA-2001",
+      "judged": "exact",
+      "why": "Out-of-network anesthesia at an in-network hospital: the No Surprises Act limits it to $120 (H-204); $1,520 balance bill. The paper's amount was asked (glare); Cedar shows $1,640"
+    },
+    {
+      "tool": "pay_bill",
+      "key": "LD-4002",
+      "judged": "exact",
+      "why": "Matches the final EOB"
+    },
+    {
+      "tool": "pay_bill",
+      "key": "BH-5001",
+      "judged": "exact",
+      "why": "Matches the final EOB (a photo-mode sheet)"
+    },
+    {
+      "tool": "request_refund",
+      "key": "LD-4001",
+      "judged": "exact",
+      "why": "Paid $160 by card on 06-02 (statement LD-4001); the reprocessed EOB (H-208, also on paper) says $115"
+    }
+  ]
+}

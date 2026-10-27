@@ -133,3 +133,12 @@ def test_verdict_meets_and_short() -> None:
 
 def test_minutes_alone_never_shorts() -> None:
     assert verdict(chore(), _s(3, 3), 600)[0] == "meets"
+
+
+def test_a_string_expectation_is_met_when_the_filed_value_contains_it() -> None:
+    from athena.bench import _same
+
+    assert _same("ruth", "maya,Ruth")
+    assert not _same("ruth", "maya,jon")
+    assert not _same("ruth", 5)
+    assert _same(46.2, "$46.20")

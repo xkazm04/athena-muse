@@ -1,0 +1,226 @@
+{
+  "verdict": "short",
+  "reasons": [
+    "found 7 of 9 items",
+    "2 false claims, allowed 0"
+  ],
+  "found": 7,
+  "eligible": 9,
+  "value_found_usd": 1310.0,
+  "value_total_usd": 1690.0,
+  "false_claims": 2,
+  "duplicates": 0,
+  "traps_filed": 1,
+  "turns": 4,
+  "minutes": 2.31,
+  "engine": "claude_code",
+  "model": "sonnet",
+  "run_at": "2026-10-27T16:30:09Z",
+  "cost_usd": 0.4082,
+  "cards": [
+    {
+      "label": "Approve one line of an invoice for payment, by line id, at an amount in dollars to the cent (line_id 1043-1, amount_usd 1320.00)",
+      "args": {
+        "app": "halcrest",
+        "tool": "approve_payment",
+        "params": {
+          "line_id": "1043-1",
+          "amount_usd": 1320.0,
+          "note": "All 8 recessed lights counted on the week 4 walk."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Approve one line of an invoice for payment, by line id, at an amount in dollars to the cent (line_id 1043-2, amount_usd 950.00)",
+      "args": {
+        "app": "halcrest",
+        "tool": "approve_payment",
+        "params": {
+          "line_id": "1043-2",
+          "amount_usd": 950.0,
+          "note": "10 of 12 outlets counted installed; the remaining $190 is held."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Approve one line of an invoice for payment, by line id, at an amount in dollars to the cent (line_id 1043-3, amount_usd 3780.00)",
+      "args": {
+        "app": "halcrest",
+        "tool": "approve_payment",
+        "params": {
+          "line_id": "1043-3",
+          "amount_usd": 3780.0,
+          "note": "All 18 cabinet doors counted on the week 4 walk."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Approve one line of an invoice for payment, by line id, at an amount in dollars to the cent (line_id 1043-7, amount_usd 540.00, note Per signed CO-05; 18 doors counted.)",
+      "args": {
+        "app": "halcrest",
+        "tool": "approve_payment",
+        "params": {
+          "line_id": "1043-7",
+          "amount_usd": 540.0,
+          "note": "Per signed CO-05; 18 doors counted."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Send Halcrest a written question about one invoice line or change order, by its id (ref 1043-2)",
+      "args": {
+        "app": "halcrest",
+        "tool": "send_query",
+        "params": {
+          "ref": "1043-2",
+          "question": "Line 1043-2 bills 12 outlets at $95. My walk on 24 October counted 10, and Marco said the two island outlets would be set on Monday 26 October. I approved $950 for 10 outlets and am holding $190 until the last two are installed."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Send Halcrest a written question about one invoice line or change order, by its id (ref 1043-4)",
+      "args": {
+        "app": "halcrest",
+        "tool": "send_query",
+        "params": {
+          "ref": "1043-4",
+          "question": "Line 1043-4 bills the pendant lights (Q-09) at $720, but INV-1040 already billed and I paid that same line on 19 October. Under section 7 a paid line is not billed again. I am holding the full $720. Please correct or remove this line."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Send Halcrest a written question about one invoice line or change order, by its id (ref 1043-5)",
+      "args": {
+        "app": "halcrest",
+        "tool": "send_query",
+        "params": {
+          "ref": "1043-5",
+          "question": "Line 1043-5 bills the under-cabinet LED lights (Q-10), $600, as installed. My walk on 24 October counted none, and Marco said they are on back order. The attached IMG-3 is an AI rendering dated 12 September, not a photograph of the work. I am holding the full $600 until they are installed."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Send Halcrest a written question about one invoice line or change order, by its id (ref 1043-6)",
+      "args": {
+        "app": "halcrest",
+        "tool": "send_query",
+        "params": {
+          "ref": "1043-6",
+          "question": "Line 1043-6 bills the 4x12 tile upgrade, $1,400, per CO-02. CO-02 is unsigned and its price is only 'small upcharge', so it is not a change I have agreed to under section 6. I am holding the full $1,400. Please send a written change order with a dollar price, days and the quote line."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Send Halcrest a written question about one invoice line or change order, by its id (ref 1043-8)",
+      "args": {
+        "app": "halcrest",
+        "tool": "send_query",
+        "params": {
+          "ref": "1043-8",
+          "question": "Line 1043-8 bills the extra recessed light over the sink, $165, per CO-04. CO-04 is unsigned and names no quote line, so it is not a signed change under section 6. I am holding the full $165 until a complete change order is written and signed."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Send Halcrest a written question about one invoice line or change order, by its id (ref CO-01)",
+      "args": {
+        "app": "halcrest",
+        "tool": "send_query",
+        "params": {
+          "ref": "CO-01",
+          "question": "CO-01 charges $120 to move the island outlet. On site Marco said moving that outlet was no charge. Please confirm the price he agreed and correct the change order. I have not signed it."
+        },
+        "chore": "renovation-witness"
+      }
+    },
+    {
+      "label": "Send Halcrest a written question about one invoice line or change order, by its id (ref CO-03)",
+      "args": {
+        "app": "halcrest",
+        "tool": "send_query",
+        "params": {
+          "ref": "CO-03",
+          "question": "CO-03 lists 1 day for the smart dimmers. On site Marco said $180 and half a day. Please confirm the days and correct the change order. I have not signed it."
+        },
+        "chore": "renovation-witness"
+      }
+    }
+  ],
+  "ledger": [
+    {
+      "tool": "approve_payment",
+      "key": "1043-1",
+      "judged": "exact",
+      "why": "All eight recessed lights of Q-08 seen on the 10, 17 and 24 Oct walks: $1,320 approved in full"
+    },
+    {
+      "tool": "approve_payment",
+      "key": "1043-2",
+      "judged": "exact",
+      "why": "Ten of Q-07's twelve outlets seen on 17 and 24 Oct, and Marco said on 24 Oct the two island outlets are not set: 10 x $95 = $950 approved, $190 held"
+    },
+    {
+      "tool": "approve_payment",
+      "key": "1043-3",
+      "judged": "exact",
+      "why": "All 18 cabinet doors of Q-12 seen on the 24 Oct walk (the 17 Oct walk, taken while they were being hung, counted fewer): $3,780 approved"
+    },
+    {
+      "tool": "approve_payment",
+      "key": "1043-7",
+      "judged": "exact",
+      "why": "CO-05 was signed on 12 October at $540, and the 18 doors it fits were seen hung on 24 Oct: approved"
+    },
+    {
+      "tool": "send_query",
+      "key": "1043-2",
+      "judged": "exact",
+      "why": "The two island outlets no walk has seen: 2 x $95 = $190 held until they are installed and seen"
+    },
+    {
+      "tool": "send_query",
+      "key": "1043-4",
+      "judged": "false",
+      "why": "the answer key names no ref 1043-4"
+    },
+    {
+      "tool": "send_query",
+      "key": "1043-5",
+      "judged": "exact",
+      "why": "Four under-cabinet lights no walk has seen, billed with a rendering as the 'photo': $600 held"
+    },
+    {
+      "tool": "send_query",
+      "key": "1043-6",
+      "judged": "neutral",
+      "why": "the answer key leaves this either way"
+    },
+    {
+      "tool": "send_query",
+      "key": "1043-8",
+      "judged": "neutral",
+      "why": "the answer key leaves this either way"
+    },
+    {
+      "tool": "send_query",
+      "key": "CO-01",
+      "judged": "exact",
+      "why": "Marco said on the 3 Oct walk at 2:26 that moving the island outlet is no charge; CO-01 asks $120"
+    },
+    {
+      "tool": "send_query",
+      "key": "CO-03",
+      "judged": "trap",
+      "why": "CO-03 is exactly what Marco promised on 17 Oct: $180, priced and dated; asking about it delays a change she agreed to"
+    }
+  ]
+}

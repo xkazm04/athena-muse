@@ -1,0 +1,77 @@
+{
+  "verdict": "short",
+  "reasons": [
+    "found 2 of 3 items, expected 75%"
+  ],
+  "found": 2,
+  "eligible": 3,
+  "value_found_usd": 10400.0,
+  "value_total_usd": 10400.0,
+  "false_claims": 0,
+  "duplicates": 0,
+  "traps_filed": 0,
+  "turns": 9,
+  "minutes": 4.27,
+  "engine": "claude_code",
+  "model": "sonnet",
+  "run_at": "2026-10-27T16:37:13Z",
+  "cost_usd": 0.9118,
+  "cards": [
+    {
+      "label": "Ask Fernway for the free case file of one denial, by denial id (DN-n), with the criteria the reviewer used (denial_id DN-6104)",
+      "args": {
+        "app": "fernway",
+        "tool": "request_records",
+        "params": {
+          "denial_id": "DN-6104"
+        },
+        "chore": "prior-auth-denial-appeal"
+      }
+    },
+    {
+      "label": "File one packet with Fernway, by its sha256 (the approval is bound to that exact packet), with the denial id (DN-n), the appeal level, and the deadline it is filed against (YYYY-MM-DD) (denial_id DN-6104, level reconsideration, deadline 2026-12-06)",
+      "args": {
+        "app": "appealwell",
+        "tool": "file_appeal",
+        "params": {
+          "packet_sha256": "a2a360a10f2b3ecf6551cda85f4856b6af217def04f8569b6457a01b82f7874a",
+          "denial_id": "DN-6104",
+          "level": "reconsideration",
+          "deadline": "2026-12-06"
+        },
+        "chore": "prior-auth-denial-appeal"
+      }
+    },
+    {
+      "label": "Send one drafted letter by letter id (LT-n), signed by Maya (letter_id LT-5)",
+      "args": {
+        "app": "appealwell",
+        "tool": "send_letter",
+        "params": {
+          "letter_id": "LT-5"
+        },
+        "chore": "prior-auth-denial-appeal"
+      }
+    }
+  ],
+  "ledger": [
+    {
+      "tool": "request_records",
+      "key": "DN-6104",
+      "judged": "exact",
+      "why": "The case file for DN-6104 is free on request and shows whether Dr. Okonkwo's faxed note ever reached the reviewer, and the criteria used. Counted as an item at $0"
+    },
+    {
+      "tool": "file_appeal",
+      "key": "a2a360a10f2b3ecf6551cda85f4856b6af217def04f8569b6457a01b82f7874a",
+      "judged": "exact",
+      "why": "AW-1 is the reconsideration of DN-6104 every sentence of which cites a kept call turn or a sheet field both reads agreed on: the member and denial from the 2 October notice, Maya's CMS-1696 (signed 6 October) and Fernway's confirmation on the consented 20 October call (call-1#5), the stated reason, Dr. Okonkwo's 29 September note of a daily skilled need, the discharge to Brookhollow, and the 65-day window (call-1#11, reference FW-4471-B). Filed as a standard reconsideration before 6 December 2026 (2 October + 65 days, 42 CFR 422.582(b)). If Fernway reverses, the 20 private days, 1 to 20 October at $520, fall to the plan's $0 days 1 to 20: $10,400 back"
+    },
+    {
+      "tool": "send_letter",
+      "key": "LT-5",
+      "judged": "neutral",
+      "why": "the answer key leaves this either way"
+    }
+  ]
+}

@@ -60,12 +60,14 @@ def _number(value: Any) -> float | None:
 
 
 def _same(expected: Any, given: Any) -> bool:
-    """Numbers within a cent; strings case-insensitive equal; anything else equal as written."""
+    """Numbers within a cent; a string when the filed one contains it; anything else as written."""
     if isinstance(expected, int | float) and not isinstance(expected, bool):
         n = _number(given)
         return n is not None and abs(n - float(expected)) <= NUMBER_TOLERANCE
     if isinstance(expected, str):
-        return isinstance(given, str) and _norm(given) == _norm(expected)
+        # The answer keys are written as "the filed value contains this" (a signers list must name
+        # Ruth, among others), case-insensitive.
+        return isinstance(given, str) and _norm(expected) in _norm(given)
     return bool(expected == given)
 
 
