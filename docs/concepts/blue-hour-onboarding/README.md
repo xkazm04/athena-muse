@@ -1,6 +1,6 @@
 # Blue Hour onboarding - design and implementation plan
 
-Status: **designed, parked** (2026-10-20; restated in this repository's own architecture 2026-10-27). Not built. Produced by a /spark session (4 rounds, 14 questions) after the owner chose **Blue Hour** as the visual direction for Athena on Muse, the Meta Global AI Developer Hackathon Startup-track entry.
+Status: **designed, parked** (2026-10-20; restated in this repository's own architecture 2026-10-27). Not built. Its look, interview, map, rail and rehearse steps are superseded by [Chore onboarding v2](../chore-onboarding-v2/README.md) (2026-10-27); the key paste and probe stand. Produced by a /spark session (4 rounds, 14 questions) after the owner chose **Blue Hour** as the visual direction for Athena on Muse, the Meta Global AI Developer Hackathon Startup-track entry.
 
 Areas: the main window's first run (`apps/desktop/src/main/onboarding/`), the engine seam (`src/athena/engine/`), the gate and the ledger (`src/athena/gate.py`, `src/athena/ledger.py`) (primary); the daemon routes, the main window's routes (`apps/desktop/src/main/route.ts`), chores (`playbooks/`, `src/athena/chores/`, `src/athena/bench/`) (touched).
 
