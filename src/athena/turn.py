@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 from athena.app import Daemon
@@ -25,6 +25,9 @@ from athena.engine.prices import estimate
 from athena.errors import ApiError
 from athena.memory import visible_spaces
 from athena.spaces import normalise_origin
+
+if TYPE_CHECKING:
+    from athena.chores.portal import Portal
 
 HISTORY_TURNS = 20
 EPISODE_PART_MAX = 600
@@ -98,10 +101,13 @@ def validate(daemon: Daemon, text: str, space_id: str) -> str:
     return text
 
 
-def run_turn(daemon: Daemon, engine: Engine, text: str, space_id: str) -> Iterator[dict[str, Any]]:
-    """Validates now (so the route can answer a 4xx), streams when iterated."""
+def run_turn(
+    daemon: Daemon, engine: Engine, text: str, space_id: str, *, portal: Portal | None = None
+) -> Iterator[dict[str, Any]]:
+    """Validates now (so the route can answer a 4xx), streams when iterated. `portal` offers a
+    chore's invented app as tools (ADR 0005; WP2 wires it into the round loop)."""
     text = validate(daemon, text, space_id)
-    return _stream(daemon, engine, text, space_id)
+    return _stream(daemon, engine, text, space_id, portal)
 
 
 def _frame(daemon: Daemon, space_id: str, text: str) -> str:
@@ -167,7 +173,9 @@ def _refuse_or_label(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str
     return f"Forget: {_short(row['line'], 100)}", {"id": mem_id}
 
 
-def _stream(daemon: Daemon, engine: Engine, text: str, space_id: str) -> Iterator[dict[str, Any]]:
+def _stream(
+    daemon: Daemon, engine: Engine, text: str, space_id: str, portal: Portal | None = None
+) -> Iterator[dict[str, Any]]:
     with daemon.busy.turn(space_id):
         turn_id = mint("turn_")
         yield {"type": "start", "turn_id": turn_id, "engine": engine.id, "simulated": engine.simulated}

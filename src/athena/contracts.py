@@ -4,8 +4,8 @@ Every identifier that crosses the loopback lives here and in `apps/desktop/src/l
 key for key. JSON keys are snake_case. Absent values: the key is omitted (never null); core is the
 empty string `""`; `cost_usd` omitted means unpriced.
 
-Vocabulary: the person's word is Project, the wire's is space (`spc_` ids), so a later Chores port
-keeps athena-portable's `proj_` meaning for a chore's case.
+Vocabulary: the person's word is Project, the wire's is space (`spc_` ids); `proj_` stays free for
+a chore's case.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ TOOL_ROUNDS_MAX = 6  # model calls per turn
 # --- enums ----------------------------------------------------------------------------------------
 
 ErrorWord = Literal["bad_request", "unknown_ref", "space_busy", "unauthorized", "engine_unavailable"]
-EngineId = Literal["muse", "scripted"]
+EngineId = Literal["muse", "muse_code", "claude_code", "scripted"]
 KeySource = Literal["env", "file", "absent"]
 MemoryKind = Literal["episode", "fact"]
 Role = Literal["person", "athena"]
@@ -42,7 +42,7 @@ ActionClass = Literal["auto", "gated"]
 CardState = Literal["waiting", "approved", "declined"]
 Verdict = Literal["approve", "decline"]
 Surface = Literal["turn", "probe"]
-ActionName = Literal["recall", "remember", "propose_brief", "add_app", "forget"]
+ActionName = Literal["recall", "remember", "propose_brief", "add_app", "forget", "portal_read", "portal_act"]
 AppEventType = Literal["card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done"]
 
 # The closed action catalog. The daemon is its only author; the class decides whether it runs or
@@ -53,7 +53,17 @@ CATALOG: dict[ActionName, ActionClass] = {
     "propose_brief": "gated",
     "add_app": "gated",
     "forget": "gated",
+    # A chore's invented portals (ADR 0005): a READ tool answers at once, any other files a card.
+    "portal_read": "auto",
+    "portal_act": "gated",
 }
+
+# --- chores (ADR 0005) ---------------------------------------------------------------------------
+
+SenseName = Literal["paper", "call", "walk", "circle"]
+FeaturedStatus = Literal["proven", "rehearsed", "failing", "unproven"]
+BenchWord = Literal["exceeds", "meets", "short"]
+ProofOp = Literal[">=", "<="]
 
 
 # --- shapes ---------------------------------------------------------------------------------------
@@ -184,6 +194,70 @@ class LedgerPage(TypedDict):
     totals: LedgerTotals
 
 
+class ChoreApp(TypedDict):
+    app_id: str
+    name: str
+
+
+class BenchSummary(TypedDict):
+    """The latest bench run of a chore (`playbooks/<id>/bench.json`)."""
+
+    verdict: BenchWord
+    reasons: list[str]
+    found: int
+    eligible: int
+    value_found_usd: float
+    value_total_usd: float
+    false_claims: int
+    duplicates: int
+    traps_filed: int
+    turns: int
+    minutes: float
+    engine: EngineId
+    model: str
+    run_at: str  # ISO 8601 UTC
+    cost_usd: NotRequired[float]  # omitted = unpriced (a plan-billed CLI engine)
+
+
+class ProofRow(TypedDict):
+    """One row of `senses/proofs.json`: a spike proof measured on one build."""
+
+    sense: SenseName
+    id: str  # the proof id, unique per sense (F1, R2...)
+    question: str
+    bar: float
+    op: ProofOp
+    passed: bool
+    n: int
+    measured: NotRequired[float]
+    note: NotRequired[str]
+
+
+class ChoreSummary(TypedDict):
+    id: str
+    title: str
+    short_title: str
+    promise: str
+    category: str
+    job: str
+    senses: list[SenseName]  # empty for a chore that is not featured
+    featured: FeaturedStatus  # computed from proofs.json, never authored
+    bench: NotRequired[BenchSummary]
+
+
+class ChoreList(TypedDict):
+    chores: list[ChoreSummary]
+
+
+class ChoreDetail(TypedDict):
+    chore: ChoreSummary
+    brief: str
+    persona: str
+    apps: list[ChoreApp]
+    proofs: list[ProofRow]
+    backends: dict[str, str]  # the sense roles the proofs ran on: segmenter / transcriber / reader
+
+
 # --- the turn stream (NDJSON, one object per line) ------------------------------------------------
 
 
@@ -261,4 +335,6 @@ ROUTES = {
     "decision": "/decisions/{card_id}",
     "ledger": "/ledger",
     "events": "/events",
+    "chores": "/chores",
+    "chore": "/chores/{id}",
 }

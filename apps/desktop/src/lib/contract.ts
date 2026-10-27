@@ -17,7 +17,7 @@ export const HUE_MAX = 359;
 export const TEXT_MAX = 8000;
 
 export type ErrorWord = "bad_request" | "unknown_ref" | "space_busy" | "unauthorized" | "engine_unavailable";
-export type EngineId = "muse" | "scripted";
+export type EngineId = "muse" | "muse_code" | "claude_code" | "scripted";
 export type KeySource = "env" | "file" | "absent";
 export type MemoryKind = "episode" | "fact";
 export type Role = "person" | "athena";
@@ -25,7 +25,14 @@ export type ActionClass = "auto" | "gated";
 export type CardState = "waiting" | "approved" | "declined";
 export type Verdict = "approve" | "decline";
 export type Surface = "turn" | "probe";
-export type ActionName = "recall" | "remember" | "propose_brief" | "add_app" | "forget";
+export type ActionName =
+  | "recall"
+  | "remember"
+  | "propose_brief"
+  | "add_app"
+  | "forget"
+  | "portal_read"
+  | "portal_act";
 export type AppEventType = "card_filed" | "card_resolved" | "space_changed" | "active_space" | "engine" | "turn_done";
 
 export const CATALOG: Record<ActionName, ActionClass> = {
@@ -34,7 +41,82 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   propose_brief: "gated",
   add_app: "gated",
   forget: "gated",
+  portal_read: "auto",
+  portal_act: "gated",
 };
+
+// --- chores (ADR 0005) ---------------------------------------------------------------------------
+
+export type SenseName = "paper" | "call" | "walk" | "circle";
+export type FeaturedStatus = "proven" | "rehearsed" | "failing" | "unproven";
+export type BenchWord = "exceeds" | "meets" | "short";
+export type ProofOp = ">=" | "<=";
+
+export interface ChoreApp {
+  app_id: string;
+  name: string;
+}
+
+/** The latest bench run of a chore (`playbooks/<id>/bench.json`). */
+export interface BenchSummary {
+  verdict: BenchWord;
+  reasons: string[];
+  found: number;
+  eligible: number;
+  value_found_usd: number;
+  value_total_usd: number;
+  false_claims: number;
+  duplicates: number;
+  traps_filed: number;
+  turns: number;
+  minutes: number;
+  engine: EngineId;
+  model: string;
+  run_at: string;
+  /** Omitted = unpriced (a plan-billed CLI engine). */
+  cost_usd?: number;
+}
+
+/** One row of `senses/proofs.json`: a spike proof measured on one build. */
+export interface ProofRow {
+  sense: SenseName;
+  id: string;
+  question: string;
+  bar: number;
+  op: ProofOp;
+  passed: boolean;
+  n: number;
+  measured?: number;
+  note?: string;
+}
+
+export interface ChoreSummary {
+  id: string;
+  title: string;
+  short_title: string;
+  promise: string;
+  category: string;
+  job: string;
+  /** Empty for a chore that is not featured. */
+  senses: SenseName[];
+  /** Computed from proofs.json, never authored. */
+  featured: FeaturedStatus;
+  bench?: BenchSummary;
+}
+
+export interface ChoreList {
+  chores: ChoreSummary[];
+}
+
+export interface ChoreDetail {
+  chore: ChoreSummary;
+  brief: string;
+  persona: string;
+  apps: ChoreApp[];
+  proofs: ProofRow[];
+  /** The sense roles the proofs ran on: segmenter / transcriber / reader. */
+  backends: Record<string, string>;
+}
 
 export interface ErrorBody {
   error: ErrorWord;
@@ -195,4 +277,6 @@ export const ROUTES = {
   decision: "/decisions/{card_id}",
   ledger: "/ledger",
   events: "/events",
+  chores: "/chores",
+  chore: "/chores/{id}",
 } as const;

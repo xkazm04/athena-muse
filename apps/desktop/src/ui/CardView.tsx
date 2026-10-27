@@ -18,6 +18,8 @@ const ACTION: Record<Card["action"], string> = {
   propose_brief: "Change the brief",
   add_app: "Add an app",
   forget: "Forget a memory",
+  portal_read: "Read a page",
+  portal_act: "Act on a page",
 };
 
 /** A card Athena filed: nothing happens until the person signs it, and it runs once. */

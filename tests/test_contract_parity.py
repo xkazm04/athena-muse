@@ -39,11 +39,19 @@ def test_caps_match() -> None:
 
 def test_enums_match() -> None:
     names = ("ErrorWord", "EngineId", "KeySource", "MemoryKind", "Role", "ActionClass", "CardState")
-    for name in (*names, "Verdict", "Surface", "ActionName", "AppEventType"):
+    chores = ("SenseName", "FeaturedStatus", "BenchWord")
+    for name in (*names, "Verdict", "Surface", "ActionName", "AppEventType", *chores):
         assert _ts_union(name) == set(typing.get_args(getattr(contracts, name))), name
 
 
+def test_proof_op_matches() -> None:
+    # ">=" is not a word, so _ts_union cannot read it; the operators are named here.
+    assert set(typing.get_args(contracts.ProofOp)) == {">=", "<="}
+    assert 'export type ProofOp = ">=" | "<=";' in TS
+
+
 def test_list_envelopes_match() -> None:
-    for name, key in (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards")):
+    envelopes = (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards"))
+    for name, key in (*envelopes, ("ChoreList", "chores")):
         assert list(getattr(contracts, name).__annotations__) == [key], name
         assert re.search(rf"export interface {name} \{{\s*{key}: \w+\[\];\s*\}}", TS), name
