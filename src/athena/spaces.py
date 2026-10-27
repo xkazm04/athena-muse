@@ -190,7 +190,7 @@ class Spaces:
                 )
             }
             turns = db.execute("SELECT COUNT(*) FROM turns WHERE space_id = ?", (space_id,)).fetchone()[0]
-            for table in ("memory", "turns", "cards"):
+            for table in ("memory", "turns", "cards", "page_reads"):
                 db.execute(f"DELETE FROM {table} WHERE space_id = ?", (space_id,))
             db.execute("DELETE FROM spaces WHERE id = ?", (space_id,))
             db.execute(

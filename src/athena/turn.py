@@ -9,7 +9,8 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from athena.app import Daemon
-from athena.chores.portal import Portal
+from athena.chores import reads
+from athena.chores.portal import SEPARATOR, Portal
 from athena.chores.spec import ChoreError, library_dir, load_chore
 from athena.clock import mint
 from athena.contracts import (
@@ -186,7 +187,9 @@ def _stream(
             tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
         if portal is not None:
             tools += portal.tools()
-            messages[0]["content"] += "\n\n" + portal.frame() + _waiting(daemon, space_id)
+            messages[0]["content"] += (
+                "\n\n" + portal.frame() + reads.frame(daemon, space_id) + _waiting(daemon, space_id)
+            )
 
         reply_parts: list[str] = []
         cards: list[Card] = []
@@ -370,6 +373,8 @@ def _run_portal(
     """((tool result, events to stream), the card filed if any) for a call the portal owns."""
     if portal.is_read(call.name):
         result, label = portal.read(call.name, call.arguments)
+        tool = call.name.split(SEPARATOR, 1)[-1]
+        reads.record(daemon, space_id, portal.app_id, tool, dict(call.arguments), result)
         return (result, [tool_event("portal_read", label)] if label else []), None
     checked = portal.check(call.name, call.arguments)
     if isinstance(checked, str):

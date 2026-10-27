@@ -48,3 +48,13 @@ measured, not claimed.
 - A number on a chore always names the engine and model that produced it.
 - Running a chore live inside a Project, with Athena in her window, is the next slice; this one is
   the bench and the Chores scene.
+
+## Amendment 2026-10-27 - what a page answered reaches the next turn
+
+A turn's history keeps Athena's words, not what her tools answered. On care-circle she read the
+bottles' med ids and the members' ids in the Circle app, reached the pharmacy and the clinic two
+phases later without them, and refused to guess: 0 of 6 found, every card missing its key. So
+every portal READ answer is kept per space (`page_reads`, erased with the project) and a portal
+turn's frame lists the newest one per tool and arguments, within a 16,000-character budget, still
+fenced as page data. Beside it, the frame lists the space's unsigned portal cards so a nudge does
+not file one twice.

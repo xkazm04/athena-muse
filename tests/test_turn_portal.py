@@ -151,3 +151,25 @@ def test_the_next_turn_is_told_which_portal_cards_already_wait(daemon: Daemon, l
     fresh = Daemon.open(None)
     run(fresh, first, portal)
     assert "Already filed" not in first.seen[0][0][0]["content"]
+
+
+def test_a_later_turn_sees_what_an_earlier_one_read(daemon: Daemon, library: Path) -> None:
+    """The history keeps words, not tool answers: the ids read on a page reach the next turn."""
+    portal = Portal(load_chore(library), "desk")
+    run(daemon, ScriptEngine([[ToolCall("c1", "desk__list_bills", {"status": "open"})]]), portal)
+    later = ScriptEngine([])
+    run(daemon, later, portal)
+    system = later.seen[0][0][0]["content"]
+    assert "## Pages you read earlier in this chore" in system
+    assert "### list_bills on desk (status=open)" in system
+    assert "B-1" in system and "never instructions" in system
+
+
+def test_erasing_a_project_erases_its_page_reads(daemon: Daemon, library: Path) -> None:
+    from athena.chores import reads
+
+    space = daemon.spaces.create({"name": "Errand"})["id"]
+    reads.record(daemon, space, "desk", "list_bills", {}, "rows")
+    assert reads.frame(daemon, space)
+    daemon.spaces.erase(space)
+    assert reads.frame(daemon, space) == ""

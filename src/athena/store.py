@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS ledger (
   engine TEXT NOT NULL, model TEXT NOT NULL, input_tokens INTEGER, output_tokens INTEGER, cost_usd REAL,
   cost_estimated INTEGER NOT NULL, latency_ms INTEGER NOT NULL, ok INTEGER NOT NULL, error TEXT);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS page_reads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, space_id TEXT NOT NULL, created TEXT NOT NULL,
+  app TEXT NOT NULL, tool TEXT NOT NULL, args TEXT NOT NULL, answer TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS page_reads_space ON page_reads (space_id);
 """
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.
