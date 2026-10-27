@@ -220,7 +220,8 @@ def _stream(
             cost = None
             if usage is not None:
                 cost = usage.cost_usd
-                if cost is None:
+                # A plan-billed engine (Muse Code) is never priced from the list: no figure is not $0.
+                if cost is None and engine.cost_estimated:
                     cost = estimate(engine.model, usage.input_tokens, usage.output_tokens)
             daemon.ledger.record(
                 surface="turn",

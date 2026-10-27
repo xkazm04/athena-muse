@@ -21,3 +21,10 @@ def daemon() -> Iterator[Daemon]:
 @pytest.fixture
 def client(daemon: Daemon) -> TestClient:
     return TestClient(create_app(daemon, token=TOKEN), headers={"Authorization": f"Bearer {TOKEN}"})
+
+
+@pytest.fixture(autouse=True)
+def _no_engine_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A shell that exports an engine choice must not change what the tests run."""
+    for name in ("ATHENA_ENGINE", "ATHENA_MODEL", "META_MODEL", "META_BASE_URL"):
+        monkeypatch.delenv(name, raising=False)

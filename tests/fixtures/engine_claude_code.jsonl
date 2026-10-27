@@ -1,0 +1,7 @@
+{"type":"system","subtype":"init","cwd":"athena-engine-x","session_id":"s1","tools":[],"mcp_servers":[],"model":"claude-sonnet-5-5","permissionMode":"default"}
+{"type":"system","subtype":"thinking_tokens","estimated_tokens":50,"estimated_tokens_delta":50,"session_id":"s1"}
+{"type":"assistant","message":{"model":"claude-sonnet-5-5","id":"msg_1","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"","signature":"x"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":751,"cache_read_input_tokens":0,"output_tokens":8}},"session_id":"s1"}
+{"type":"assistant","message":{"model":"claude-sonnet-5-5","id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"Let me look, and keep that.\nOP: {\"tool\":\"recall\",\"args\":{\"query\":\"tea\"}}\nOP: {\"tool\":\"remember\",\"args\":{\"text\":\"Likes green tea\"}}"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":751,"cache_read_input_tokens":0,"output_tokens":8}},"session_id":"s1"}
+{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"},"session_id":"s1"}
+not json: a stray line the reader must skip
+{"type":"result","subtype":"success","is_error":false,"num_turns":1,"result":"Let me look, and keep that.","total_cost_usd":0.004328,"usage":{"input_tokens":2,"cache_creation_input_tokens":751,"cache_read_input_tokens":10,"output_tokens":132},"session_id":"s1"}

@@ -7,13 +7,14 @@ from collections.abc import Iterator
 from typing import Any
 
 import httpx
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import BaseRoute, Route
 
 from athena import engine as engine_mod
 from athena.app import Daemon
-from athena.contracts import EngineStatus
+from athena.contracts import EngineId, EngineStatus
 from athena.engine import EngineError
 from athena.errors import ApiError
 from athena.keys import KeyStore
@@ -42,7 +43,10 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     daemon.gate.set_executor(lambda card: execute(daemon, card))
 
     def current() -> EngineStatus:
-        return engine_mod.status(keys)
+        try:
+            return engine_mod.status(keys)
+        except EngineError as e:  # a bad ATHENA_ENGINE: say how to fix it
+            raise ApiError("engine_unavailable", e.reason) from e
 
     def announce() -> EngineStatus:
         status = current()
@@ -63,14 +67,21 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         return JSONResponse(announce())
 
     async def probe(_: Request) -> Response:
+        # Which engine was tried comes from the one choice function, even when building it failed.
+        engine_id: EngineId | None
         try:
-            result = engine_mod.build_engine(keys, transport=TRANSPORT).probe()
-            model = result.get("model", engine_mod.model_name())
-            engine_id = "muse" if keys.get() else "scripted"
+            engine_id = engine_mod.choose(keys)
+        except EngineError:
+            engine_id = None
+        try:
+            engine = engine_mod.build_engine(keys, transport=TRANSPORT)
+            result = await run_in_threadpool(engine.probe)  # a CLI engine's probe takes seconds
+            model = result.get("model", engine.model)
         except EngineError as e:
             result = {"ok": False, "error": e.reason}
-            model = engine_mod.model_name()
-            engine_id = "muse"
+            model = engine_mod.engine_model(engine_id) if engine_id else ""
+        if engine_id is None:
+            return JSONResponse(result)  # nothing was called, so nothing to put on the ledger
         row: dict[str, Any] = {
             "surface": "probe",
             "space_id": "",

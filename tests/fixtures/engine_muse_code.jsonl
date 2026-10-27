@@ -1,0 +1,6 @@
+{"payload_type":"run.started","payload":{"run_id":"r1","model":"muse-spark-1.3"}}
+{"payload_type":"run.output.delta","payload":{"text":"I will keep "}}
+{"payload_type":"run.output.delta","payload":{"text":"that.\nOP: {\"tool\":\"remember\","}}
+{"payload_type":"run.output.delta","payload":{"text":"\"args\":{\"text\":\"Likes green tea\"}}\n"}}
+{"payload_type":"run.usage","payload":{"models":[{"model":"muse-spark-1.3","input_tokens":15210,"output_tokens":41},{"model":"muse-spark-1.3","input_tokens":12,"output_tokens":3}]}}
+{"payload_type":"run.terminal.completed","payload":{"reason":"done"}}
