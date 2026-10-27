@@ -9,6 +9,8 @@ import {
   type ActiveSpace,
   type Card,
   type CardList,
+  type ChoreDetail,
+  type ChoreList,
   type EngineStatus,
   type Health,
   type LedgerPage,
@@ -79,3 +81,7 @@ export const cards = async (state?: CardFilter) =>
 export const decide = (cardId: string, verdict: Verdict) =>
   request<Card>("POST", path(ROUTES.decision, { card_id: cardId }), { verdict });
 export const ledger = (limit?: number) => request<LedgerPage>("GET", ROUTES.ledger + query({ limit }));
+
+// Chores (ADR 0005): the library is read-only on the wire.
+export const chores = async () => (await request<ChoreList>("GET", ROUTES.chores)).chores;
+export const chore = (id: string) => request<ChoreDetail>("GET", path(ROUTES.chore, { id }));

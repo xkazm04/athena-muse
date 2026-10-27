@@ -64,6 +64,11 @@ describe("api paths", () => {
     });
     expect((await called(() => api.ledger(50))).url).toBe("/ledger?limit=50");
   });
+
+  it("builds the chore routes, escaping the id", async () => {
+    expect(await called(() => api.chore("care-circle"))).toMatchObject({ method: "GET", url: "/chores/care-circle" });
+    expect((await called(() => api.chore("a b"))).url).toBe("/chores/a%20b");
+  });
 });
 
 describe("api list routes", () => {
@@ -76,5 +81,7 @@ describe("api list routes", () => {
     expect(await api.conversation("")).toEqual([{ id: "turn_1" }]);
     answer({ cards: [{ id: "card_1" }] });
     expect(await api.cards("resolved")).toEqual([{ id: "card_1" }]);
+    answer({ chores: [{ id: "care-circle" }] });
+    expect(await api.chores()).toEqual([{ id: "care-circle" }]);
   });
 });

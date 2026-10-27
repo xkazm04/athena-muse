@@ -5,6 +5,8 @@ import { toggleAthena } from "../lib/windows";
 import { Backdrop, Seal } from "../theme";
 import { ProjectPill, useAppEvents } from "../ui";
 import { AthenaView } from "./athena/AthenaView";
+import { ChoreScene } from "./chores/ChoreScene";
+import { Chores } from "./chores/Chores";
 import { FirstRun, readSkipped } from "./onboarding/FirstRun";
 import { Field } from "./projects/Field";
 import { Level } from "./projects/Level";
@@ -102,6 +104,8 @@ export function Shell() {
   }, [syncRoute]);
 
   const onAthena = route.view === "athena";
+  const onChores = route.view === "chores" || route.view === "chore";
+  const here = (on: boolean) => (on ? "page" : undefined);
 
   return (
     <div className="m-shell">
@@ -126,10 +130,13 @@ export function Shell() {
             </span>
           ))}
         <nav className="m-nav" aria-label="Main">
-          <a href="#projects" className="m-nav__link" aria-current={onAthena ? undefined : "page"}>
+          <a href="#projects" className="m-nav__link" aria-current={here(!onAthena && !onChores)}>
             Projects
           </a>
-          <a href="#athena" className="m-nav__link" aria-current={onAthena ? "page" : undefined}>
+          <a href="#chores" className="m-nav__link" aria-current={here(onChores)}>
+            Chores
+          </a>
+          <a href="#athena" className="m-nav__link" aria-current={here(onAthena)}>
             Athena
           </a>
         </nav>
@@ -151,6 +158,8 @@ export function Shell() {
         {route.view === "core" && <CoreLevel />}
         {route.view === "memory" && <Memory id={route.id} />}
         {route.view === "athena" && <AthenaView />}
+        {route.view === "chores" && <Chores />}
+        {route.view === "chore" && <ChoreScene id={route.id} />}
       </main>
     </div>
   );

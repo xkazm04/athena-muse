@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { ChoreDetailView } from "../main/chores/ChoreScene";
+import { Catalogue } from "../main/chores/Chores";
+import { FIXTURE_CHORES, fixtureDetail } from "../main/chores/fixtures";
+import type { Load } from "../main/store";
 import { Backdrop, Seal, SPEED_REST, SPEED_WORKING, applyTheme, type SealState, type ThemeChoice } from "../theme";
 
 const STATES: SealState[] = ["rest", "working", "waiting", "signed"];
@@ -127,6 +131,8 @@ export function Preview() {
         </div>
       </section>
 
+      <ChoresSection />
+
       <section className="pv-section">
         <h2>Primitives</h2>
         <div className="pv-row">
@@ -173,5 +179,47 @@ export function Preview() {
         </div>
       </section>
     </main>
+  );
+}
+
+const CHORE_STATES: { name: string; load: Load; empty?: boolean }[] = [
+  { name: "ready", load: "ready" },
+  { name: "reading", load: "reading" },
+  { name: "empty", load: "ready", empty: true },
+  { name: "problem", load: "problem" },
+];
+
+/** The Chores scene on fixture data: the catalogue in each state, and one chore opened from it. */
+function ChoresSection() {
+  const [state, setState] = useState(CHORE_STATES[0]!);
+  const [open, setOpen] = useState(FIXTURE_CHORES[1]!.id);
+  const chore = FIXTURE_CHORES.find((c) => c.id === open) ?? FIXTURE_CHORES[0]!;
+  return (
+    <section className="pv-section" aria-labelledby="pv-chores">
+      <h2 id="pv-chores">Chores (fixture data, not bench results)</h2>
+      <div className="pv-row" role="group" aria-label="Catalogue state">
+        {CHORE_STATES.map((s) => (
+          <button
+            key={s.name}
+            type="button"
+            className={s === state ? "btn btn-primary" : "btn"}
+            aria-pressed={s === state}
+            onClick={() => setState(s)}
+          >
+            {s.name}
+          </button>
+        ))}
+      </div>
+      <Catalogue
+        chores={state.empty ? [] : FIXTURE_CHORES}
+        load={state.load}
+        problem="Athena's background service is not reachable"
+        onRetry={() => setState(CHORE_STATES[0]!)}
+        onOpen={setOpen}
+      />
+      <div className="pv-chore">
+        <ChoreDetailView detail={fixtureDetail({ chore })} />
+      </div>
+    </section>
   );
 }

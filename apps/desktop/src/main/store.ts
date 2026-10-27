@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import * as api from "../lib/api";
-import { CORE, type AppEvent, type Card, type EngineStatus, type LedgerPage, type SpaceCounts, type SpaceSummary } from "../lib/contract";
+import { CORE, type AppEvent, type Card, type ChoreSummary, type EngineStatus, type LedgerPage, type SpaceCounts, type SpaceSummary } from "../lib/contract";
 import { DaemonError } from "../lib/daemon";
 import { parseHash, routeSpace, toHash, type Route } from "./route";
 
@@ -28,6 +28,10 @@ interface Data {
   ledger: LedgerPage | null;
   ledgerProblem: string;
   coreCounts: SpaceCounts | null;
+  /** The chore library (ADR 0005); read when the Chores scene opens. */
+  chores: ChoreSummary[];
+  choresLoad: Load;
+  choresProblem: string;
   route: Route;
   /** A short-lived problem from an action outside a form (switching project). */
   notice: string;
@@ -42,6 +46,7 @@ interface Actions {
   loadLedger: () => Promise<void>;
   loadCoreCounts: () => Promise<void>;
   loadAll: () => Promise<void>;
+  loadChores: () => Promise<void>;
   setActive: (spaceId: string) => Promise<void>;
   createSpace: (name: string) => Promise<SpaceSummary>;
   updateSpace: (id: string, patch: api.SpacePatch) => Promise<SpaceSummary>;
@@ -66,6 +71,9 @@ const initial = (): Data => ({
   ledger: null,
   ledgerProblem: "",
   coreCounts: null,
+  chores: [],
+  choresLoad: "idle",
+  choresProblem: "",
   route: parseHash(typeof window === "undefined" ? "" : window.location.hash),
   notice: "",
 });
@@ -131,6 +139,16 @@ export const useMain = create<MainState>()((set, get) => ({
   loadAll: async () => {
     const s = get();
     await Promise.all([s.loadSpaces(), s.loadActive(), s.loadCards(), s.loadLedger(), s.loadCoreCounts()]);
+  },
+
+  loadChores: async () => {
+    // Like the projects: only the first read shows placeholders; a refresh keeps the tiles.
+    if (get().choresLoad !== "ready") set({ choresLoad: "reading", choresProblem: "" });
+    try {
+      set({ chores: await api.chores(), choresLoad: "ready", choresProblem: "" });
+    } catch (e) {
+      set({ choresLoad: "problem", choresProblem: reasonOf(e, "Could not read the chores") });
+    }
   },
 
   setActive: async (spaceId) => {
