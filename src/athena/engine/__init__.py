@@ -33,6 +33,9 @@ class ToolCall:
 class Usage:
     input_tokens: int
     output_tokens: int
+    #: What the call cost when the engine itself says so (a CLI that reports its bill); `None`
+    #: leaves pricing to prices.py, or to nobody for an engine on the person's plan.
+    cost_usd: float | None = None
 
 
 class EngineError(Exception):
@@ -47,6 +50,8 @@ class Engine(Protocol):
     id: EngineId
     model: str
     simulated: bool
+    #: The ledger marks this engine's costs as estimates (list prices, or a CLI's own figure).
+    cost_estimated: bool
 
     def complete(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]

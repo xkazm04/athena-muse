@@ -32,6 +32,7 @@ class ScriptedEngine:
     id: EngineId = "scripted"
     model = "scripted"
     simulated = True
+    cost_estimated = False
 
     def probe(self) -> Probe:
         return {"ok": True, "model": "scripted", "latency_ms": 0}

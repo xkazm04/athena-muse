@@ -214,7 +214,11 @@ def _stream(
                 )
                 yield {"type": "error", "error": "engine_unavailable", "reason": e.reason}
                 return
-            cost = estimate(engine.model, usage.input_tokens, usage.output_tokens) if usage else None
+            cost = None
+            if usage is not None:
+                cost = usage.cost_usd
+                if cost is None:
+                    cost = estimate(engine.model, usage.input_tokens, usage.output_tokens)
             daemon.ledger.record(
                 surface="turn",
                 space_id=space_id,
@@ -225,7 +229,7 @@ def _stream(
                 input_tokens=usage.input_tokens if usage else None,
                 output_tokens=usage.output_tokens if usage else None,
                 cost_usd=cost,
-                cost_estimated=engine.id == "muse",
+                cost_estimated=engine.cost_estimated,
             )
             if cost is not None:
                 cost_total = (cost_total or 0.0) + cost

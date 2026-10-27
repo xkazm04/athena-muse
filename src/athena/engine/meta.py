@@ -41,6 +41,7 @@ def _usage(raw: Any) -> Usage | None:
 class MuseEngine:
     id: EngineId = "muse"
     simulated = False
+    cost_estimated = True
 
     def __init__(
         self, key: str, *, model: str, base_url: str, transport: httpx.BaseTransport | None = None
