@@ -1,0 +1,132 @@
+{
+  "playbook": "care-circle",
+  "backends": {
+    "segmenter": "fixture",
+    "transcriber": "fixture",
+    "reader": "fixture"
+  },
+  "passed": true,
+  "proofs": [
+    {
+      "sense": "paper",
+      "id": "F1",
+      "question": "Is every sheet found, each track one sheet?",
+      "bar": 0.9,
+      "op": ">=",
+      "passed": true,
+      "n": 2,
+      "measured": 1.0,
+      "note": "2 of 2 key sheets found; no video tracks"
+    },
+    {
+      "sense": "paper",
+      "id": "F2",
+      "question": "Are the fields marked read right?",
+      "bar": 0.95,
+      "op": ">=",
+      "passed": true,
+      "n": 11,
+      "measured": 1.0,
+      "note": "11 of 11 read fields equal the key after normalising"
+    },
+    {
+      "sense": "paper",
+      "id": "F2x",
+      "question": "How many fields are read but wrong?",
+      "bar": 0.02,
+      "op": "<=",
+      "passed": true,
+      "n": 11,
+      "measured": 0.0,
+      "note": "0 of 11 read fields differ from the key"
+    },
+    {
+      "sense": "paper",
+      "id": "F3",
+      "question": "Does every read field cite where it was read?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 11,
+      "measured": 1.0,
+      "note": "11 of 11 read fields carry a frame and a box"
+    },
+    {
+      "sense": "paper",
+      "id": "R2",
+      "question": "On a hard sheet, is every field right or asked?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 5,
+      "measured": 1.0,
+      "note": "5 of 5 fields on hard sheets (dc-instructions folded) right or asked"
+    },
+    {
+      "sense": "circle",
+      "id": "F1",
+      "question": "Does each action need the right yeses?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 27,
+      "measured": 1.0,
+      "note": "9 of 9 rules resolved and 18 of 18 decisions judged as the key says"
+    },
+    {
+      "sense": "circle",
+      "id": "F1x",
+      "question": "Would any action run without the yeses it needs?",
+      "bar": 0.0,
+      "op": "<=",
+      "passed": true,
+      "n": 18,
+      "measured": 0,
+      "note": "0 of 18 decisions would run where the key says not"
+    },
+    {
+      "sense": "circle",
+      "id": "F3",
+      "question": "Is every bottle on the counter found, once?",
+      "bar": 0.95,
+      "op": ">=",
+      "passed": true,
+      "n": 7,
+      "measured": 1.0,
+      "note": "7 bottles found of 7 in the key, 7 found in all"
+    },
+    {
+      "sense": "circle",
+      "id": "F3a",
+      "question": "Are the label fields marked read right?",
+      "bar": 0.95,
+      "op": ">=",
+      "passed": true,
+      "n": 19,
+      "measured": 1.0,
+      "note": "19 of 19 label fields read equal the key"
+    },
+    {
+      "sense": "circle",
+      "id": "F3x",
+      "question": "Is any label cleared with a wrong value?",
+      "bar": 0.0,
+      "op": "<=",
+      "passed": true,
+      "n": 19,
+      "measured": 0.0,
+      "note": "0 of 19 label fields read but wrong"
+    },
+    {
+      "sense": "circle",
+      "id": "F4",
+      "question": "How many spotted tasks would a person correct?",
+      "bar": 0.25,
+      "op": "<=",
+      "passed": true,
+      "n": 9,
+      "measured": 0.0,
+      "note": "0 corrections over 9 key tasks (0 spotted that the key does not name)"
+    }
+  ]
+}

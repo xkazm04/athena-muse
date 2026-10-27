@@ -1,0 +1,55 @@
+{
+  "playbook": "renovation-witness",
+  "backends": {
+    "segmenter": "fixture",
+    "transcriber": "fixture",
+    "reader": "fixture"
+  },
+  "passed": true,
+  "proofs": [
+    {
+      "sense": "walk",
+      "id": "F2",
+      "question": "Is each item counted right on each walk?",
+      "bar": 0.9,
+      "op": ">=",
+      "passed": true,
+      "n": 12,
+      "measured": 0.9167,
+      "note": "11 of 12 walk-item counts equal the key"
+    },
+    {
+      "sense": "walk",
+      "id": "F2d",
+      "question": "How often is one object counted twice?",
+      "bar": 0.05,
+      "op": "<=",
+      "passed": true,
+      "n": 88,
+      "measured": 0.0114,
+      "note": "1 objects over the key's 88 (distinct tracks, not frames)"
+    },
+    {
+      "sense": "walk",
+      "id": "F3",
+      "question": "Is each promise found and given to who said it?",
+      "bar": 0.85,
+      "op": ">=",
+      "passed": true,
+      "n": 9,
+      "measured": 1.0,
+      "note": "9 of 9 key promises right (speaker, price and days); 0 taken that the key does not name"
+    },
+    {
+      "sense": "walk",
+      "id": "F4",
+      "question": "Is each change order judged signable or vague right?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 6,
+      "measured": 1.0,
+      "note": "6 of 6 change orders judged as the key says"
+    }
+  ]
+}

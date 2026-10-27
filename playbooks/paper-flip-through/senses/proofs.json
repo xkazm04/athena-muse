@@ -1,0 +1,77 @@
+{
+  "playbook": "paper-flip-through",
+  "backends": {
+    "segmenter": "fixture",
+    "transcriber": "fixture",
+    "reader": "fixture"
+  },
+  "passed": true,
+  "proofs": [
+    {
+      "sense": "paper",
+      "id": "F1",
+      "question": "Is every sheet found, each track one sheet?",
+      "bar": 0.9,
+      "op": ">=",
+      "passed": true,
+      "n": 23,
+      "measured": 1.0,
+      "note": "23 of 23 key sheets found; 20 of 20 tracks are one key sheet of a pile"
+    },
+    {
+      "sense": "paper",
+      "id": "F2",
+      "question": "Are the fields marked read right?",
+      "bar": 0.95,
+      "op": ">=",
+      "passed": true,
+      "n": 98,
+      "measured": 0.9898,
+      "note": "97 of 98 read fields equal the key after normalising"
+    },
+    {
+      "sense": "paper",
+      "id": "F2x",
+      "question": "How many fields are read but wrong?",
+      "bar": 0.02,
+      "op": "<=",
+      "passed": true,
+      "n": 98,
+      "measured": 0.0102,
+      "note": "1 of 98 read fields differ from the key"
+    },
+    {
+      "sense": "paper",
+      "id": "F3",
+      "question": "Does every read field cite where it was read?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 98,
+      "measured": 1.0,
+      "note": "98 of 98 read fields carry a frame and a box"
+    },
+    {
+      "sense": "paper",
+      "id": "R2",
+      "question": "On a hard sheet, is every field right or asked?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 19,
+      "measured": 1.0,
+      "note": "19 of 19 fields on hard sheets (P3 handwritten, S02 folded, S04 glare, S12 two-sided) right or asked"
+    },
+    {
+      "sense": "paper",
+      "id": "R3",
+      "question": "What does reading one pile cost (USD)?",
+      "bar": 0.5,
+      "op": "<=",
+      "passed": true,
+      "n": 1,
+      "measured": 0.0,
+      "note": "dearest pile $0.0000 over 1 pile(s)"
+    }
+  ]
+}

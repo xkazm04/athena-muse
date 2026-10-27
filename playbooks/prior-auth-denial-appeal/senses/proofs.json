@@ -1,0 +1,132 @@
+{
+  "playbook": "prior-auth-denial-appeal",
+  "backends": {
+    "segmenter": "fixture",
+    "transcriber": "fixture",
+    "reader": "fixture"
+  },
+  "passed": true,
+  "proofs": [
+    {
+      "sense": "paper",
+      "id": "F1",
+      "question": "Is every sheet found, each track one sheet?",
+      "bar": 0.9,
+      "op": ">=",
+      "passed": true,
+      "n": 8,
+      "measured": 1.0,
+      "note": "8 of 8 key sheets found; no video tracks"
+    },
+    {
+      "sense": "paper",
+      "id": "F2",
+      "question": "Are the fields marked read right?",
+      "bar": 0.95,
+      "op": ">=",
+      "passed": true,
+      "n": 36,
+      "measured": 1.0,
+      "note": "36 of 36 read fields equal the key after normalising"
+    },
+    {
+      "sense": "paper",
+      "id": "F2x",
+      "question": "How many fields are read but wrong?",
+      "bar": 0.02,
+      "op": "<=",
+      "passed": true,
+      "n": 36,
+      "measured": 0.0,
+      "note": "0 of 36 read fields differ from the key"
+    },
+    {
+      "sense": "paper",
+      "id": "F3",
+      "question": "Does every read field cite where it was read?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 36,
+      "measured": 1.0,
+      "note": "36 of 36 read fields carry a frame and a box"
+    },
+    {
+      "sense": "paper",
+      "id": "R2",
+      "question": "On a hard sheet, is every field right or asked?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 14,
+      "measured": 1.0,
+      "note": "14 of 14 fields on hard sheets (s03 glare, s06 handwritten, s07 folded) right or asked"
+    },
+    {
+      "sense": "call",
+      "id": "F1",
+      "question": "Is each turn given to the right speaker?",
+      "bar": 0.9,
+      "op": ">=",
+      "passed": true,
+      "n": 18,
+      "measured": 0.9444,
+      "note": "17 of 18 key turns kept with the key's speaker"
+    },
+    {
+      "sense": "call",
+      "id": "F1k",
+      "question": "Are the ids, dates and numbers said captured exactly?",
+      "bar": 0.95,
+      "op": ">=",
+      "passed": true,
+      "n": 6,
+      "measured": 1.0,
+      "note": "6 of 6 key keywords and numbers in the turn that said them"
+    },
+    {
+      "sense": "call",
+      "id": "F3",
+      "question": "Does a fileable packet hold an unsupported sentence?",
+      "bar": 0.0,
+      "op": "<=",
+      "passed": true,
+      "n": 6,
+      "measured": 0,
+      "note": "0 unsupported of 6 sentences in 1 fileable packet(s)"
+    },
+    {
+      "sense": "call",
+      "id": "F3x",
+      "question": "Is every seeded bad draft caught?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 3,
+      "measured": 1.0,
+      "note": "3 of 3 seeded drafts flagged with an unsupported sentence"
+    },
+    {
+      "sense": "call",
+      "id": "F4",
+      "question": "Does each packet's hash bind its exact sentences?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 6,
+      "measured": 1.0,
+      "note": "6 of 6 drafts recompute to their stored sha256"
+    },
+    {
+      "sense": "call",
+      "id": "R4",
+      "question": "Does a call without its consent line keep no turns?",
+      "bar": 1.0,
+      "op": ">=",
+      "passed": true,
+      "n": 2,
+      "measured": 1.0,
+      "note": "2 of 2 calls gated as the key says"
+    }
+  ]
+}
