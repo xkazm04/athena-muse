@@ -16,10 +16,17 @@ uv run ruff check src tests && uv run ruff format --check src tests && uv run my
 pnpm -C apps/desktop typecheck && pnpm -C apps/desktop lint && pnpm -C apps/desktop test
 ```
 
-Chores (ADR 0005): `python -m athena.senses ...` builds a chore's `senses/sensed.json` and
-`proofs.json`; `python -m athena.bench <id> [--engine E] [--model M] [--no-write]` rehearses one
-chore and writes `playbooks/<id>/bench.json`. TODO(Director): confirm both command lines once the
-senses and bench packages land.
+Chores (ADR 0005):
+
+```bash
+uv run python -m athena.senses build|prove|render|status <id> [--reader fixture|muse_code|meta]
+uv run python -m athena.bench <id> [--engine claude_code|muse_code|muse|scripted] [--model M] [--no-write]
+```
+
+`senses build` writes `senses/sensed.json` (fixture builds are byte-identical), `prove` writes
+`senses/proofs.json`; the bench writes `playbooks/<id>/bench.json` and a full report under `runs/`.
+`ATHENA_ENGINE` picks Athena's engine anywhere (ADR 0006): Claude Code in development, Muse Code
+before a submission, the Muse API for the submission itself.
 
 The gates are declared in `.ai/manifest.yaml` `capabilities`. Run them before claiming anything
 works; report output faithfully. Architecture: [ADR 0002](docs/adr/0002-two-windows-over-one-loopback-daemon.md).
