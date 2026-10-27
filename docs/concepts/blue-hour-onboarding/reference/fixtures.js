@@ -1,10 +1,10 @@
 /* Athena on Muse: the product fixtures this page runs on.
- * Copied from the product console fixtures (current-console/data.js), engines re-pointed at Meta models,
- * plus the Muse additions of the shortlisted design. All content is fictional: hosts end in .example,
+ * Written for this design: the companion's console as fixtures, engines pointed at Meta models, plus the
+ * Muse additions of the shortlisted design. All content is fictional: hosts end in .example,
  * .test or .local; no real person, customer or amount. Every Muse latency, price or accuracy figure is an
  * ESTIMATE; SAM agreement figures are SIMULATED; the Gauntlet baseline was MEASURED on other models. */
 window.ATHENA = {
-  /* modules/setup/fixtures.ts — the probe answers on a machine that works */
+  /* first run — the probe answers on a machine that works */
   engines: [
     { id: "muse_spark", label: "Muse Spark", state: "found", detail: "Meta Model API (key present, simulated)",
       plain: "Drives every demo turn. Athena thinks with it.", recommended: true },
@@ -14,13 +14,13 @@ window.ATHENA = {
       plain: "Still a product option; off in the demo." },
   ],
   setupFacts: {
-    storePath: "%APPDATA%\\com.athena.portable\\athena.sqlite",
+    storePath: "%APPDATA%\\com.athena.meta\\athena.sqlite",
     brainPath: "~/athena/brain",
     mic: { state: "granted", detail: "Headset Microphone (USB Audio)" },
     theme: "dark",
   },
 
-  /* modules/browser/fixtures.ts + companion KNOWN origins and TOOLS */
+  /* open pages, known origins and their tools */
   tabs: [
     { id: 1, title: "Invoices — March", url: "https://ledgerbox.local/invoices", app: "ledgerbox", focused: true },
     { id: 2, title: "Athena — the gate in one page", url: "https://example.test/docs/gate", app: "docs" },
@@ -62,7 +62,7 @@ window.ATHENA = {
     GATED: "Changes the world. Nothing runs until you sign.",
   },
 
-  /* modules/connectors/fixtures.ts — Gmail needs re-auth (its last flow failed), Notion connected */
+  /* connectors — Gmail needs re-auth (its last flow failed), Notion connected */
   connectors: [
     { id: "gmail", label: "Gmail", auth: "oauth", description: "Search, read and send mail on the connected Google account.",
       status: "needs_reauth", identity: "me@example.test", connectedAt: "1 Sep 2026", health: "broken",
@@ -99,7 +99,7 @@ window.ATHENA = {
       guideNote: "Writing stays off until you turn writes on and list the page ids Athena may write to." },
   ],
 
-  /* modules/playbooks/fixtures.ts — typical + heavy; economics are the author's estimates */
+  /* chores — typical + heavy; economics are the author's estimates */
   playbooks: [
     { id: "carrier-refunds", title: "Late-parcel refunds", domain: "E-commerce", audience: "work",
       promise: "Every late parcel's refund found across the carrier's invoices and your orders, filed for your signature.",
@@ -167,7 +167,7 @@ window.ATHENA = {
   ],
 
 
-  /* companion/fixtures.ts — the turn, the slips, the ledger */
+  /* the turn, the slips, the ledger */
   ask: "Find every invoice over 30 days and draft a chase for each.",
   turn: [
     { kind: "user", text: "Find every invoice over 30 days and draft a chase for each." },
@@ -221,7 +221,7 @@ window.MUSE = {
         ["Cost per chase turn", "~$0.03", "estimate"],
       ],
       fallback: "After 3 timeouts or rate limits in 60 s the breaker opens and the turn diverts to Llama on Baseten. A waiting card does not move.",
-      config: 'engine   = "muse_spark"\nport     = ModelFn            # harness/ports.py, unchanged\nadapter  = harness/muse.py     # sibling of tokenfactory.py\ntools    = from_catalog()      # schema generated, never hand-written\neffort   = { read: "low", propose: "high" }\nbreaker  = { trips: 3, window_s: 60, divert: "llama_baseten" }\nledger   = { engine: "muse_spark", cost_estimated: true }' },
+      config: 'engine   = "muse_spark"\nport     = Engine             # the engine seam, unchanged\nadapter  = engine/meta.py      # OpenAI-compatible client\ntools    = from_catalog()      # schema generated, never hand-written\neffort   = { read: "low", propose: "high" }\nbreaker  = { trips: 3, window_s: 60, divert: "llama_baseten" }\nledger   = { engine: "muse_spark", cost_estimated: true }' },
     { id: "sam_3_1", name: "SAM 3.1", role: "track circuit", lineName: "Modal · open weights", state: "ready", isNew: true,
       short: "checks every gated target",
       does: "Before a card is shown, the screenshot already captured for it is segmented at the ref's described label and box. The mask and the DOM box must agree; their overlap (IoU) is printed on the card.",
@@ -237,7 +237,7 @@ window.MUSE = {
       config: 'check    = "track_circuit"\nmodel    = "sam-3.1"           # open weights on Modal\nprompt   = { box: dom_ref.box, text: dom_ref.label }\nagree_at = 0.80                # IoU\non_miss  = "one_witness"       # card stays, one-tap approve off\nledger   = { engine: "sam_3_1", cost_estimated: true }' },
     { id: "llama_baseten", name: "Llama on Baseten", role: "diversion", lineName: "Meta open weights", state: "standby", isNew: true,
       short: "takes a turn when Muse fails",
-      does: "The same ModelFn port pointed at an SDK-compatible Llama endpoint. It drives only when the breaker is open, and every call it makes is a ledger row like any other.",
+      does: "The same engine seam pointed at an SDK-compatible Llama endpoint. It drives only when the breaker is open, and every call it makes is a ledger row like any other.",
       effort: "Also the Gauntlet's attacker on the Muse re-run, so the driver is never attacked by its own family.",
       facts: [
         ["Open weights allowed", "yes", "event page"],
@@ -245,11 +245,11 @@ window.MUSE = {
         ["Cost per diverted turn", "~$0.003", "estimate"],
       ],
       fallback: "If Baseten is down too, the turn ends with engine_error and the levers wait. Nothing runs unsigned.",
-      config: 'engine   = "llama_baseten"\nport     = ModelFn\nadapter  = harness/muse.py     # same adapter, other base_url\nrole     = ["diversion", "gauntlet_attacker"]\nledger   = { engine: "llama_baseten", cost_estimated: true }' },
+      config: 'engine   = "llama_baseten"\nport     = Engine\nadapter  = engine/meta.py      # same adapter, other base_url\nrole     = ["diversion", "gauntlet_attacker"]\nledger   = { engine: "llama_baseten", cost_estimated: true }' },
     { id: "cli", name: "CLI engines", role: "off in demo", lineName: "the signed-in coding CLIs", state: "off", isNew: false,
       short: "carried over, product option",
-      does: "The engines Athena shipped with: the person's own signed-in coding CLIs, no API key. They stay in the product and are switched off for the demo, so every demo call goes to Meta.",
-      effort: "Carried over from the previous build, not new work.",
+      does: "The person's own signed-in coding CLIs, no API key. They stay in the product and are switched off for the demo, so every demo call goes to Meta.",
+      effort: "Not part of the demo path.",
       facts: [
         ["Status", "carried over, built before 26 Oct", "measured"],
         ["In the demo", "off", "decision"],

@@ -5,9 +5,12 @@ work in **Projects** whose memory stays walled off from each other, and talk wit
 always-on-top window. Anything she wants to change stops at a card you sign, and it runs once. Every
 Muse call is metered, with its estimated cost, in a ledger you can read.
 
-Status: **core built in the event window** (from 2026-10-26). Built for the Meta Global AI Developer
-Hackathon, Startup track. Not yet in this build: Chores, Settings, the Blue Hour onboarding interview
-and test run (see [the plan](docs/concepts/blue-hour-onboarding/README.md)).
+Status: **core and Chores built in the event window** (from 2026-10-26). Built for the Meta Global AI
+Developer Hackathon, Startup track. This slice adds Chores: four errands kept as data, rehearsed on a
+headless bench against invented portals and shown in the Chores scene
+([ADR 0005](docs/adr/0005-chores-are-data-rehearsed-on-a-bench.md)). Not yet in this build: running a
+chore live inside a Project, Settings, the Blue Hour onboarding interview and test run (see
+[the plan](docs/concepts/blue-hour-onboarding/README.md)).
 
 | You are | Go to |
 |---|---|
@@ -30,6 +33,9 @@ and test run (see [the plan](docs/concepts/blue-hour-onboarding/README.md)).
   until you sign; it runs once ([ADR 0004](docs/adr/0004-muse-engine-key-custody-and-the-gate.md)).
 - **The ledger.** One row per Muse call: tokens, estimated cost from Meta's published prices,
   latency.
+- **Chores.** Four family errands, each a folder of data with invented portals and an answer key.
+  A bench rehearses one headless and scores the cards Athena files; a chore is featured only when
+  its proofs pass ([ADR 0005](docs/adr/0005-chores-are-data-rehearsed-on-a-bench.md)).
 - **Loop Tide.** A cobalt theme derived from the Meta and Muse identities (never their marks): a
   living current behind the main window and her animated seal in a cobalt-lens window.
 
@@ -43,11 +49,5 @@ pnpm -C apps/desktop app          # build and open Athena (spawns the daemon)
 
 Optional: `META_API_KEY` in the environment (or paste it in the first run). `pnpm -C apps/desktop dev`
 then `/preview.html` shows the theme without the daemon.
-
-## Prior art
-
-The concepts (walled projects, single-use cards, the Loop Tide theme) come from
-[athena-portable](https://github.com/xkazm04/athena-portable). The code here is new, written from
-scratch in the event window ([ADR 0001](docs/adr/0001-repo-posture.md)).
 
 Licence: Apache-2.0.

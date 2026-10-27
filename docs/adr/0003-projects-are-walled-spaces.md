@@ -6,15 +6,15 @@ Date: 2026-10-26
 ## Context
 
 A person uses Athena for several pieces of work at once (taxes, a garden, a job hunt). If she has
-one memory, every turn gets all of them back: a tax fact surfaces on a garden question. The
-concept of walled projects comes from athena-portable (its ADR 0225) and is re-implemented here
-from scratch.
+one memory, every turn gets all of them back: a tax fact surfaces on a garden question, and a
+detail she should keep to one piece of work reaches another. A wall has to be drawn by the person,
+not guessed by recall.
 
 ## Decision
 
 - **Vocabulary.** The person's word is **Project**; the wire's and the code's is **space**
-  (`spc_` + 12 hex). The word is kept even though this repo has no clash yet, so a later Chores
-  port keeps athena-portable's meaning of `proj_` (a chore's case). **Core** is no space: its one
+  (`spc_` + 12 hex). The two words stay apart so `proj_` stays free for a chore's case when
+  chores run inside Projects. **Core** is no space: its one
   spelling is `""` on the wire and in storage, `core` only as a path segment.
 - **A project** holds a name (1-60), a brief (at most 1,600), apps (at most 24 distinct origins,
   each normalised to `scheme://host[:port]`) and a hue. At most 100 projects. Caps are refused

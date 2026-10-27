@@ -4,7 +4,7 @@
 
 Athena on Muse: the Blue Hour onboarding for the Meta hackathon. The plan of record is
 `docs/concepts/blue-hour-onboarding/README.md` (flow, four work packages, wire contract, risks).
-Prior art is athena-portable; read it, never paste from it without the disclosure in ADR 0001.
+Chores are data under `playbooks/<id>/`, rehearsed on a headless bench (ADR 0005).
 
 ## Commands
 
@@ -15,6 +15,11 @@ uv sync && pnpm install      # dependencies
 uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy && uv run pytest -q
 pnpm -C apps/desktop typecheck && pnpm -C apps/desktop lint && pnpm -C apps/desktop test
 ```
+
+Chores (ADR 0005): `python -m athena.senses ...` builds a chore's `senses/sensed.json` and
+`proofs.json`; `python -m athena.bench <id> [--engine E] [--model M] [--no-write]` rehearses one
+chore and writes `playbooks/<id>/bench.json`. TODO(Director): confirm both command lines once the
+senses and bench packages land.
 
 The gates are declared in `.ai/manifest.yaml` `capabilities`. Run them before claiming anything
 works; report output faithfully. Architecture: [ADR 0002](docs/adr/0002-two-windows-over-one-loopback-daemon.md).

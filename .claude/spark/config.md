@@ -22,7 +22,7 @@ Read AGENTS.md first. Built core: ADRs 0002-0004; the onboarding plan of record 
 default
 
 ## Question taste
-- Concepts carried from athena-portable ("consistent with athena-portable"): read its design records (ADRs, spark idea notes - never code) before wave 1 and offer that as the recommended option.
+- Concepts the owner calls consistent with earlier work: ask for the design record before wave 1 and offer it as the recommended option.
 - Taste forks the owner will not settle in the abstract: build behind a switch and let them choose (blue-hour-onboarding rail build-up, "prototype all three").
 
 ## Skill improvement log
