@@ -1,6 +1,6 @@
 # Chore onboarding v2 - describe a need, watch it drawn, test it, keep it
 
-Status: **building** (2026-10-28): the contest is running; WP0 (contract, stubs, [ADR 0007](../../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md)) is committed. The owner chose to start the daemon packages (WP0-WP2) while the UI/UX contest runs; the desktop (WP3) waits for the winner.
+Status: **daemon built, stage designed** (2026-10-28). WP0-WP2 are on main ([ADR 0007](../../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md)); a live Claude Code run took the staged need from writing to a scored test run (n=1: written with no repair, 4 expected cards, test run `exceeds` with 4 of 4 found, 1.2 min, about $0.33 est.). The contest chose two winners, ported as two views behind one switch (WP3 below); the port is next.
 
 Engine: v1 runs on Athena's engine wrapper with Claude Code (`ATHENA_ENGINE=claude_code`, [ADR 0006](../../adr/0006-one-engine-interface-over-four-engines.md)). Muse Code is used for pre-submission checks. The Muse API is the submission's engine and adds the multimedia path ([Later, on the Muse API](#later-on-the-muse-api)).
 
@@ -63,14 +63,14 @@ Director decisions (convention or judgement, overridable tomorrow):
 - **Ledger:** `Surface` gains `design` (stage turns, authoring, preview) and `rehearsal`.
 - **Strings:** inline English, plain words. The screen never shows "token", "OP", "world.json", "truth" or "bench"; it says "test run", "her practice apps", "what you expect".
 
-## Tomorrow's order
+## Order, as run (2026-10-28)
 
-1. **Install /contest** into this repo: add `.claude/contest/config.md` (`.contest/` is already git-ignored). The skill comes from the organisation's registry (`skills/contest`, v1.13.1).
-2. **Stage the contest material** (described below) and write `BRIEF.md`.
-3. **Run the contest** (`/contest "<idea>"`, UI roster, `--review owner`, 3 variants each, 90 min ceiling). The owner reviews the six variants blind and picks a winner, or a shortlist to fuse.
-4. **Write the port contract.** The winner's composition, motion and states are written into the UX/UI spec below, replacing its placeholders.
-5. **Build:** the Director commits the contract and stubs, then the work packages run.
-6. **Rehearse end to end** on the built app with the staged need, record it, and update this document's status.
+1. **Done.** /contest installed (`.claude/contest/config.md`, v1.13.1 from the registry).
+2. **Done.** Material staged (`.contest/stage/chore-stage/`, git-ignored): the invented conversation generated from sketch ops, screenshots of the real app, the Loop Tide files.
+3. **Done.** Contest run, UI roster, 3 variants each, owner review. The seats reported $17.41 (32 min) and $24.69 (78 min). Verdict: A/1 and A/3 combined, both kept behind a switch.
+4. **Done.** Port contract written (WP3 and the UX/UI spec below).
+5. **Done for the daemon** (WP0-WP2, built while the contest ran, at the owner's call). **Next:** WP3-0 to WP3-4.
+6. **Next:** rehearse end to end on the built app, in both views, and update this status.
 
 ## The contest
 
@@ -124,7 +124,7 @@ A person opens the stage, says in their own words what they want handed off, and
 
 ### Work packages
 
-Order: the Director commits WP0, then WP1 and WP3 run in parallel against the stubs, and WP2 follows WP1, since it shares `drafts.py`.
+Order: the Director commits WP0, then WP1 and WP3 run in parallel against the stubs, and WP2 follows WP1, since it shares `drafts.py`. As run on 2026-10-28: WP0, WP1 and WP2 are built and on main; WP3 is re-cut below into four packages after the contest verdict.
 
 **WP0: contract, stubs, ADR (Director).**
 - Add every identifier in Data & API to `contracts.py` and `contract.ts`, held equal by the parity test.
@@ -163,23 +163,114 @@ Order: the Director commits WP0, then WP1 and WP3 run in parallel against the st
   6. Gates are green.
 - Doc surface: owns ADR 0007's authoring and test section.
 
-**WP3: the stage (desktop), a port of the contest winner.**
+**WP3: the stage (desktop), a port of two contest winners behind one switch.**
+
+The contest's verdict (2026-10-28, owner) combined **A/1 "Pencil & Ink"** and **A/3 "Orbit"**: "A/1, A/3 switchable via tab switcher. They will live together for a while, with more real use cases one will prove better, or we will develop both separately for different types of cases." One model and one set of shared parts, two views, switched by a tab, and only one view mounted at a time. The winners' source is kept under `.contest/arena/chore-stage/entries/claude-claude-sonnet-5-5_max/variant-{1,3}/`. Both load byte-identical `engine.js`, `kit.js`, `kit.css` and `base.css`, so the split below follows a line the winners already drew. The Q0 inventory of both (components, placement, motion, tokens, keys, smells, with `file:line`) is kept in the local spark vault (`.spark/Spark/ideas/chore-onboarding-v2-port.md`, not version-controlled); its conclusions are written into this package and the UX/UI spec.
+
+Order: the Director commits WP3-0. Then WP3-1 runs, then WP3-2 and WP3-3 run in parallel, and the Director closes with WP3-4.
+
+**WP3-0: the switch's contract and the person's erase (Director).**
+- **`drop`:** the person rubs out one of Athena's pencil guesses. This adds `POST /drafts/{id}/drop {node_ids}` → `Draft`.
+  - Only unconfirmed `athena` nodes can be dropped. Their links go with them.
+  - It is refused while a turn runs.
+  - Undo is a local toast that holds the drop for 5 s before sending it, so nothing comes back from the daemon.
+- **`StageView = "drawing" | "orbit"`:**
+  - `SayBody.view?` names the view the person answered in.
+  - `Draft.views?: Record<StageView, number>` counts the stage turns taken in each view.
+  - The counts, with the verdict and the time to agreed, are the evidence for "one will prove better". They are shown on a kept chore's detail as one plain line.
+- **Stubs:** the stage store's interface, the view interface `StageViewProps {draft, frame, dispatch, words}` and a no-op view, all committed so WP3-2 and WP3-3 build against them.
+- **The fixture, generated:** a script turns the staged conversation into wire shape, under `apps/desktop/src/main/stage/fixture/`: a `Draft` per frame, the `TurnEvent` stream with `sketch` ops (not snapshots), `type` (not `t`), phase `index` from 1, `AuthorEvent` and `RehearsalEvent` streams, and `ExpectedCard`s. It is invented data, labelled invented.
+- An amendment to ADR 0007 covers `drop`, the two views and the comparison counts.
+
+**WP3-1: the shared stage (desktop).**
 - Files:
-  - new `apps/desktop/src/main/stage/*` (route view, store slice, frame, sketch renderer, ask, preview, rehearsal, verdict)
-  - `main/route.ts` (`stage` and `stage-new`)
-  - `lib/api.ts` (the routes below)
-  - `main/onboarding/FirstRun.tsx` (`ready` gains "Describe a need")
-  - `projects/*` and `chores/*` (the "Describe a need" doors)
-  - `preview/Preview.tsx` (the staged conversation drives every state with no daemon)
-  - CSS beside each component
-- Acceptance:
-  1. No frame scrolls at 1280x800 or 1024x700, checked by a test on the layout constants plus a manual pass.
-  2. The staged conversation fixture drives every state in the preview.
-  3. Her window shows the draft's history live, because the draft is the active space.
-  4. Places in the sketch never move when a node is added; only the new node animates in.
-  5. CSS tests pass (12 px floor, tokens, reduced motion).
-  6. Typecheck, lint and test are green.
-- Doc surface: owns this document's UX/UI spec, filled in from the winner.
+  - `main/stage/{route,store,keymap,switcher}.ts(x)`
+  - `main/stage/parts/*` (the shared parts below)
+  - `lib/api.ts`
+  - `main/route.ts` (`#stage/new`, `#stage/<id>`)
+  - the doors in `FirstRun.tsx` (`ready`), `projects/*` and `chores/*`
+  - `preview/Preview.tsx`
+- **The store** is a reducer over wire events, never over snapshots:
+  - It folds `sketch` ops, `ask`, `coverage`, `AuthorEvent` and `RehearsalEvent` into the draft, keeps the current frame, and re-reads the draft after any stream that ends in `error`.
+  - It holds a per-view placement memo keyed by node id, so switching away and back never moves a piece.
+  - From the engine prototype, port only `coverageOf`/`isAgreed`/`missingFor` (as selectors, with `"skipped"` added), the overlay that marks new, changed and just-inked pieces, the mark/note/missing/never guards, and the row and reason logic of the score.
+  - Do not port anything fixture-only (listed under Non-goals of the port).
+- **Shared parts:** each is one React component, used by both views, with props for data and words:
+  - the need sentence with the person's phrases marked
+  - the suggestion buttons (keys 1-4) and "say it your own way"
+  - the "you said" echo
+  - the thinking, slow (after 8 s) and failed notices with retry
+  - the "she still needs" line
+  - the revisit banner after "Not quite"
+  - kind labels
+  - the piece card (detail, ink, drop)
+  - the toast with undo
+  - the step rail, and the seal state derived from the step (one derivation; the two winners disagreed)
+  - the practice-app tile and the problems list in plain words
+  - progress with a clock, the phase list and the filed cards (shown, never signable)
+  - the score, the verdict rows and the saved-Project card
+  - the switcher tab
+- **One keymap**, scoped to the stage and the mounted view:
+  - 1-4 pick a suggestion.
+  - Enter sends (with an IME guard).
+  - Escape closes a card.
+  - `i` inks the focused piece and Delete drops it.
+  - Y, N and the arrows mark in the check step, in both views.
+- **Acceptance:**
+  1. The fixture streams, fed through the store, give the same drafts the daemon stores (a test per step).
+  2. Switching views mid-shape keeps the draft, the frame, the open question and every piece's place.
+  3. Her window shows the draft's history live.
+  4. The preview harness drives every state in `data/states.md` with no daemon, in both views.
+  5. CSS tests, typecheck, lint and test are green.
+
+**WP3-2: the Drawing view, a port of A/1 (desktop). Runs in parallel with WP3-3.**
+- Files: `main/stage/drawing/*` only, plus the CSS beside them, scoped under `[data-stage-view="drawing"]` with prefixed keyframes.
+- **Lanes:** five territories (where it happens, what she reads, the steps, waits for your signature, what you get), a fence for "never", the person's sentence on top, and the question pinned as a note across the bottom.
+- **Placement:** a new piece takes the free row nearest the average row of the pieces it links to.
+  - Unlike the winner, rows are only appended when a lane fills. Existing pieces keep their place, because the winner re-placed every piece when the 36-piece case grew the grid.
+  - Places are memoised by node id in the store.
+- **Links** route through the gutters between rows, and pointing at a piece heats its links.
+- **Density:** the three tiers (normal, compact, tight); details that do not fit are hidden, never cut mid-word.
+- **The later steps** (write, check, test, verdict, keep) sit in the winner's strip and drawer containers, built from the shared parts.
+- **Motion:** pieces arrive (0.6 s plus a 0.55 s text wipe, 170 ms stagger), links wipe in (620 ms, 110 ms stagger) and pencil turns to ink (0.8 s). Under reduced motion each is an instant change.
+- **Acceptance:**
+  1. The fidelity contract reads 0 deviations on the roles below.
+  2. Every named interaction is driven.
+  3. No scroll at 1280x800 or 1024x700 at 22 and at 36 pieces.
+  4. A test asserts that no piece's place changes when a node is added, including when a lane grows.
+
+**WP3-3: the Orbit view, a port of A/3 (desktop). Runs in parallel with WP3-2.**
+- Files: `main/stage/orbit/*` only, plus scoped CSS under `[data-stage-view="orbit"]`.
+- **The question card** is the centre and the largest thing on screen. The six zones frame it: steps on top, where it happens and what she reads on the left, the signature and what you get on the right, never below.
+- **Placement:** a piece takes its zone's next free cell in arrival order, and a dropped piece leaves a hole until the next arrival.
+  - Zone capacity is computed from the zone's measured size, not the winner's caps (which were tuned to the example's counts).
+  - Past capacity, the zone switches to one-line chips; past that, a "+n more" chip opens the zone's list.
+- **Arcs:** seven arcs hugging the card show coverage, read from the store, never computed in the view.
+- **Links** route round the card, never through it, and stay faint until a piece is pointed at. Where the winner fell back to a straight line through the card, the port routes round the nearer side.
+- **The later steps** live in the card, from the shared parts. The check step deals one card at a time with Y and N, then the "missed" and "never" lines.
+- **Motion:** the person's phrases fly to their pieces (720 ms, after highlights at 380 ms plus 460 ms per phrase), pieces land (0.55 s, 110 ms stagger), and pencil turns to ink with a border that draws itself (0.65 s), then settles. Under reduced motion each is an instant change. The winner's stylesheet had no reduced-motion block; the port has one.
+- **Acceptance:** the same as WP3-2, with Orbit's roles.
+
+**WP3-4: fidelity, the live seam and the switch (Director).**
+- **Roles.** The owner named no single property, so the roles are each winner's defining features from its notes:
+  - Drawing:
+    - `piece-pencil` (dashed violet), `piece-ink` (solid), `piece-yours` (pink edge)
+    - `lane`, `never-fence`, `note` (the pinned question), `ask-text`, `suggestion`, `exit` ("That's enough, write it")
+  - Orbit:
+    - `hub` (the card), `ask-text`, `suggestion`, `zone`, `chip-pencil`, `chip-ink`, `arc`, `exit`
+- **The fidelity check:**
+  - `style-contract.py capture` on each winner.
+  - A harness in a git-ignored folder, served by the app's own Vite, renders the real stage components with the real stylesheet and the generated fixture.
+  - `check` must read 0 deviations. Structural deviations are fixed in the selector and said; a tolerance is never widened.
+- **Interactions driven in a browser, asserting what the store and the daemon receive:**
+  - pick a suggestion, type an answer
+  - ink a pencil piece, drop one and undo it
+  - "That's enough, write it"
+  - mark yes and no, add a missing line and a never line
+  - "Not quite", keep
+  - switch views mid-question
+- **The live seam:** on the built app against a real daemon, the staged need is walked once on `scripted` (simulated) and once on `claude_code`, from describe to keep, in each view. Recorded under `runs/`.
+- **Doc surface:** this document's UX/UI spec, and the ADR 0007 amendment from WP3-0.
 
 ### Data & API
 
@@ -223,34 +314,50 @@ Persistence:
 
 Absent values: omit the key when unknown. `bench` is absent until a run finishes, and `cost_usd` absent means unpriced (ADR 0004).
 
-### UX/UI spec (placeholders until the contest verdict)
+### UX/UI spec (port contract, from the contest verdict 2026-10-28)
 
-- **The stage** is the main window route `#stage/<draft_id>`, plus `#stage/new` for the describe step. It is one frame, with no page scroll at any step. The current frame owns the window, and the previous frame leaves as the next arrives.
-- **Each frame** shows:
+- **The stage** is the main window route `#stage/<draft_id>`, plus `#stage/new` for the describe step. It is one frame with no page scroll at any step, at 1280x800 and 1024x700. The current frame owns the window.
+- **Two views, one switch.**
+  - The switcher tab in the stage's header reads **Drawing** (A/1) and **Orbit** (A/3).
+  - The choice is kept per device (local storage, `athena.stage.view`). The default is Drawing, and the last one used wins.
+  - Switching is a pure view change: same draft, same frame, same open question, and every piece where it was in that view. A stream in flight keeps streaming into the store.
+  - These names and the default are Director decisions; the owner may rename or flip them.
+- **What both views show in every shaping frame:**
+  - the person's sentence with the phrases she understood marked
   - her line
-  - the sketch (dominant)
-  - the ask with its suggestion chips
-  - the composer
-  - the coverage meter
-  - the "That's enough, write it" exit, once `need` is covered
-- **States per step:**
+  - the sketch
+  - the one question with its suggestions and "say it your own way"
+  - what she still needs
+  - "That's enough, write it" (from the first frame, as both winners have it; open slots are labelled with their defaults when it is used)
+- **Whose idea is whose:** the person's words have a pink edge, her guesses are dashed violet pencil, and agreed pieces are solid ink. The person inks a guess (confirm) or rubs it out (drop, with undo).
+- **States per step** (both views; `data/states.md` is the checklist):
   - describe: empty, then sending.
-  - shape: thinking; a slow-engine plate after 8 s; a failed reply with a retry; a proposal awaiting confirmation; agreed.
-  - author: writing; repairing; failed, with the problems in plain words and a path back to shape.
-  - preview: expected cards; marked; a missing-card line.
-  - rehearse: phase progress across her practice apps, with cards arriving.
-  - verdict: the score in plain words; this-is-it or not-quite.
-  - saved: a hand-off to the Project.
-- **Shared primitives:** `CardView` (expected cards and rehearsal cards), `ProjectPill`, `Seal` (her state), `Backdrop`. New primitives stay local to `main/stage/` until a second caller appears.
-- **As built in the daemon (2026-10-28), binding on the stage:** test-run cards belong to a throwaway daemon, so the stage shows them and never offers to sign them. "Not quite" (`verdict: revise`) works at `preview`, `rehearse` and `verdict` and returns to the sketch. A "never" line comes back as `{text, tool?}`, and the stage says which act it forbids, or that it was kept as words. After a stream ends in `error`, the stage reads the draft again (`GET /drafts/{id}`).
+  - shape: thinking; slow after 8 s; failed, with retry; her guesses waiting; agreed.
+  - author: writing; repairing; could not be written (problems in plain words, and back to the sketch).
+  - preview: expected cards; marked; "she missed" and "she must never" lines.
+  - rehearse: phases across her practice apps, with filed cards arriving (never signable).
+  - verdict: the score in items, with her cards beside your marks; "This is it" or "Not quite".
+  - saved: hand-off to the Project.
+- **As built in the daemon (2026-10-28), binding on the stage:**
+  - Test-run cards belong to a throwaway daemon, so the stage shows them and never offers to sign them.
+  - "Not quite" (`verdict: revise`) works at `preview`, `rehearse` and `verdict` and returns to the sketch.
+  - A "never" line comes back as `{text, tool?}`, and the stage says which act it forbids, or that it was kept as words.
+  - After a stream ends in `error`, the stage reads the draft again (`GET /drafts/{id}`).
 - **Her window:** unchanged code. It shows the draft Project's conversation because the draft is the active space.
-- **Contest-owned (to fill in):**
-  - the sketch's visual language and layout algorithm
-  - frame transitions
-  - where the ask sits
-  - how confirmation feels
-  - the preview and verdict compositions
-  - narrow-window behaviour
+- **Shared primitives:** `Seal` and `Backdrop` from `theme/` (the winners' kit copies are not ported), plus `ProjectPill`. The stage's own shared parts live in `main/stage/parts/` until a second caller appears outside the stage.
+- **Non-goals of the port** (fixture replay in the winners, not product behaviour):
+  - Rewinding a frame ("Back"): a conversation cannot be unsaid.
+  - Landing slots that peek at the staged next frame. The product may show one ghost slot in the territory or zone of the question's own `slot`, which the `ask` carries.
+  - Lighting sketch pieces during the test run. The winners matched it by hand to the example, and their two mappings disagreed. The test run dims the sketch and shows phases and filed cards; lighting returns only if a phase can name its pieces.
+  - Orbit's month calendar, which parsed day numbers out of the example's card keys.
+  - Autoplay of the example, the states menu, the 36-piece stress set and the timeline timers. These belong to the preview harness only.
+- **Code rules for the port** (from the Q0 inventory):
+  - No string HTML.
+  - No globals; one model in the store.
+  - Nothing rebuilt on every event that did not change it.
+  - No timers standing in for state.
+  - Each view's CSS scoped under its `data-stage-view` root, with its keyframes prefixed, because the winners share class names (`.chip`, `.stage`, `.toast`) that mean different things.
+  - Literal sizes, colours and z-indexes become tokens or named local variables. The CSS tests (12 px floor, sizes as tokens, a reduced-motion block per file) apply to every file.
 
 ### Strings
 
@@ -291,8 +398,8 @@ Inline English per repo convention, in plain words: "practice apps", "test run",
 - **Voice on the stage:** Athena speaks her line and the user answers by voice. The history in her window stays the record.
 - **Engine swap:** `ATHENA_ENGINE=muse`. The stage, drafts and rehearsal are engine-agnostic by construction (ADR 0006).
 
-## Open for tomorrow (owner)
+## Open (owner)
 
-- Confirm the staged need, or swap it for one of the owner's own.
-- Confirm or adjust the seven rubric slots and the agreed rule.
-- After the contest: winner or fusion, and anything the winner does that the app should not.
+- The view names (Drawing, Orbit) and the default view.
+- Whether the comparison counts (stage turns per view, with the verdict and the time to agreed) are enough evidence, or whether a short note from you after each kept chore should join them.
+- The staged need stays the after-school club's invoice unless you swap it for one of your own.
