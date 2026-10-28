@@ -1,4 +1,4 @@
-# AGENTS.md - agent guidance for athena-meta
+# AGENTS.md - agent guidance for athena-muse
 
 ## What this is
 

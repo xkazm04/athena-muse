@@ -4,7 +4,7 @@ schemaVersion: 0.1.0
 generatedAt: "2026-10-20"
 
 repo:
-  name: athena-meta
+  name: athena-muse
 
 registry:
   remote: github:xkazm04/ai-registry
