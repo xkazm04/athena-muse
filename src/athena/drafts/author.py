@@ -330,9 +330,19 @@ def plain(problem: str) -> str:
 # --- writing --------------------------------------------------------------------------------------
 
 
+#: A new chore's id is short enough to read; the loader allows CHORE_ID_MAX.
+SLUG_MAX = 40
+
+
 def slug(title: str) -> str:
-    s = re.sub(r"[^a-z0-9]+", "-", title.casefold()).strip("-")
-    return s[:CHORE_ID_MAX].rstrip("-") or "my-chore"
+    """The title's words, lowercase and hyphenated, cut at a word boundary within SLUG_MAX."""
+    words = re.sub(r"[^a-z0-9]+", " ", title.casefold()).split()
+    out = ""
+    for w in words:
+        if len(out) + len(w) + (1 if out else 0) > SLUG_MAX:
+            break
+        out = f"{out}-{w}" if out else w
+    return out or (words[0][:SLUG_MAX] if words else "my-chore")
 
 
 def unique_id(base: str, taken: set[str]) -> str:

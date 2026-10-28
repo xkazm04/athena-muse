@@ -152,11 +152,13 @@ def test_the_chore_id_is_unique_across_both_libraries(
     assert events[-1] == {"type": "written", "chore_id": "the-club-invoice-checked-against-attendance-3"}
 
 
-def test_slugs_are_ids_of_at_most_80_characters() -> None:
+def test_slugs_are_short_ids_cut_at_a_word() -> None:
     assert author.slug("  Ça va? The CLUB's invoice!! ") == "a-va-the-club-s-invoice"
     assert author.slug("!!!") == "my-chore"
+    title = "The after-school club's October invoice, held to the school portal's attendance"
+    assert author.slug(title) == "the-after-school-club-s-october-invoice"
     long = author.slug("word " * 40)
-    assert len(long) <= 80 and not long.endswith("-")
+    assert len(long) <= author.SLUG_MAX and not long.endswith("-")
     assert len(author.unique_id("x" * 80, {"x" * 80})) == 80
 
 
