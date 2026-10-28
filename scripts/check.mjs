@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, dirname, resolve, extname } from "node:path";
 
-const SKIP = new Set([".git", "node_modules", ".spark", "reference"]);
+const SKIP = new Set([".git", "node_modules", ".spark", ".contest", "reference"]);
 const files = [];
 (function walk(d) {
   for (const n of readdirSync(d)) {
