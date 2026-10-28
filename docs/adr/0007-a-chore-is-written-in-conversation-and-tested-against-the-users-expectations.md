@@ -48,3 +48,12 @@ The wire contract (`contracts.py` and `contract.ts`, held equal by the parity te
 - A need no library chore covers becomes a chore the person has tested against their own expectations, without a developer.
 - A chore's score now depends on the key its owner gave. Two people with the same need can hold different keys, and both are right.
 - `PUT` joins the daemon's allowed CORS methods for the key route.
+
+## Amendment 2026-10-29 - two views of the stage, and the person's eraser
+
+The stage's UI contest ended with two winners kept side by side: **Drawing** (the sketch fills the window as territories, the question is a note pinned below) and **Orbit** (the question card is the centre, the sketch circles it). The owner's verdict: "They will live together for a while, with more real use cases one will prove better, or we will develop both separately for different types of cases."
+
+- **One model, two views.** Both views draw the same draft from one store and send the same actions. A tab switches between them, only one is mounted, and switching never moves a piece: each view keeps its own places by node id. The choice is kept per device.
+- **The person's eraser.** `POST /drafts/{id}/drop {node_ids}` rubs out Athena's unconfirmed guesses and their links; the person's own words and anything inked are refused. With confirm, it is the person's half of pencil and ink: Athena draws, the person inks or erases. Undo is held on the desktop for a few seconds before the drop is sent, so the daemon never restores anything.
+- **The evidence for choosing.** `SayBody.view` names the view the person answered in, and `Draft.views` counts the replies that counted per view (an error or an empty reply is not counted). With the verdict and the time to agreed, these counts are how a view proves itself on real needs; nothing else about the person is recorded.
+- **A staged conversation in wire shape.** `scripts/stage_fixture.py` turns the contest's invented conversation into the exact streams and drafts the daemon answers, through the daemon's own sketch rules, into `apps/desktop/src/main/stage/fixture/staged.ts`; a test fails when it is out of date. The desktop's preview harness and the store's tests replay it with no daemon.

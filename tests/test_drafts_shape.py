@@ -494,3 +494,43 @@ def test_start_runs_nothing(daemon: Daemon) -> None:
     assert draft["step"] == "describe"
     assert daemon.conversation.list(draft["space_id"]) == []
     assert daemon.ledger.page(10)["totals"]["calls"] == 0
+
+
+def test_drop_over_the_route_and_its_refusals(client: TestClient) -> None:
+    draft = new_draft(client)
+    say(client, draft["id"])
+    guess = of(say(client, draft["id"], "A website"), "sketch")[0]["ops"][0]["node"]
+    assert guess["origin"] == "athena" and guess["confirmed"] is False
+    r = client.post(f"/drafts/{draft['id']}/drop", json={"node_ids": [guess["id"]]}, headers=H)
+    assert r.status_code == 200, r.text
+    assert guess["id"] not in [n["id"] for n in r.json()["sketch"]["nodes"]]
+    assert r.json()["coverage"]["apps"] == 0
+    mine = r.json()["sketch"]["nodes"][0]
+    assert mine["origin"] == "you"
+    refused = client.post(f"/drafts/{draft['id']}/drop", json={"node_ids": [mine["id"]]}, headers=H)
+    assert refused.status_code == 400 and "not a guess" in refused.json()["reason"]
+    bad = client.post(f"/drafts/{draft['id']}/drop", json={"node_ids": "n1"}, headers=H)
+    assert bad.status_code == 400
+
+
+def test_replies_that_count_are_counted_per_view(client: TestClient, daemon: Daemon) -> None:
+    draft = new_draft(client)
+    assert "views" not in client.get(f"/drafts/{draft['id']}", headers=H).json()
+    lines(client.post(f"/drafts/{draft['id']}/say", json={"text": "", "view": "drawing"}, headers=H))
+    lines(client.post(f"/drafts/{draft['id']}/say", json={"text": "A website", "view": "orbit"}, headers=H))
+    lines(
+        client.post(
+            f"/drafts/{draft['id']}/say", json={"text": "", "choice": "Both", "view": "orbit"}, headers=H
+        )
+    )
+    say(client, draft["id"], "No view named")  # a say with no view is not counted
+    assert client.get(f"/drafts/{draft['id']}", headers=H).json()["views"] == {"drawing": 1, "orbit": 2}
+    r = client.post(f"/drafts/{draft['id']}/say", json={"text": "x", "view": "list"}, headers=H)
+    assert r.status_code == 400 and "drawing" in r.json()["reason"]
+
+
+def test_a_reply_that_does_not_count_is_not_counted(daemon: Daemon) -> None:
+    draft_id = drafted(daemon)
+    events = list(shape.say(daemon, Stage(("", [])), draft_id, "", None, "drawing"))  # type: ignore[arg-type]
+    assert events[-1]["type"] == "error"
+    assert "views" not in daemon.drafts.get(draft_id)

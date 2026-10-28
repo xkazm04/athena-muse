@@ -80,6 +80,7 @@ NodeOrigin = Literal["you", "athena"]
 SketchOpName = Literal["add", "change", "remove", "link"]
 Mark = Literal["yes", "no"]
 DraftVerdict = Literal["keep", "revise"]
+StageView = Literal["drawing", "orbit"]  # the two views of the stage, switched by a tab
 
 FOLLOW_UPS_MAX = 2  # questions per slot after the first
 REPAIRS_MAX = 2  # silent authoring repairs before author_failed
@@ -396,6 +397,7 @@ class Draft(TypedDict):
     bench: NotRequired[BenchSummary]  # once a test run has finished
     verdict: NotRequired[DraftVerdict]
     note: NotRequired[str]  # the person's words with a "revise" verdict
+    views: NotRequired[dict[StageView, int]]  # stage turns that counted, per view the person answered in
 
 
 class DraftAbandoned(TypedDict):
@@ -409,10 +411,15 @@ class NewDraftBody(TypedDict):
 class SayBody(TypedDict):
     text: str  # "" when the person picked a suggestion
     choice: NotRequired[str]
+    view: NotRequired[StageView]  # the view the person answered in; counted on the draft
 
 
 class ConfirmBody(TypedDict):
     node_ids: list[str]
+
+
+class DropBody(TypedDict):
+    node_ids: list[str]  # Athena's unconfirmed guesses the person rubs out, with their links
 
 
 class KeyBody(TypedDict):
@@ -569,6 +576,7 @@ ROUTES = {
     "draft": "/drafts/{id}",
     "draft_say": "/drafts/{id}/say",
     "draft_confirm": "/drafts/{id}/confirm",
+    "draft_drop": "/drafts/{id}/drop",
     "draft_write": "/drafts/{id}/write",
     "draft_preview": "/drafts/{id}/preview",
     "draft_key": "/drafts/{id}/key",

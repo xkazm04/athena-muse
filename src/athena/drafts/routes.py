@@ -5,6 +5,7 @@ loop, so a long call never stalls the daemon."""
 from __future__ import annotations
 
 import json
+import typing
 from collections.abc import Iterator
 from typing import Any, cast
 
@@ -16,7 +17,7 @@ from starlette.routing import BaseRoute, Route
 from athena import engine as engine_mod
 from athena import routes_turn
 from athena.app import Daemon
-from athena.contracts import KeyBody
+from athena.contracts import KeyBody, StageView
 from athena.drafts import author, key, preview, rehearse, save, shape
 from athena.engine import Engine, EngineError
 from athena.errors import ApiError
@@ -31,6 +32,16 @@ async def _body(request: Request) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ApiError("bad_request", "send a JSON object")
     return data
+
+
+STAGE_VIEWS: frozenset[str] = frozenset(typing.get_args(StageView))
+
+
+def _node_ids(body: dict[str, Any]) -> list[str]:
+    node_ids = body.get("node_ids")
+    if not isinstance(node_ids, list) or not all(isinstance(n, str) for n in node_ids):
+        raise ApiError("bad_request", "send node_ids as a list of ids")
+    return node_ids
 
 
 def _line(event: dict[str, Any]) -> bytes:
@@ -75,17 +86,24 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
 
     async def say(request: Request) -> Response:
         body = await _body(request)
-        text, choice = body.get("text", ""), body.get("choice")
+        text, choice, view = body.get("text", ""), body.get("choice"), body.get("view")
         if not isinstance(text, str) or not (choice is None or isinstance(choice, str)):
             raise ApiError("bad_request", "send text, and choice if you picked one, as text")
+        if view is not None and view not in STAGE_VIEWS:
+            raise ApiError("bad_request", f"the view is one of {', '.join(sorted(STAGE_VIEWS))}")
         daemon.drafts.get(request.path_params["id"])  # an unknown draft is a 404 before the engine
-        return await _stream(shape.say(daemon, engine(), request.path_params["id"], text, choice))
+        draft_id = request.path_params["id"]
+        return await _stream(
+            shape.say(daemon, engine(), draft_id, text, choice, cast("StageView | None", view))
+        )
 
     async def confirm(request: Request) -> Response:
-        node_ids = (await _body(request)).get("node_ids")
-        if not isinstance(node_ids, list) or not all(isinstance(n, str) for n in node_ids):
-            raise ApiError("bad_request", "send node_ids as a list of ids")
+        node_ids = _node_ids(await _body(request))
         return JSONResponse(shape.confirm(daemon, request.path_params["id"], node_ids))
+
+    async def drop(request: Request) -> Response:
+        node_ids = _node_ids(await _body(request))
+        return JSONResponse(shape.drop(daemon, request.path_params["id"], node_ids))
 
     def optional_engine() -> Engine | None:
         try:
@@ -126,6 +144,7 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route("/drafts/{id}", draft, methods=["GET", "DELETE"]),
         Route("/drafts/{id}/say", say, methods=["POST"]),
         Route("/drafts/{id}/confirm", confirm, methods=["POST"]),
+        Route("/drafts/{id}/drop", drop, methods=["POST"]),
         Route("/drafts/{id}/write", write, methods=["POST"]),
         Route("/drafts/{id}/preview", preview_cards, methods=["POST"]),
         Route("/drafts/{id}/key", put_key, methods=["PUT"]),

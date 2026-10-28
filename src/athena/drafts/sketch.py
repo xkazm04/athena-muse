@@ -141,17 +141,7 @@ def _remove(sketch: Sketch, op: SketchOp) -> list[SketchOp]:
         node = sketch["nodes"][i]
         if node["origin"] == "you":
             raise SketchError("that node is in the person's own words; ask them before removing it")
-        out: list[SketchOp] = []
-        kept: list[SketchEdge] = []
-        for e in sketch["edges"]:
-            if node["id"] in (e["from"], e["to"]):
-                out.append({"op": "remove", "edge": _copy(e)})
-            else:
-                kept.append(e)
-        sketch["edges"] = kept
-        del sketch["nodes"][i]
-        out.append({"op": "remove", "node": copy.deepcopy(node)})
-        return out
+        return _remove_node(sketch, i)
     if "edge" in op:
         edge = _edge(op["edge"])
         if edge not in sketch["edges"]:
@@ -159,6 +149,22 @@ def _remove(sketch: Sketch, op: SketchOp) -> list[SketchOp]:
         sketch["edges"].remove(edge)
         return [{"op": "remove", "edge": _copy(edge)}]
     raise SketchError("a remove needs a node id, or both ends of a link")
+
+
+def _remove_node(sketch: Sketch, i: int) -> list[SketchOp]:
+    """Removes node `i` and its links: one `remove` per link, then the node."""
+    node = sketch["nodes"][i]
+    out: list[SketchOp] = []
+    kept: list[SketchEdge] = []
+    for e in sketch["edges"]:
+        if node["id"] in (e["from"], e["to"]):
+            out.append({"op": "remove", "edge": _copy(e)})
+        else:
+            kept.append(e)
+    sketch["edges"] = kept
+    del sketch["nodes"][i]
+    out.append({"op": "remove", "node": copy.deepcopy(node)})
+    return out
 
 
 def _link(sketch: Sketch, op: SketchOp) -> SketchOp:
@@ -196,6 +202,19 @@ def apply(sketch: Sketch, ops: list[SketchOp]) -> tuple[Sketch, list[SketchOp]]:
             applied.append(_link(out, op))
         else:
             raise SketchError("the op must be add, change, remove or link")
+    return out, applied
+
+
+def drop(sketch: Sketch, node_ids: list[str]) -> tuple[Sketch, list[SketchOp]]:
+    """The person rubs out Athena's guesses: each id must be an unconfirmed `athena` node. Its links go
+    with it; answers the `remove` ops, links first. Any other id raises SketchError, sketch untouched."""
+    out = copy.deepcopy(sketch)
+    applied: list[SketchOp] = []
+    for node_id in node_ids:
+        node = out["nodes"][_index(out, node_id)]
+        if node["origin"] != "athena" or node["confirmed"]:
+            raise SketchError(f"{node_id!r} is agreed, not a guess; only her pencil can be rubbed out")
+        applied.extend(_remove_node(out, _index(out, node_id)))
     return out, applied
 
 

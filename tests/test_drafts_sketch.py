@@ -8,7 +8,7 @@ import pytest
 
 from athena.contracts import LABEL_MAX, SKETCH_NODES_MAX, Sketch, SketchOp
 from athena.drafts.rubric import agreed, coverage, open_slots
-from athena.drafts.sketch import SketchError, apply, confirm, empty
+from athena.drafts.sketch import SketchError, apply, confirm, drop, empty
 
 
 def add(
@@ -148,3 +148,20 @@ def test_rewording_a_confirmed_proposal_asks_for_confirmation_again() -> None:
     reword = cast("SketchOp", {"op": "change", "node": {"id": "b", "label": "The school portal"}})
     sketch, ops = apply(sketch, [reword])
     assert sketch["nodes"][0]["confirmed"] is False and ops[0]["node"]["confirmed"] is False
+
+
+def test_drop_rubs_out_her_guesses_and_their_links_only() -> None:
+    sketch, _ = apply(
+        empty(), [add("a", origin="you", confirmed=True), add("b", "apps", "app"), add("c"), link("a", "b")]
+    )
+    out, ops = drop(sketch, ["b"])
+    assert [n["id"] for n in out["nodes"]] == ["a", "c"] and out["edges"] == []
+    assert [o["op"] for o in ops] == ["remove", "remove"] and "edge" in ops[0] and ops[1]["node"]["id"] == "b"
+    with pytest.raises(SketchError, match="not a guess"):
+        drop(sketch, ["a"])
+    inked, _ = confirm(sketch, ["c"])
+    with pytest.raises(SketchError, match="not a guess"):
+        drop(inked, ["c"])
+    with pytest.raises(SketchError):
+        drop(sketch, ["zz"])
+    assert [n["id"] for n in sketch["nodes"]] == ["a", "b", "c"]  # untouched on a refusal

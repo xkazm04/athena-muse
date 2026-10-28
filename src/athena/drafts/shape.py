@@ -27,6 +27,7 @@ from athena.contracts import (
     SketchNode,
     SketchOp,
     Slot,
+    StageView,
 )
 from athena.drafts import sketch as sketches
 from athena.drafts.rubric import SLOTS, coverage
@@ -151,9 +152,15 @@ class Design:
     hands it the `sketch` and `ask` calls, and asks it to settle when the reply is in."""
 
     def __init__(
-        self, daemon: Daemon, draft: Draft, skipped: frozenset[Slot], asked: dict[Slot, int]
+        self,
+        daemon: Daemon,
+        draft: Draft,
+        skipped: frozenset[Slot],
+        asked: dict[Slot, int],
+        view: StageView | None = None,
     ) -> None:
         self.daemon = daemon
+        self.view = view
         self.draft = draft
         self.skipped = skipped
         self.asked = dict(asked)
@@ -222,6 +229,10 @@ class Design:
         if self.ask is not None:
             asked[self.ask["slot"]] = asked.get(self.ask["slot"], 0) + 1
         draft = cast("Draft", {**self.draft, "sketch": self.sketch, "step": "shape"})
+        if self.view is not None:  # the comparison between the stage's views counts only replies that count
+            views = dict(self.draft.get("views", {}))
+            views[self.view] = views.get(self.view, 0) + 1
+            draft["views"] = views
         stored = self.daemon.drafts.put(draft, asked=asked)
         _rename(self.daemon, stored)
         return [{"type": "coverage", "coverage": stored["coverage"], "agreed": stored["agreed"]}]
@@ -386,7 +397,12 @@ def start(daemon: Daemon, need: str) -> Draft:
 
 
 def say(
-    daemon: Daemon, engine: Engine, draft_id: str, text: str, choice: str | None
+    daemon: Daemon,
+    engine: Engine,
+    draft_id: str,
+    text: str,
+    choice: str | None,
+    view: StageView | None = None,
 ) -> Iterator[dict[str, Any]]:
     """One stage turn: TurnEvents plus `sketch`, `ask` and `coverage`. Validates before returning.
 
@@ -404,7 +420,8 @@ def say(
             raise ApiError("bad_request", "say something, or pick one of her suggestions")
         words = draft["need"]
     _busy(daemon, draft)
-    design = Design(daemon, draft, daemon.drafts.skipped(draft_id), daemon.drafts.asked(draft_id))
+    asked, skipped = daemon.drafts.asked(draft_id), daemon.drafts.skipped(draft_id)
+    design = Design(daemon, draft, skipped, asked, view)
     return run_turn(daemon, engine, words, draft["space_id"], design=design)
 
 
@@ -415,6 +432,18 @@ def confirm(daemon: Daemon, draft_id: str, node_ids: list[str]) -> Draft:
     _busy(daemon, draft)
     try:
         sketch, _ = sketches.confirm(draft["sketch"], node_ids)
+    except SketchError as e:
+        raise ApiError("bad_request", str(e)) from e
+    return daemon.drafts.put(cast("Draft", {**draft, "sketch": sketch}))
+
+
+def drop(daemon: Daemon, draft_id: str, node_ids: list[str]) -> Draft:
+    """The person rubs out Athena's unconfirmed guesses (and their links); coverage is recomputed."""
+    draft = daemon.drafts.get(draft_id)
+    _shaping(draft)
+    _busy(daemon, draft)
+    try:
+        sketch, _ = sketches.drop(draft["sketch"], node_ids)
     except SketchError as e:
         raise ApiError("bad_request", str(e)) from e
     return daemon.drafts.put(cast("Draft", {**draft, "sketch": sketch}))

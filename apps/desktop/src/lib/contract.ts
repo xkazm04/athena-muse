@@ -67,6 +67,8 @@ export type NodeOrigin = "you" | "athena";
 export type SketchOpName = "add" | "change" | "remove" | "link";
 export type Mark = "yes" | "no";
 export type DraftVerdict = "keep" | "revise";
+/** The two views of the stage, switched by a tab. */
+export type StageView = "drawing" | "orbit";
 
 export const FOLLOW_UPS_MAX = 2;
 export const REPAIRS_MAX = 2;
@@ -174,6 +176,8 @@ export interface Draft {
   bench?: BenchSummary;
   verdict?: DraftVerdict;
   note?: string;
+  /** Stage turns that counted, per view the person answered in. */
+  views?: Partial<Record<StageView, number>>;
 }
 
 /** DELETE /drafts/{id}: the draft is gone, its Project stays. */
@@ -189,9 +193,16 @@ export interface SayBody {
   /** "" when the person picked a suggestion. */
   text: string;
   choice?: string;
+  /** The view the person answered in; counted on the draft. */
+  view?: StageView;
 }
 
 export interface ConfirmBody {
+  node_ids: string[];
+}
+
+/** Athena's unconfirmed guesses the person rubs out, with their links. */
+export interface DropBody {
   node_ids: string[];
 }
 
@@ -455,6 +466,7 @@ export const ROUTES = {
   draft: "/drafts/{id}",
   draft_say: "/drafts/{id}/say",
   draft_confirm: "/drafts/{id}/confirm",
+  draft_drop: "/drafts/{id}/drop",
   draft_write: "/drafts/{id}/write",
   draft_preview: "/drafts/{id}/preview",
   draft_key: "/drafts/{id}/key",

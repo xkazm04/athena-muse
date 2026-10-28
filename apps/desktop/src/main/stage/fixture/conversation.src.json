@@ -1,0 +1,861 @@
+{
+  "_note": "Source of the stage's staged conversation (ADR 0007, onboarding v2 port). Generated into staged.ts by scripts/stage_fixture.py through the daemon's own sketch rules; edit this file, then regenerate.",
+  "invented": "Every name, date, amount and app in this file is invented for a design contest. None of it is a real person or a real service.",
+  "need": "Each month I check the after-school club's invoice against the days my kids actually went (the school portal has attendance) and dispute the extra days.",
+  "project_name": "Club invoice check",
+  "frames": [
+    {
+      "user": {
+        "text": "Each month I check the after-school club's invoice against the days my kids actually went (the school portal has attendance) and dispute the extra days."
+      },
+      "elapsed_s": 6.1,
+      "line": "So once a month you hold the club's invoice up against the days your kids were really there, and push back on the extra days. I'll sketch it as we go.",
+      "ops": [
+        {
+          "op": "add",
+          "node": {
+            "id": "n1",
+            "kind": "step",
+            "slot": "need",
+            "label": "Check the club invoice against real attendance",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n2",
+            "kind": "app",
+            "slot": "apps",
+            "label": "Club invoice",
+            "detail": "arrives somewhere each month",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n3",
+            "kind": "app",
+            "slot": "apps",
+            "label": "School portal: attendance",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n4",
+            "kind": "step",
+            "slot": "steps",
+            "label": "Compare billed days with attended days",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n5",
+            "kind": "output",
+            "slot": "output",
+            "label": "Dispute for the extra days",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n2",
+            "to": "n4"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n3",
+            "to": "n4"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n4",
+            "to": "n5"
+          }
+        }
+      ],
+      "ask": {
+        "slot": "apps",
+        "text": "Where does the invoice arrive, and where do you dispute it?",
+        "suggestions": [
+          "Email PDF, I reply to billing",
+          "The club's parent portal, both",
+          "Email in, dispute on the portal"
+        ],
+        "follow_up": 0
+      }
+    },
+    {
+      "user": {
+        "text": "",
+        "choice": "Email in, dispute on the portal"
+      },
+      "elapsed_s": 4.4,
+      "line": "The invoice comes by email and disputes go through the club's parent portal. Who is on the invoice?",
+      "ops": [
+        {
+          "op": "change",
+          "node": {
+            "id": "n2",
+            "label": "Invoice email from Brightside billing",
+            "detail": "PDF, first Monday of the month"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n6",
+            "kind": "app",
+            "slot": "apps",
+            "label": "Brightside Parents portal",
+            "detail": "billing queries",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n7",
+            "kind": "step",
+            "slot": "steps",
+            "label": "File a billing query per extra day",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n4",
+            "to": "n7"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n6",
+            "to": "n7"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n7",
+            "to": "n5"
+          }
+        }
+      ],
+      "confirm": [
+        "n2"
+      ],
+      "ask": {
+        "slot": "inputs",
+        "text": "Which kids are on the invoice, and what does a day cost?",
+        "suggestions": [
+          "Mila and Teo, $18 a day each",
+          "Just one child",
+          "It varies by day"
+        ],
+        "follow_up": 0
+      }
+    },
+    {
+      "user": {
+        "text": "",
+        "choice": "Mila and Teo, $18 a day each"
+      },
+      "elapsed_s": 5.2,
+      "line": "Two children at $18 a day each. Is there anything besides attendance that says a day shouldn't be billed, like the club's own calendar?",
+      "ops": [
+        {
+          "op": "add",
+          "node": {
+            "id": "n8",
+            "kind": "source",
+            "slot": "inputs",
+            "label": "Invoice lines",
+            "detail": "Mila and Teo, $18 a day",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n9",
+            "kind": "source",
+            "slot": "inputs",
+            "label": "Attendance register per child",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n10",
+            "kind": "source",
+            "slot": "inputs",
+            "label": "Club calendar: closure days",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n8",
+            "to": "n4"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n3",
+            "to": "n9"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n9",
+            "to": "n4"
+          }
+        }
+      ],
+      "ask": {
+        "slot": "inputs",
+        "text": "Should days the club was closed count as extra too?",
+        "suggestions": [
+          "Yes, closed means not billed",
+          "No, only absences",
+          "Only if no replacement was offered"
+        ],
+        "follow_up": 1
+      }
+    },
+    {
+      "user": {
+        "text": "",
+        "choice": "Yes, closed means not billed"
+      },
+      "elapsed_s": 3.8,
+      "line": "Closed days count. Now the important part: what waits for your signature?",
+      "ops": [
+        {
+          "op": "add",
+          "node": {
+            "id": "n11",
+            "kind": "step",
+            "slot": "steps",
+            "label": "Check each billed day against closures",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n10",
+            "to": "n11"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n11",
+            "to": "n7"
+          }
+        }
+      ],
+      "confirm": [
+        "n9",
+        "n10"
+      ],
+      "ask": {
+        "slot": "hand",
+        "text": "What should I prepare, and what waits for you?",
+        "suggestions": [
+          "Each billing query waits for my yes",
+          "Send them all once I've seen the list",
+          "Only queries over $50 wait"
+        ],
+        "follow_up": 0
+      }
+    },
+    {
+      "user": {
+        "text": "",
+        "choice": "Each billing query waits for my yes"
+      },
+      "elapsed_s": 4.9,
+      "line": "Every query waits for your yes. Are there days that look extra but the contract still charges for?",
+      "ops": [
+        {
+          "op": "add",
+          "node": {
+            "id": "n12",
+            "kind": "gate",
+            "slot": "hand",
+            "label": "Your yes on each billing query",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "remove",
+          "edge": {
+            "from": "n7",
+            "to": "n5"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n7",
+            "to": "n12"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n12",
+            "to": "n5"
+          }
+        }
+      ],
+      "ask": {
+        "slot": "steps",
+        "text": "Are there days that look extra but are still charged?",
+        "suggestions": [
+          "Same-day cancellations are still charged",
+          "No exceptions",
+          "Not sure, show me and I'll decide"
+        ],
+        "follow_up": 1
+      }
+    },
+    {
+      "user": {
+        "text": "Same-day cancellations are still charged, like when grandma picks Teo up early. And they charge $15 if I'm late for pickup after 6pm, check those too."
+      },
+      "elapsed_s": 7.6,
+      "line": "Two good catches. Same-day cancellations stay billed, so I'll leave them alone. Late-pickup fees I'll check against the sign-out time.",
+      "ops": [
+        {
+          "op": "add",
+          "node": {
+            "id": "n13",
+            "kind": "never",
+            "slot": "never",
+            "label": "Leave same-day cancellations alone",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n14",
+            "kind": "source",
+            "slot": "inputs",
+            "label": "Sign-out times",
+            "detail": "club register",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n15",
+            "kind": "step",
+            "slot": "steps",
+            "label": "Check late-pickup fees against sign-out",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n14",
+            "to": "n15"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n15",
+            "to": "n7"
+          }
+        }
+      ],
+      "ask": {
+        "slot": "never",
+        "text": "Is there anything I must never do here?",
+        "suggestions": [
+          "Never pay the invoice",
+          "Never cancel a booking",
+          "Never contact the school"
+        ],
+        "follow_up": 0
+      }
+    },
+    {
+      "user": {
+        "text": "",
+        "choice": "Never pay the invoice"
+      },
+      "elapsed_s": 4.1,
+      "line": "Paying stays yours. I've pencilled in 'never cancel a booking' too, so confirm it if that's right. What do you want at the end of each month?",
+      "ops": [
+        {
+          "op": "add",
+          "node": {
+            "id": "n16",
+            "kind": "never",
+            "slot": "never",
+            "label": "Never pay the invoice",
+            "origin": "you"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n17",
+            "kind": "never",
+            "slot": "never",
+            "label": "Never cancel or change a booking",
+            "origin": "athena"
+          }
+        }
+      ],
+      "ask": {
+        "slot": "output",
+        "text": "What should you have at the end of each month?",
+        "suggestions": [
+          "A short list: disputed days and the total",
+          "Just the filed queries",
+          "A line for my budget sheet"
+        ],
+        "follow_up": 0
+      }
+    },
+    {
+      "user": {
+        "text": "",
+        "choice": "A short list: disputed days and the total"
+      },
+      "elapsed_s": 6.8,
+      "line": "A monthly list of disputed days with the total. That's the whole picture. Shall I write it?",
+      "ops": [
+        {
+          "op": "add",
+          "node": {
+            "id": "n23",
+            "kind": "output",
+            "slot": "output",
+            "label": "Monthly list: disputed days and total",
+            "origin": "you",
+            "quote": "A short list: disputed days and the total"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n18",
+            "kind": "output",
+            "slot": "output",
+            "label": "Billing queries filed on the portal",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n19",
+            "kind": "step",
+            "slot": "steps",
+            "label": "Read the month's invoice when it arrives",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n20",
+            "kind": "app",
+            "slot": "apps",
+            "label": "Club register",
+            "detail": "sign-out times",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n21",
+            "kind": "step",
+            "slot": "steps",
+            "label": "Group extra days per child",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "add",
+          "node": {
+            "id": "n22",
+            "kind": "output",
+            "slot": "output",
+            "label": "Days billed correctly (no action)",
+            "origin": "athena"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n12",
+            "to": "n18"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n2",
+            "to": "n19"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n19",
+            "to": "n4"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n20",
+            "to": "n14"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n4",
+            "to": "n21"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n21",
+            "to": "n7"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n4",
+            "to": "n22"
+          }
+        },
+        {
+          "op": "link",
+          "edge": {
+            "from": "n12",
+            "to": "n23"
+          }
+        }
+      ],
+      "confirm": [
+        "n4",
+        "n7",
+        "n11",
+        "n17"
+      ],
+      "ask": null
+    }
+  ],
+  "author": {
+    "events": [
+      {
+        "t": "writing",
+        "elapsed_s": 0,
+        "message": "Writing her practice apps from the sketch"
+      },
+      {
+        "t": "repair",
+        "elapsed_s": 41,
+        "problems": [
+          "The practice portal's 'file a billing query' action has no reply text yet.",
+          "Step 3 points at an app called 'register' that doesn't exist; the sign-out times live in the club portal."
+        ]
+      },
+      {
+        "t": "written",
+        "elapsed_s": 73,
+        "chore_id": "club-invoice-check"
+      }
+    ],
+    "practice_apps": [
+      {
+        "name": "Mail (practice)",
+        "reads": [
+          "Find the Brightside invoice",
+          "Read an invoice's lines"
+        ],
+        "acts": [],
+        "rows": 3
+      },
+      {
+        "name": "Oakridge Primary parent portal (practice)",
+        "reads": [
+          "Attendance for a child and month"
+        ],
+        "acts": [],
+        "rows": 44
+      },
+      {
+        "name": "Brightside Parents (practice)",
+        "reads": [
+          "Club calendar",
+          "Sign-out register",
+          "Open billing queries"
+        ],
+        "acts": [
+          "File a billing query"
+        ],
+        "rows": 71
+      }
+    ],
+    "failed_alternative": {
+      "t": "author_failed",
+      "problems": [
+        "After two repairs the practice school portal still has no attendance table, so there is nothing to compare the invoice with.",
+        "The 'never pay the invoice' rule names an action the practice apps don't have."
+      ],
+      "back_to": "shape",
+      "gaps": [
+        "inputs",
+        "never"
+      ]
+    }
+  },
+  "preview": {
+    "elapsed_s": 11.3,
+    "expected": [
+      {
+        "id": "e1",
+        "app": "Brightside Parents",
+        "tool": "file_billing_query",
+        "key": "mila-2026-10-07",
+        "label": "Query: Mila billed on Tue 7 Oct, absent (sick)",
+        "why": "School register marks Mila absent all day."
+      },
+      {
+        "id": "e2",
+        "app": "Brightside Parents",
+        "tool": "file_billing_query",
+        "key": "mila-2026-10-08",
+        "label": "Query: Mila billed on Wed 8 Oct, absent (sick)",
+        "why": "School register marks Mila absent all day."
+      },
+      {
+        "id": "e3",
+        "app": "Brightside Parents",
+        "tool": "file_billing_query",
+        "key": "teo-2026-10-21",
+        "label": "Query: Teo billed on Tue 21 Oct, absent",
+        "why": "School register marks Teo absent; no club sign-in."
+      },
+      {
+        "id": "e4",
+        "app": "Brightside Parents",
+        "tool": "file_billing_query",
+        "key": "both-2026-10-24",
+        "label": "Query: both billed on Fri 24 Oct, club closed (staff training)",
+        "why": "Club calendar lists 24 Oct as closed."
+      },
+      {
+        "id": "e5",
+        "app": "Brightside Parents",
+        "tool": "file_billing_query",
+        "key": "teo-2026-10-14",
+        "label": "Query: Teo billed on Tue 14 Oct, picked up at 3:30",
+        "why": "Sign-out shows 15:30, well before the session ends."
+      }
+    ],
+    "marks": [
+      {
+        "expected_id": "e1",
+        "mark": "yes"
+      },
+      {
+        "expected_id": "e2",
+        "mark": "yes"
+      },
+      {
+        "expected_id": "e3",
+        "mark": "yes"
+      },
+      {
+        "expected_id": "e4",
+        "mark": "yes"
+      },
+      {
+        "expected_id": "e5",
+        "mark": "no",
+        "user_note": "That was grandma, a same-day cancellation. They still charge it."
+      }
+    ],
+    "missing": [
+      {
+        "text": "The $15 late-pickup fee on Thu 16 Oct. I signed out at 5:55, before 6."
+      }
+    ],
+    "never": [
+      "She must never pay the invoice."
+    ]
+  },
+  "rehearsal": {
+    "events": [
+      {
+        "t": "phase",
+        "at_s": 0,
+        "index": 0,
+        "app": "Mail (practice)",
+        "message": "The October invoice arrived. Check it."
+      },
+      {
+        "t": "phase",
+        "at_s": 38,
+        "index": 1,
+        "app": "Oakridge Primary parent portal (practice)",
+        "message": "Compare with attendance."
+      },
+      {
+        "t": "phase",
+        "at_s": 92,
+        "index": 2,
+        "app": "Brightside Parents (practice)",
+        "message": "Check closures and sign-out times, then file what's owed back."
+      },
+      {
+        "t": "card",
+        "at_s": 131,
+        "card": {
+          "id": "card_r1",
+          "app": "Brightside Parents",
+          "tool": "file_billing_query",
+          "key": "mila-2026-10-07",
+          "label": "File a billing query: Mila, Tue 7 Oct, absent ($18)"
+        }
+      },
+      {
+        "t": "card",
+        "at_s": 133,
+        "card": {
+          "id": "card_r2",
+          "app": "Brightside Parents",
+          "tool": "file_billing_query",
+          "key": "mila-2026-10-08",
+          "label": "File a billing query: Mila, Wed 8 Oct, absent ($18)"
+        }
+      },
+      {
+        "t": "card",
+        "at_s": 136,
+        "card": {
+          "id": "card_r3",
+          "app": "Brightside Parents",
+          "tool": "file_billing_query",
+          "key": "teo-2026-10-21",
+          "label": "File a billing query: Teo, Tue 21 Oct, absent ($18)"
+        }
+      },
+      {
+        "t": "card",
+        "at_s": 149,
+        "card": {
+          "id": "card_r4",
+          "app": "Brightside Parents",
+          "tool": "file_billing_query",
+          "key": "both-2026-10-24",
+          "label": "File a billing query: Mila and Teo, Fri 24 Oct, club closed ($36)"
+        }
+      },
+      {
+        "t": "phase",
+        "at_s": 171,
+        "index": 3,
+        "app": "Brightside Parents (practice)",
+        "message": "Anything else before the list?"
+      },
+      {
+        "t": "scored",
+        "at_s": 204,
+        "bench": {
+          "verdict": "meets",
+          "reasons": [
+            "Found 4 of the 5 you expected",
+            "Left Teo's same-day cancellation alone",
+            "Never touched payment"
+          ],
+          "found": 4,
+          "eligible": 5,
+          "value_found_usd": 0,
+          "value_total_usd": 0,
+          "false_claims": 0,
+          "duplicates": 0,
+          "traps_filed": 0,
+          "turns": 9,
+          "minutes": 3.4,
+          "engine": "claude_code",
+          "model": "claude-sonnet-5-5",
+          "run_at": "2026-10-28T15:42:10Z"
+        }
+      }
+    ],
+    "missed": [
+      {
+        "key": "late-fee-2026-10-16",
+        "label": "The $15 late-pickup fee on Thu 16 Oct"
+      }
+    ]
+  },
+  "verdict": {
+    "choices": [
+      "keep",
+      "revise"
+    ],
+    "chosen": "keep",
+    "note": "Good. Next month remember the late-pickup fee.",
+    "revise_alternative": {
+      "note": "She missed the late fee.",
+      "back_to": "shape",
+      "gaps_named": [
+        "steps: late-pickup fee check was never reached"
+      ]
+    }
+  },
+  "saved": {
+    "project": {
+      "id": "spc_7a1c9e0d2b44",
+      "name": "Club invoice check",
+      "brief": "Each month, check Brightside's invoice against Oakridge attendance, closures and sign-out times; file a billing query for each extra day, each one waiting for my yes. Never pay the invoice or change a booking.",
+      "apps": [
+        "https://parents.brightside-club.example",
+        "https://portal.oakridge-primary.example"
+      ],
+      "hue": 168
+    },
+    "chore": {
+      "id": "club-invoice-check",
+      "origin": "yours",
+      "title": "The after-school club's invoice, checked against the days the kids went"
+    }
+  }
+}
