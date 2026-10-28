@@ -42,7 +42,7 @@ def test_write_from_an_agreed_draft_yields_a_folder_load_chore_accepts(daemon: D
     events = write(daemon, Fake(), draft["id"])
     assert [e["type"] for e in events] == ["writing", "written"]
     chore_id = events[-1]["chore_id"]
-    assert chore_id == "the-club-invoice-checked-against-attendance"
+    assert chore_id == "the-club-invoice-checked-against"
     root = daemon.drafts.folder(draft["id"]) / chore_id  # type: ignore[operator]
     chore = load_chore(root)
     assert chore.id == chore_id and [a.app_id for a in chore.apps] == ["school", "club"]
@@ -141,15 +141,15 @@ def test_the_chore_id_is_unique_across_both_libraries(
     daemon: Daemon, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     library = tmp_path / "library"
-    (library / "the-club-invoice-checked-against-attendance").mkdir(parents=True)
+    (library / "the-club-invoice-checked-against").mkdir(parents=True)
     (library / "taxonomy.json").write_text(
         json.dumps({"categories": [{"id": "family"}], "jobs": [{"id": "contest"}]})
     )
-    (tmp_path / "data" / "chores" / "the-club-invoice-checked-against-attendance-2").mkdir(parents=True)
+    (tmp_path / "data" / "chores" / "the-club-invoice-checked-against-2").mkdir(parents=True)
     monkeypatch.setenv(PLAYBOOKS_ENV, str(library))
     draft = agreed_draft(daemon)
     events = write(daemon, Fake(), draft["id"])
-    assert events[-1] == {"type": "written", "chore_id": "the-club-invoice-checked-against-attendance-3"}
+    assert events[-1] == {"type": "written", "chore_id": "the-club-invoice-checked-against-3"}
 
 
 def test_slugs_are_short_ids_cut_at_a_word() -> None:
