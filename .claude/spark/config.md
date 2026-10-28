@@ -27,7 +27,10 @@ default
 
 - A visual the design proposes as a source of truth: offer "a sketch for understanding, the real artefact written once after agreement" as an option; the owner chose it via Other on chore-onboarding-v2.
 
+- Reaching another app (YouTube, mail, Gravitone): the owner wants it reached through the app's own surface (the internal browser, the peer's MCP), not a connector or wrapper, even at higher engineering cost; lead with that option (business-channel, three overrides in one direction).
+
 ## Skill improvement log
 - 2026-10-26 (athena-core): the brief named list answers as `{spaces: ...}` in prose but the contract typed only the items; a parallel package guessed bare arrays and both sides' tests passed. Put every response envelope in contracts.py + contract.ts with a parity test, not in the brief's prose.
 - 2026-10-26: the Bash tool mis-parses long heredocs containing apostrophes; write files with Write and keep shell scripts short.
 - 2026-10-27 (chore-onboarding-v2): plan-only spark; scouting the parked plan of record first turned the supersede question into one click.
+- 2026-10-28 (business-channel): athena-portable (sibling, built browser + gate + MCP client) was missed by targeting and surfaced only via the owner's doctrine; scout `../athena-*` sibling repos for prior art in Phase 2 of any spark touching hands, engines or apps.
