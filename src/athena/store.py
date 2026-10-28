@@ -1,4 +1,4 @@
-"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards and settings."""
+"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards, settings, drafts."""
 
 from __future__ import annotations
 
@@ -36,6 +36,11 @@ CREATE TABLE IF NOT EXISTS page_reads (
   id INTEGER PRIMARY KEY AUTOINCREMENT, space_id TEXT NOT NULL, created TEXT NOT NULL,
   app TEXT NOT NULL, tool TEXT NOT NULL, args TEXT NOT NULL, answer TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS page_reads_space ON page_reads (space_id);
+CREATE TABLE IF NOT EXISTS drafts (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, step TEXT NOT NULL, need TEXT NOT NULL, sketch TEXT NOT NULL,
+  coverage TEXT NOT NULL, skipped TEXT NOT NULL DEFAULT '[]', asked TEXT NOT NULL DEFAULT '{}', chore_id TEXT,
+  key TEXT, bench TEXT, verdict TEXT, note TEXT, created TEXT NOT NULL, updated TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS drafts_space ON drafts (space_id);
 """
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.

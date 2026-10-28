@@ -84,7 +84,11 @@ DraftVerdict = Literal["keep", "revise"]
 FOLLOW_UPS_MAX = 2  # questions per slot after the first
 REPAIRS_MAX = 2  # silent authoring repairs before author_failed
 SKETCH_NODES_MAX = 60
-LABEL_MAX = 80
+LABEL_MAX = 80  # a node's label and a suggested answer
+DETAIL_MAX = 240  # a node's optional second line
+ASK_TEXT_MAX = 240  # one question, shown whole on the stage
+SUGGESTIONS_MIN = 2
+SUGGESTIONS_MAX = 4
 NEED_MAX = 2000
 
 
@@ -384,6 +388,10 @@ class Draft(TypedDict):
     bench: NotRequired[BenchSummary]  # once a test run has finished
     verdict: NotRequired[DraftVerdict]
     note: NotRequired[str]  # the person's words with a "revise" verdict
+
+
+class DraftAbandoned(TypedDict):
+    id: str  # DELETE /drafts/{id}: the draft is gone, its Project stays
 
 
 class NewDraftBody(TypedDict):

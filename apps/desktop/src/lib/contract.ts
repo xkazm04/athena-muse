@@ -72,6 +72,10 @@ export const FOLLOW_UPS_MAX = 2;
 export const REPAIRS_MAX = 2;
 export const SKETCH_NODES_MAX = 60;
 export const LABEL_MAX = 80;
+export const DETAIL_MAX = 240;
+export const ASK_TEXT_MAX = 240;
+export const SUGGESTIONS_MIN = 2;
+export const SUGGESTIONS_MAX = 4;
 export const NEED_MAX = 2000;
 
 /** 0, 0.5 or 1; "skipped" = left open with a stated default. Computed from the sketch, never claimed. */
@@ -165,6 +169,11 @@ export interface Draft {
   bench?: BenchSummary;
   verdict?: DraftVerdict;
   note?: string;
+}
+
+/** DELETE /drafts/{id}: the draft is gone, its Project stays. */
+export interface DraftAbandoned {
+  id: string;
 }
 
 export interface NewDraftBody {

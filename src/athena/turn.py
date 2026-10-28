@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 from athena.app import Daemon
@@ -21,6 +21,7 @@ from athena.contracts import (
     TOOL_ROUNDS_MAX,
     ActionName,
     Card,
+    Surface,
     tool_event,
 )
 from athena.engine import Engine, EngineError, TextDelta, ToolCall, Usage
@@ -28,6 +29,9 @@ from athena.engine.prices import estimate
 from athena.errors import ApiError
 from athena.memory import visible_spaces
 from athena.spaces import normalise_origin
+
+if TYPE_CHECKING:
+    from athena.drafts.shape import Design
 
 HISTORY_TURNS = 20
 EPISODE_PART_MAX = 600
@@ -102,13 +106,21 @@ def validate(daemon: Daemon, text: str, space_id: str) -> str:
 
 
 def run_turn(
-    daemon: Daemon, engine: Engine, text: str, space_id: str, *, portal: Portal | None = None
+    daemon: Daemon,
+    engine: Engine,
+    text: str,
+    space_id: str,
+    *,
+    portal: Portal | None = None,
+    design: Design | None = None,
 ) -> Iterator[dict[str, Any]]:
     """Validates now (so the route can answer a 4xx), streams when iterated. `portal` offers a
     chore's invented app as tools (ADR 0005): its READ tools answer at once, every other files a
-    `portal_act` card without ending the round loop, so one reply can file a pile."""
+    `portal_act` card without ending the round loop, so one reply can file a pile. `design` makes it
+    a stage turn over a draft (ADR 0007): surface `design`, the tools `recall`, `sketch` and `ask`
+    only, and a reply with no words, no sketch change and no question ends in `error`."""
     text = validate(daemon, text, space_id)
-    return _stream(daemon, engine, text, space_id, portal)
+    return _stream(daemon, engine, text, space_id, portal, design)
 
 
 def _frame(daemon: Daemon, space_id: str, text: str) -> str:
@@ -175,16 +187,26 @@ def _refuse_or_label(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str
 
 
 def _stream(
-    daemon: Daemon, engine: Engine, text: str, space_id: str, portal: Portal | None = None
+    daemon: Daemon,
+    engine: Engine,
+    text: str,
+    space_id: str,
+    portal: Portal | None = None,
+    design: Design | None = None,
 ) -> Iterator[dict[str, Any]]:
+    surface: Surface = "design" if design is not None else "turn"
     with daemon.busy.turn(space_id):
         turn_id = mint("turn_")
         yield {"type": "start", "turn_id": turn_id, "engine": engine.id, "simulated": engine.simulated}
         daemon.conversation.append(space_id, "person", text)
         messages = _messages(daemon, space_id, text)
-        tools = [TOOLS[n] for n in ("recall", "remember", "forget")]
-        if space_id != "":
-            tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
+        if design is not None:
+            tools = [TOOLS["recall"], *design.tools()]
+            messages[0]["content"] += "\n\n" + design.frame()
+        else:
+            tools = [TOOLS[n] for n in ("recall", "remember", "forget")]
+            if space_id != "":
+                tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
         if portal is not None:
             tools += portal.tools()
             messages[0]["content"] += (
@@ -210,7 +232,7 @@ def _stream(
                         usage = chunk
             except EngineError as e:
                 daemon.ledger.record(
-                    surface="turn",
+                    surface=surface,
                     space_id=space_id,
                     engine=engine.id,
                     model=engine.model,
@@ -227,7 +249,7 @@ def _stream(
                 if cost is None and engine.cost_estimated:
                     cost = estimate(engine.model, usage.input_tokens, usage.output_tokens)
             daemon.ledger.record(
-                surface="turn",
+                surface=surface,
                 space_id=space_id,
                 engine=engine.id,
                 model=engine.model,
@@ -262,6 +284,11 @@ def _stream(
             for call in calls:
                 result = ""
                 name = call.name
+                if design is not None and design.owns(name):
+                    result, events = design.call(call)
+                    yield from events
+                    messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+                    continue
                 if portal is not None and portal.owns(name):
                     (answer, events), filed_card = _run_portal(daemon, space_id, portal, call)
                     yield from events
@@ -292,7 +319,22 @@ def _stream(
                 break
 
         reply = "".join(reply_parts).strip()
-        if not reply:
+        closing: list[dict[str, Any]] = []
+        if design is not None:
+            if not reply and not design.progressed:
+                # Not a frame: nothing is stored, the draft is left as it was.
+                yield {
+                    "type": "error",
+                    "error": "engine_unavailable",
+                    "reason": "She did not answer; try again.",
+                }
+                return
+            if not reply:
+                reply = design.fallback()
+                yield {"type": "text", "delta": reply}
+            closing = design.settle()
+            reply = design.record(reply)
+        elif not reply:
             if len(cards) > 1:
                 reply = f"I filed {len(cards)} cards for you to sign."
             elif cards:
@@ -311,6 +353,7 @@ def _stream(
             space_id, f"Person: {text[:EPISODE_PART_MAX]}\nAthena: {reply[:EPISODE_PART_MAX]}"
         )
         daemon.events.publish({"type": "turn_done", "space_id": space_id, "turn_id": turn_id})
+        yield from closing
         done: dict[str, Any] = {"type": "done", "turn_id": turn_id, "waiting": bool(cards)}
         if cost_total is not None:
             done["cost_usd"] = cost_total

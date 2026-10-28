@@ -7,6 +7,7 @@ from pathlib import Path
 
 from athena.busy import Busy
 from athena.conversation import Conversation
+from athena.drafts.store import Drafts
 from athena.events import Events
 from athena.gate import Gate
 from athena.ledger import Ledger
@@ -28,6 +29,7 @@ class Daemon:
     conversation: Conversation
     settings: Settings
     gate: Gate
+    drafts: Drafts
 
     @classmethod
     def open(cls, data_dir: Path | None) -> Daemon:
@@ -41,12 +43,13 @@ class Daemon:
             store=store,
             busy=busy,
             events=events,
-            spaces=Spaces(store, busy),
+            spaces=Spaces(store, busy, data_dir),
             memory=Memory(store),
             ledger=Ledger(store),
             conversation=Conversation(store),
             settings=Settings(store),
             gate=Gate(store, events),
+            drafts=Drafts(store, data_dir),
         )
 
     def active_space(self) -> str:

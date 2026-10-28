@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -21,6 +22,7 @@ from athena.contracts import (
     SpaceErased,
     SpaceSummary,
 )
+from athena.drafts.store import remove_folder
 from athena.errors import ApiError
 from athena.settings import ACTIVE_SPACE_KEY
 from athena.store import Store
@@ -100,9 +102,10 @@ def _hue(v: Any) -> int:
 
 
 class Spaces:
-    def __init__(self, store: Store, busy: Busy) -> None:
+    def __init__(self, store: Store, busy: Busy, data_dir: Path | None = None) -> None:
         self._store = store
         self._busy = busy
+        self._data_dir = data_dir  # where a draft's folder lives (ADR 0007); None = nothing on disk
 
     def _summary(self, r: sqlite3.Row) -> SpaceSummary:
         counts: SpaceCounts = {"episodes": 0, "facts": 0}
@@ -179,7 +182,8 @@ class Spaces:
         return self.get(space_id)
 
     def erase(self, space_id: str) -> SpaceErased:
-        """Under `busy.closing`: deletes stamped memory, the conversation, cards, then the space."""
+        """Under `busy.closing`: deletes stamped memory, the conversation, cards, drafts (rows, then
+        their folders once the rows are gone), then the space."""
         if space_id == "" or not self.exists(space_id):
             raise ApiError("unknown_ref", "no such project")
         with self._busy.closing(space_id), self._store.tx() as db:
@@ -190,12 +194,15 @@ class Spaces:
                 )
             }
             turns = db.execute("SELECT COUNT(*) FROM turns WHERE space_id = ?", (space_id,)).fetchone()[0]
-            for table in ("memory", "turns", "cards", "page_reads"):
+            drafts = [r[0] for r in db.execute("SELECT id FROM drafts WHERE space_id = ?", (space_id,))]
+            for table in ("memory", "turns", "cards", "page_reads", "drafts"):
                 db.execute(f"DELETE FROM {table} WHERE space_id = ?", (space_id,))
             db.execute("DELETE FROM spaces WHERE id = ?", (space_id,))
             db.execute(
                 "UPDATE settings SET value = '' WHERE key = ? AND value = ?", (ACTIVE_SPACE_KEY, space_id)
             )
+        for draft_id in drafts:
+            remove_folder(self._data_dir, draft_id)
         return {
             "id": space_id,
             "episodes": counts.get("episode", 0),

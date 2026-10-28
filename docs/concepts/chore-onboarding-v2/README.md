@@ -215,10 +215,10 @@ Types:
 - `Draft {id, space_id, step, need, sketch, coverage, agreed, chore_id?, expected?, key?, bench?, verdict?, note?, created, updated}`. The wire contract is committed (ADR 0007); route paths use `{id}`.
 - `ChoreOrigin = "library"|"yours"`, added to `ChoreSummary` as `origin`
 - `Surface` gains `"design"|"rehearsal"`
-- `ActionName` gains `"sketch"|"ask"` (auto). Because tool parameters are strings, `sketch` takes `op, kind, id, label, slot, detail, after`, and `ask` takes `slot, text, suggestions` joined by `" | "`.
+- `ActionName` gains `"sketch"|"ask"` (auto). Because tool parameters are strings, `sketch` takes `op, id, kind, slot, label, detail, link_from, link_to, quote`, and `ask` takes `slot, text, suggestions` joined by `" | "` (as built; ADR 0007 Shaping).
 
 Persistence:
-- Table `drafts(id TEXT PRIMARY KEY, space_id TEXT NOT NULL, step TEXT, need TEXT, sketch TEXT, coverage TEXT, chore_id TEXT, key TEXT, bench TEXT, verdict TEXT, created TEXT, updated TEXT)`. The JSON columns are stored as text, and the table is erased with its space.
+- Table `drafts(id, space_id, step, need, sketch, coverage, skipped, asked, chore_id, key, bench, verdict, note, created, updated)` (as built; `skipped` and `asked` hold the skipped slots and the questions asked per slot). The JSON columns are stored as text, and the table is erased with its space.
 - The authored folder lives under `<data_dir>/drafts/<draft_id>/` until it is kept, then under `<data_dir>/chores/<chore_id>/`.
 
 Absent values: omit the key when unknown. `bench` is absent until a run finishes, and `cost_usd` absent means unpriced (ADR 0004).

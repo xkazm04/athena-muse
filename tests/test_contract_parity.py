@@ -32,7 +32,8 @@ def test_catalog_matches() -> None:
 
 
 def test_caps_match() -> None:
-    drafts = ("FOLLOW_UPS_MAX", "REPAIRS_MAX", "SKETCH_NODES_MAX", "LABEL_MAX", "NEED_MAX")
+    drafts = ("FOLLOW_UPS_MAX", "REPAIRS_MAX", "SKETCH_NODES_MAX", "LABEL_MAX", "NEED_MAX", "DETAIL_MAX")
+    drafts += ("ASK_TEXT_MAX", "SUGGESTIONS_MIN", "SUGGESTIONS_MAX")
     for cap in ("NAME_MAX", "BRIEF_MAX", "APPS_MAX", "SPACES_MAX", "HUE_MAX", "TEXT_MAX", *drafts):
         m = re.search(rf"export const {cap} = (\d+);", TS)
         assert m and int(m.group(1)) == getattr(contracts, cap), cap
@@ -83,7 +84,8 @@ def test_stream_event_types_match() -> None:
 def test_draft_shapes_match() -> None:
     # Every key of every draft shape is on both sides; TS optional keys end in "?".
     shapes = ("SketchNode", "Sketch", "SketchOp", "Ask", "ExpectedCard", "KeyMark", "MissingCard")
-    for name in (*shapes, "DraftKey", "Draft", "SayBody", "ConfirmBody", "KeyBody", "VerdictBody"):
+    bodies = ("SayBody", "ConfirmBody", "KeyBody", "VerdictBody", "DraftAbandoned")
+    for name in (*shapes, "DraftKey", "Draft", *bodies):
         m = re.search(rf"export interface {name} \{{(.*?)\n\}}", TS, re.S)
         assert m, name
         ts_keys = set(re.findall(r"^\s+(\w+)\??:", m.group(1), re.M))
