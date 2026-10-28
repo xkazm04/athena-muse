@@ -409,6 +409,7 @@ def summary(chore: Chore) -> ChoreSummary:
         "job": str(pb.get("job", "")),
         "senses": [cast("SenseName", s) for s in _list(featured.get("senses")) if s in SENSES],
         "featured": featured_status(chore.root),
+        "origin": "library",
     }
     bench = _bench(chore.root)
     if bench is not None:

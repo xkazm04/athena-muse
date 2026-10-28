@@ -1,6 +1,6 @@
 # Chore onboarding v2 - describe a need, watch it drawn, test it, keep it
 
-Status: **designed, not built** (2026-10-27). Tomorrow's session builds this and nothing else. It starts with a UI/UX contest, and code begins only after the owner picks a winner.
+Status: **building** (2026-10-28): the contest is running; WP0 (contract, stubs, [ADR 0007](../../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md)) is committed. The owner chose to start the daemon packages (WP0-WP2) while the UI/UX contest runs; the desktop (WP3) waits for the winner.
 
 Engine: v1 runs on Athena's engine wrapper with Claude Code (`ATHENA_ENGINE=claude_code`, [ADR 0006](../../adr/0006-one-engine-interface-over-four-engines.md)). Muse Code is used for pre-submission checks. The Muse API is the submission's engine and adds the multimedia path ([Later, on the Muse API](#later-on-the-muse-api)).
 
@@ -193,7 +193,7 @@ Routes (all behind the bearer token):
 - `POST /drafts/{draft_id}/confirm` takes `{node_ids: string[]}` (the user accepts proposed nodes) and returns `Draft`.
 - `POST /drafts/{draft_id}/write` streams `AuthorEvent`: `writing`, `repair{problems}`, `written{chore_id}`, `author_failed{problems}`.
 - `POST /drafts/{draft_id}/preview` returns `{expected: ExpectedCard[]}`.
-- `PUT /drafts/{draft_id}/key` takes `{marks: KeyMark[], never: string[]}` and returns `Draft`.
+- `PUT /drafts/{draft_id}/key` takes `{marks: KeyMark[], missing: string[], never: string[]}` and returns `Draft`. A missing line is placed on a practice-app tool and key when Athena can, and kept unscored when she cannot (added 2026-10-28 with the contest's staged need).
 - `POST /drafts/{draft_id}/rehearse` streams `RehearsalEvent`: `phase{index, app, message}`, `card{card}`, `scored{bench: BenchSummary}`, `error`.
 - `POST /drafts/{draft_id}/verdict` takes `{verdict: DraftVerdict, note?}` and returns `Draft`. A `keep` verdict also saves the chore.
 - `DELETE /drafts/{draft_id}` abandons the draft. The Project stays, and the user may erase it.
@@ -209,9 +209,10 @@ Types:
 - `Ask {slot, text, suggestions: string[], follow_up: 0|1|2}`
 - `Coverage = Record<Slot, 0|0.5|1|"skipped">`, plus `agreed: bool` on `Draft`
 - `ExpectedCard {id, app, tool, key, label, why}`
-- `KeyMark {expected_id, mark: "yes"|"no"}`
+- `KeyMark {expected_id, mark: "yes"|"no", note?}`
+- `MissingCard {text, expected?: ExpectedCard}`, `DraftKey {marks, missing: MissingCard[], never}`
 - `DraftVerdict = "keep"|"revise"`
-- `Draft {id, space_id, step, need, sketch, coverage, agreed, chore_id?, bench?, verdict?, created, updated}`
+- `Draft {id, space_id, step, need, sketch, coverage, agreed, chore_id?, key?, bench?, verdict?, note?, created, updated}`. The wire contract is committed (ADR 0007); route paths use `{id}`.
 - `ChoreOrigin = "library"|"yours"`, added to `ChoreSummary` as `origin`
 - `Surface` gains `"design"|"rehearsal"`
 - `ActionName` gains `"sketch"|"ask"` (auto). Because tool parameters are strings, `sketch` takes `op, kind, id, label, slot, detail, after`, and `ask` takes `slot, text, suggestions` joined by `" | "`.

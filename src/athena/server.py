@@ -28,6 +28,7 @@ from athena import routes_state, routes_turn
 from athena.app import Daemon
 from athena.chores import routes_chores
 from athena.contracts import VERSION
+from athena.drafts import routes as routes_drafts
 from athena.errors import ApiError
 
 # The desktop's origins: Tauri on Windows/Linux and macOS, and the Vite dev server.
@@ -46,6 +47,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_state.routes(daemon),
         *routes_turn.routes(daemon),
         *routes_chores.routes(),
+        *routes_drafts.routes(daemon),
     ]
 
     async def guard(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -74,7 +76,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
             Middleware(
                 CORSMiddleware,
                 allow_origins=list(origins),
-                allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+                allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 allow_headers=["authorization", "content-type"],
             ),
             Middleware(BaseHTTPMiddleware, dispatch=guard),

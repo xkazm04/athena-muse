@@ -360,6 +360,8 @@ def _run_auto(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str, str]:
         rows = daemon.memory.recall(space_id, str(call.arguments.get("query", "")))
         result = "\n".join(f"- {r['line']}" for r in rows) or "Nothing found."
         return result, "Looked through memory"
+    if call.name != "remember":  # an AUTO action this turn did not offer (the stage's sketch, ask)
+        return "That action is not offered here.", ""
     fact = str(call.arguments.get("text", "")).strip()
     if not fact:
         return "Nothing to remember.", ""

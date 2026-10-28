@@ -41,8 +41,10 @@ Role = Literal["person", "athena"]
 ActionClass = Literal["auto", "gated"]
 CardState = Literal["waiting", "approved", "declined"]
 Verdict = Literal["approve", "decline"]
-Surface = Literal["turn", "probe"]
-ActionName = Literal["recall", "remember", "propose_brief", "add_app", "forget", "portal_read", "portal_act"]
+Surface = Literal["turn", "probe", "design", "rehearsal"]
+ActionName = Literal[
+    "recall", "remember", "propose_brief", "add_app", "forget", "portal_read", "portal_act", "sketch", "ask"
+]
 AppEventType = Literal["card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done"]
 
 # The closed action catalog. The daemon is its only author; the class decides whether it runs or
@@ -56,6 +58,9 @@ CATALOG: dict[ActionName, ActionClass] = {
     # A chore's invented portals (ADR 0005): a READ tool answers at once, any other files a card.
     "portal_read": "auto",
     "portal_act": "gated",
+    # The stage (ADR 0007): offered only on a draft's design turn; they change the sketch, nothing else.
+    "sketch": "auto",
+    "ask": "auto",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -64,6 +69,23 @@ SenseName = Literal["paper", "call", "walk", "circle"]
 FeaturedStatus = Literal["proven", "rehearsed", "failing", "unproven"]
 BenchWord = Literal["exceeds", "meets", "short"]
 ProofOp = Literal[">=", "<="]
+ChoreOrigin = Literal["library", "yours"]  # the app's playbooks/ or the person's <data_dir>/chores/
+
+# --- drafts: a chore written in conversation (ADR 0007) ------------------------------------------
+
+DraftStep = Literal["describe", "shape", "author", "preview", "rehearse", "verdict", "saved"]
+Slot = Literal["need", "apps", "inputs", "steps", "hand", "output", "never"]
+SketchKind = Literal["source", "app", "step", "gate", "output", "never"]
+NodeOrigin = Literal["you", "athena"]
+SketchOpName = Literal["add", "change", "remove", "link"]
+Mark = Literal["yes", "no"]
+DraftVerdict = Literal["keep", "revise"]
+
+FOLLOW_UPS_MAX = 2  # questions per slot after the first
+REPAIRS_MAX = 2  # silent authoring repairs before author_failed
+SKETCH_NODES_MAX = 60
+LABEL_MAX = 80
+NEED_MAX = 2000
 
 
 # --- shapes ---------------------------------------------------------------------------------------
@@ -242,6 +264,7 @@ class ChoreSummary(TypedDict):
     job: str
     senses: list[SenseName]  # empty for a chore that is not featured
     featured: FeaturedStatus  # computed from proofs.json, never authored
+    origin: ChoreOrigin
     bench: NotRequired[BenchSummary]
 
 
@@ -256,6 +279,134 @@ class ChoreDetail(TypedDict):
     apps: list[ChoreApp]
     proofs: list[ProofRow]
     backends: dict[str, str]  # the sense roles the proofs ran on: segmenter / transcriber / reader
+
+
+# --- drafts (ADR 0007) ----------------------------------------------------------------------------
+# The sketch is the person's picture of the process, not the chore's source: Athena writes the chore
+# files in one step once it is agreed. Coverage is computed from the sketch, never claimed by a model.
+
+CoverageValue = float | Literal["skipped"]  # 0, 0.5 or 1; "skipped" = left open with a stated default
+
+
+class SketchNode(TypedDict):
+    id: str
+    kind: SketchKind
+    slot: Slot
+    label: str  # <= LABEL_MAX
+    origin: NodeOrigin  # "you": the person's own words, confirmed when added; "athena": a proposal
+    confirmed: bool
+    detail: NotRequired[str]
+
+
+# `from` is a Python keyword, so this one is spelled the functional way.
+SketchEdge = TypedDict("SketchEdge", {"from": str, "to": str})
+
+
+class Sketch(TypedDict):
+    nodes: list[SketchNode]
+    edges: list[SketchEdge]
+
+
+class SketchOp(TypedDict):
+    """One change to the sketch, as applied. `add` and `change` carry the whole node after the change;
+    `remove` carries the node or the edge removed; `link` carries the edge."""
+
+    op: SketchOpName
+    node: NotRequired[SketchNode]
+    edge: NotRequired[SketchEdge]
+
+
+class Ask(TypedDict):
+    slot: Slot
+    text: str
+    suggestions: list[str]
+    follow_up: int  # 0 for the first question on a slot, up to FOLLOW_UPS_MAX
+
+
+class Coverage(TypedDict):
+    need: CoverageValue
+    apps: CoverageValue
+    inputs: CoverageValue
+    steps: CoverageValue
+    hand: CoverageValue
+    output: CoverageValue
+    never: CoverageValue
+
+
+class ExpectedCard(TypedDict):
+    """A card Athena expects to file on her practice apps; the person's marks turn it into the key."""
+
+    id: str
+    app: str  # the practice app's id
+    tool: str  # its act tool
+    key: str  # the case the card is about, as truth.json names it
+    label: str
+    why: str
+
+
+class ExpectedList(TypedDict):
+    expected: list[ExpectedCard]
+
+
+class KeyMark(TypedDict):
+    expected_id: str
+    mark: Mark  # yes = eligible, no = a trap
+    note: NotRequired[str]
+
+
+class MissingCard(TypedDict):
+    """A card the person says she should have listed. `expected` is filled when Athena could place it
+    on her practice apps (a tool and a key); a line she could not place is kept and not scored."""
+
+    text: str
+    expected: NotRequired[ExpectedCard]
+
+
+class DraftKey(TypedDict):
+    marks: list[KeyMark]
+    missing: list[MissingCard]
+    never: list[str]  # "she must never..." lines -> forbidden
+
+
+class Draft(TypedDict):
+    id: str  # drf_ + 12 hex
+    space_id: str  # the draft's Project, made active when the draft starts
+    step: DraftStep
+    need: str
+    sketch: Sketch
+    coverage: Coverage
+    agreed: bool  # computed: need, apps, hand, output at 1; the rest at 0.5, 1 or skipped
+    created: str
+    updated: str
+    chore_id: NotRequired[str]  # once written
+    key: NotRequired[DraftKey]  # once marked
+    bench: NotRequired[BenchSummary]  # once a test run has finished
+    verdict: NotRequired[DraftVerdict]
+    note: NotRequired[str]  # the person's words with a "revise" verdict
+
+
+class NewDraftBody(TypedDict):
+    need: str  # 1..NEED_MAX
+
+
+class SayBody(TypedDict):
+    text: str  # "" when the person picked a suggestion
+    choice: NotRequired[str]
+
+
+class ConfirmBody(TypedDict):
+    node_ids: list[str]
+
+
+class KeyBody(TypedDict):
+    marks: list[KeyMark]
+    missing: list[str]
+    never: list[str]
+
+
+class VerdictBody(TypedDict):
+    verdict: DraftVerdict
+    note: NotRequired[str]
 
 
 # --- the turn stream (NDJSON, one object per line) ------------------------------------------------
@@ -298,6 +449,66 @@ class ErrorEvent(TypedDict):
     reason: str
 
 
+class SketchEvent(TypedDict):
+    """Stage turns only: the sketch changes this reply made, in order."""
+
+    type: Literal["sketch"]
+    ops: list[SketchOp]
+
+
+class AskEvent(TypedDict):
+    type: Literal["ask"]
+    ask: Ask
+
+
+class CoverageEvent(TypedDict):
+    type: Literal["coverage"]
+    coverage: Coverage
+    agreed: bool
+
+
+# --- authoring and the test run (NDJSON streams of POST /drafts/{id}/write and /rehearse) ---------
+
+
+class AuthorWriting(TypedDict):
+    type: Literal["writing"]
+
+
+class AuthorRepair(TypedDict):
+    type: Literal["repair"]
+    problems: list[str]  # plain words
+
+
+class AuthorWritten(TypedDict):
+    type: Literal["written"]
+    chore_id: str
+
+
+class AuthorFailed(TypedDict):
+    type: Literal["author_failed"]
+    problems: list[str]
+
+
+class RehearsalPhase(TypedDict):
+    type: Literal["phase"]
+    index: int
+    app: str
+    message: str
+
+
+class RehearsalCard(TypedDict):
+    type: Literal["card"]
+    card: Card
+
+
+class RehearsalScored(TypedDict):
+    type: Literal["scored"]
+    bench: BenchSummary
+
+
+# A failed write or run streams the turn's ErrorEvent shape: {type: "error", error, reason}.
+
+
 def tool_event(name: ActionName, label: str) -> dict[str, Any]:
     """The tool line of a turn stream: `{type, name, label, class}`."""
     return {"type": "tool", "name": name, "label": label, "class": CATALOG[name]}
@@ -337,4 +548,13 @@ ROUTES = {
     "events": "/events",
     "chores": "/chores",
     "chore": "/chores/{id}",
+    "drafts": "/drafts",
+    "draft": "/drafts/{id}",
+    "draft_say": "/drafts/{id}/say",
+    "draft_confirm": "/drafts/{id}/confirm",
+    "draft_write": "/drafts/{id}/write",
+    "draft_preview": "/drafts/{id}/preview",
+    "draft_key": "/drafts/{id}/key",
+    "draft_rehearse": "/drafts/{id}/rehearse",
+    "draft_verdict": "/drafts/{id}/verdict",
 }

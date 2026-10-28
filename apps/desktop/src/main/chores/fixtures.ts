@@ -31,6 +31,7 @@ export const fixtureChore = (over: Partial<ChoreSummary> = {}): ChoreSummary => 
   job: "contest",
   senses: ["paper"],
   featured: "rehearsed",
+  origin: "library",
   bench: fixtureBench(),
   ...over,
 });
