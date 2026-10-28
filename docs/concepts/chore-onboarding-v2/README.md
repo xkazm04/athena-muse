@@ -212,7 +212,7 @@ Types:
 - `KeyMark {expected_id, mark: "yes"|"no", note?}`
 - `MissingCard {text, expected?: ExpectedCard}`, `DraftKey {marks, missing: MissingCard[], never}`
 - `DraftVerdict = "keep"|"revise"`
-- `Draft {id, space_id, step, need, sketch, coverage, agreed, chore_id?, key?, bench?, verdict?, note?, created, updated}`. The wire contract is committed (ADR 0007); route paths use `{id}`.
+- `Draft {id, space_id, step, need, sketch, coverage, agreed, chore_id?, expected?, key?, bench?, verdict?, note?, created, updated}`. The wire contract is committed (ADR 0007); route paths use `{id}`.
 - `ChoreOrigin = "library"|"yours"`, added to `ChoreSummary` as `origin`
 - `Surface` gains `"design"|"rehearsal"`
 - `ActionName` gains `"sketch"|"ask"` (auto). Because tool parameters are strings, `sketch` takes `op, kind, id, label, slot, detail, after`, and `ask` takes `slot, text, suggestions` joined by `" | "`.

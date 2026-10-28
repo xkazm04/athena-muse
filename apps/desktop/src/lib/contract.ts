@@ -160,6 +160,7 @@ export interface Draft {
   created: string;
   updated: string;
   chore_id?: string;
+  expected?: ExpectedCard[];
   key?: DraftKey;
   bench?: BenchSummary;
   verdict?: DraftVerdict;

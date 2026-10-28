@@ -379,6 +379,7 @@ class Draft(TypedDict):
     created: str
     updated: str
     chore_id: NotRequired[str]  # once written
+    expected: NotRequired[list[ExpectedCard]]  # once previewed
     key: NotRequired[DraftKey]  # once marked
     bench: NotRequired[BenchSummary]  # once a test run has finished
     verdict: NotRequired[DraftVerdict]
