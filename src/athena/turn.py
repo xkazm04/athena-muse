@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 from athena.app import Daemon
 from athena.chores import reads
 from athena.chores.portal import SEPARATOR, Portal
-from athena.chores.spec import ChoreError, library_dir, load_chore
+from athena.chores.spec import ChoreError, find_chore, load_chore
 from athena.clock import mint
 from athena.contracts import (
     APPS_MAX,
@@ -360,14 +360,16 @@ def _stream(
         yield done
 
 
-def _portal_for(args: dict[str, Any]) -> Portal:
-    """The Portal a signed `portal_act` card was filed through, rebuilt from its args."""
+def _portal_for(daemon: Daemon, args: dict[str, Any]) -> Portal:
+    """The Portal a signed `portal_act` card was filed through, rebuilt from its args. The chore is
+    found in the library or among the person's own (ADR 0007)."""
     chore_id = str(args.get("chore", ""))
-    root = library_dir() / chore_id
-    if not chore_id or "/" in chore_id or "\\" in chore_id or chore_id.startswith(".") or not root.is_dir():
+    found = find_chore(chore_id, daemon.data_dir)
+    if found is None:
         raise ApiError("unknown_ref", "the chore that card belongs to is not in the library")
+    root, origin = found
     try:
-        chore = load_chore(root)
+        chore = load_chore(root, origin=origin)
     except ChoreError as e:
         raise ApiError("bad_request", f"the chore {chore_id} cannot be loaded: {e}") from e
     return Portal(chore, str(args.get("app", "")))
@@ -447,5 +449,5 @@ def execute(daemon: Daemon, card: Card) -> str:
         daemon.memory.forget(args["id"])
         return "Forgotten."
     if card["action"] == "portal_act":
-        return _portal_for(args).execute(args)
+        return _portal_for(daemon, args).execute(args)
     raise ApiError("bad_request", "that action cannot be signed")

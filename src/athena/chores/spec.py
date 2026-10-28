@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast, get_args
@@ -17,6 +18,7 @@ from typing import Any, cast, get_args
 from athena.contracts import (
     BenchSummary,
     ChoreDetail,
+    ChoreOrigin,
     ChoreSummary,
     FeaturedStatus,
     ProofRow,
@@ -26,6 +28,11 @@ from athena.errors import ApiError
 
 #: Where the library lives: `ATHENA_PLAYBOOKS` when set, else `playbooks/` at the repo root.
 PLAYBOOKS_ENV = "ATHENA_PLAYBOOKS"
+#: The person's own chores (ADR 0007): `<data_dir>/chores/<id>/`, never in the repository.
+USER_LIBRARY = "chores"
+TAXONOMY = "taxonomy.json"
+#: A chore id is its folder name: lowercase words joined by hyphens.
+CHORE_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,79}")
 
 log = logging.getLogger(__name__)
 
@@ -92,6 +99,7 @@ class Chore:
     phases: tuple[Phase, ...]
     targets: tuple[Target, ...]
     forbidden: tuple[str, ...] = ()
+    origin: ChoreOrigin = "library"
 
     def app(self, app_id: str) -> App:
         for a in self.apps:
@@ -106,6 +114,18 @@ def library_dir() -> Path:
         return Path(env)
     # src/athena/chores/spec.py -> the repo root is three folders above this package.
     return Path(__file__).resolve().parents[3] / "playbooks"
+
+
+def user_library_dir(data_dir: Path | None) -> Path | None:
+    """`<data_dir>/chores`: the chores the person kept; None with nothing on disk."""
+    return data_dir / USER_LIBRARY if data_dir is not None else None
+
+
+def taxonomy_path(root: Path) -> Path:
+    """The taxonomy a chore is checked against: the one beside it (the library's own), else the
+    app library's. Authored and kept chores live in the data folder, which has none."""
+    beside = root.parent / TAXONOMY
+    return beside if beside.is_file() else library_dir() / TAXONOMY
 
 
 # --- reading --------------------------------------------------------------------------------------
@@ -131,8 +151,8 @@ def _list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def _taxonomy(base: Path, problems: list[str]) -> tuple[set[str], set[str]]:
-    data = _obj(_read_json(base / "taxonomy.json", problems))
+def _taxonomy(path: Path, problems: list[str]) -> tuple[set[str], set[str]]:
+    data = _obj(_read_json(path, problems))
     cats = {str(_obj(c).get("id")) for c in _list(data.get("categories"))}
     jobs = {str(_obj(j).get("id")) for j in _list(data.get("jobs"))}
     return cats, jobs
@@ -144,7 +164,7 @@ def _check_playbook(root: Path, pb: dict[str, Any], problems: list[str]) -> None
     for key in ("title", "promise", "expectation"):
         if not pb.get(key):
             problems.append(f"playbook.json has no {key}")
-    cats, jobs = _taxonomy(root.parent, problems)
+    cats, jobs = _taxonomy(taxonomy_path(root), problems)
     if pb.get("category") not in cats:
         problems.append(f"category {pb.get('category')!r} is not in taxonomy.json")
     if pb.get("job") not in jobs:
@@ -232,7 +252,7 @@ def _tables(raw: Any, origin: str, problems: list[str]) -> dict[str, list[dict[s
     return out
 
 
-def load_chore(root: Path) -> Chore:
+def load_chore(root: Path, *, origin: ChoreOrigin = "library") -> Chore:
     problems: list[str] = []
     pb = _read_json(root / "playbook.json", problems)
     world = _read_json(root / "world.json", problems)
@@ -323,10 +343,11 @@ def load_chore(root: Path) -> Chore:
         phases=tuple(phases),
         targets=tuple(targets),
         forbidden=forbidden,
+        origin=origin,
     )
 
 
-def load_library(base: Path | None = None) -> list[Chore]:
+def load_library(base: Path | None = None, *, origin: ChoreOrigin = "library") -> list[Chore]:
     """Every loadable chore under `base`, by id. A broken one is logged and skipped."""
     base = base if base is not None else library_dir()
     if not base.is_dir():
@@ -334,10 +355,47 @@ def load_library(base: Path | None = None) -> list[Chore]:
     out: list[Chore] = []
     for root in sorted(p for p in base.iterdir() if (p / "playbook.json").is_file()):
         try:
-            out.append(load_chore(root))
+            out.append(load_chore(root, origin=origin))
         except ChoreError as e:
             log.warning("chore %s skipped: %s", root.name, e)
     return out
+
+
+def load_both(data_dir: Path | None) -> list[Chore]:
+    """The library, then the person's own chores. Ids never collide: a chore of hers whose id the
+    library has is skipped and logged."""
+    library = load_library()
+    taken = {c.id for c in library}
+    yours: list[Chore] = []
+    base = user_library_dir(data_dir)
+    for chore in load_library(base, origin="yours") if base is not None else []:
+        if chore.id in taken:
+            log.warning("chore %s of yours skipped: the library has a chore by that id", chore.id)
+            continue
+        yours.append(chore)
+    return library + yours
+
+
+def chore_ids(data_dir: Path | None) -> set[str]:
+    """Every id taken in either library, loadable or not (a folder holds its id either way)."""
+    out: set[str] = set()
+    for base in (library_dir(), user_library_dir(data_dir)):
+        if base is not None and base.is_dir():
+            out |= {p.name for p in base.iterdir() if p.is_dir()}
+    return out
+
+
+def find_chore(chore_id: str, data_dir: Path | None) -> tuple[Path, ChoreOrigin] | None:
+    """Where a chore by this id lives, the library first; None for an id that is not a chore's."""
+    if not CHORE_ID.fullmatch(chore_id):
+        return None
+    root = library_dir() / chore_id
+    if (root / "playbook.json").is_file():
+        return root, "library"
+    base = user_library_dir(data_dir)
+    if base is not None and (base / chore_id / "playbook.json").is_file():
+        return base / chore_id, "yours"
+    return None
 
 
 # --- featured status, bench and proofs ------------------------------------------------------------
@@ -409,7 +467,7 @@ def summary(chore: Chore) -> ChoreSummary:
         "job": str(pb.get("job", "")),
         "senses": [cast("SenseName", s) for s in _list(featured.get("senses")) if s in SENSES],
         "featured": featured_status(chore.root),
-        "origin": "library",
+        "origin": chore.origin,
     }
     bench = _bench(chore.root)
     if bench is not None:

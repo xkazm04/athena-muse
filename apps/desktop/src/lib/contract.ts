@@ -146,11 +146,16 @@ export interface MissingCard {
   expected?: ExpectedCard;
 }
 
+/** A "she must never..." line; `tool` is the act tool it forbids when Athena could name one. */
+export interface NeverLine {
+  text: string;
+  tool?: string;
+}
+
 export interface DraftKey {
   marks: KeyMark[];
   missing: MissingCard[];
-  /** "She must never..." lines, which become forbidden. */
-  never: string[];
+  never: NeverLine[];
 }
 
 export interface Draft {
@@ -209,7 +214,7 @@ export type AuthorEvent =
   | { type: "error"; error: ErrorWord; reason: string };
 
 export type RehearsalEvent =
-  | { type: "phase"; index: number; app: string; message: string }
+  | { type: "phase"; /** from 1 */ index: number; app: string; message: string }
   | { type: "card"; card: Card }
   | { type: "scored"; bench: BenchSummary }
   | { type: "error"; error: ErrorWord; reason: string };

@@ -242,6 +242,7 @@ Absent values: omit the key when unknown. `bench` is absent until a run finishes
   - verdict: the score in plain words; this-is-it or not-quite.
   - saved: a hand-off to the Project.
 - **Shared primitives:** `CardView` (expected cards and rehearsal cards), `ProjectPill`, `Seal` (her state), `Backdrop`. New primitives stay local to `main/stage/` until a second caller appears.
+- **As built in the daemon (2026-10-28), binding on the stage:** test-run cards belong to a throwaway daemon, so the stage shows them and never offers to sign them. "Not quite" (`verdict: revise`) works at `preview`, `rehearse` and `verdict` and returns to the sketch. A "never" line comes back as `{text, tool?}`, and the stage says which act it forbids, or that it was kept as words. After a stream ends in `error`, the stage reads the draft again (`GET /drafts/{id}`).
 - **Her window:** unchanged code. It shows the draft Project's conversation because the draft is the active space.
 - **Contest-owned (to fill in):**
   - the sketch's visual language and layout algorithm

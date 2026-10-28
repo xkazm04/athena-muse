@@ -46,7 +46,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         Route("/health", health),
         *routes_state.routes(daemon),
         *routes_turn.routes(daemon),
-        *routes_chores.routes(),
+        *routes_chores.routes(daemon),
         *routes_drafts.routes(daemon),
     ]
 

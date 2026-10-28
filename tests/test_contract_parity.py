@@ -84,6 +84,7 @@ def test_stream_event_types_match() -> None:
 def test_draft_shapes_match() -> None:
     # Every key of every draft shape is on both sides; TS optional keys end in "?".
     shapes = ("SketchNode", "Sketch", "SketchOp", "Ask", "ExpectedCard", "KeyMark", "MissingCard")
+    shapes += ("NeverLine",)
     bodies = ("SayBody", "ConfirmBody", "KeyBody", "VerdictBody", "DraftAbandoned")
     for name in (*shapes, "DraftKey", "Draft", *bodies):
         m = re.search(rf"export interface {name} \{{(.*?)\n\}}", TS, re.S)

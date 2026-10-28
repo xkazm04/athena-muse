@@ -483,9 +483,10 @@ def test_abandoning_a_draft_keeps_the_project(tmp_path: Path) -> None:
     daemon.store.close()
 
 
-def test_the_rest_of_the_drafts_routes_are_not_built_yet(client: TestClient) -> None:
-    draft = new_draft(client)
-    assert client.post(f"/drafts/{draft['id']}/write", headers=H).status_code == 501
+def test_a_draft_still_at_describe_cannot_be_written(client: TestClient) -> None:
+    draft = new_draft(client)  # the authoring routes are built (WP2); a draft with no sketch is refused
+    r = client.post(f"/drafts/{draft['id']}/write", headers=H)
+    assert r.status_code == 400 and r.json()["error"] == "bad_request"
 
 
 def test_start_runs_nothing(daemon: Daemon) -> None:

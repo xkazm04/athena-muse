@@ -3,6 +3,10 @@
 Nothing is approved. A phase opens with its own message; while the last turn made any tool call and
 the phase still has nudges, "Keep going." is sent. That decision reads the turn alone, never the
 answer key. A turn that ends on an error ends the run, and the run is still scored.
+
+`on_event` hears the run as it happens (ADR 0007's test run streams it): `phase{index, app, message}`
+as each phase opens (index from 1) and `card{card}` as each portal card is filed. `copy_calls` puts
+the throwaway daemon's model calls into a real ledger, since that daemon's rows die with it.
 """
 
 from __future__ import annotations
@@ -19,9 +23,10 @@ from athena.app import Daemon
 from athena.chores.portal import Portal
 from athena.chores.spec import Chore
 from athena.clock import now_iso
-from athena.contracts import NAME_MAX, BenchSummary, BenchWord, Card, LedgerRow, Probe, Turn
+from athena.contracts import NAME_MAX, BenchSummary, BenchWord, Card, LedgerRow, Probe, Surface, Turn
 from athena.engine import Engine, EngineError, TextDelta, ToolCall, Usage
 from athena.errors import ApiError
+from athena.ledger import Ledger
 from athena.turn import run_turn
 
 NUDGE = "Keep going."
@@ -99,6 +104,7 @@ def rehearse(
     *,
     wall_min: float = WALL_MIN_DEFAULT,
     on_turn: Callable[[TurnLog], None] | None = None,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> Rehearsal:
     from athena.bench import score, verdict
 
@@ -115,6 +121,8 @@ def rehearse(
             portal = Portal(chore, phase.app)
             message = phase.message
             nudges_left = phase.nudges
+            if on_event is not None:
+                on_event({"type": "phase", "index": p, "app": phase.app, "message": phase.message})
             while True:
                 n += 1
                 counting.calls = 0
@@ -124,6 +132,8 @@ def rehearse(
                     for event in run_turn(daemon, counting, message, space_id, portal=portal):
                         if event.get("type") == "card" and event["card"]["action"] == "portal_act":
                             filed += 1
+                            if on_event is not None:
+                                on_event({"type": "card", "card": event["card"]})
                         elif event.get("type") == "error":
                             error = str(event.get("reason") or event.get("error") or "unknown")
                 except ApiError as e:
@@ -203,13 +213,33 @@ def write_bench(chore: Chore, run: Rehearsal) -> Path:
     return _dump(chore.root / "bench.json", bench_doc(run))
 
 
+def copy_calls(calls: list[LedgerRow], ledger: Ledger, space_id: str, surface: Surface = "rehearsal") -> int:
+    """Each model call of a run, as a row of `ledger` in `space_id` (stamped now, not when it ran)."""
+    for r in calls:
+        ledger.record(
+            surface=surface,
+            space_id=space_id,
+            engine=r["engine"],
+            model=r["model"],
+            latency_ms=r["latency_ms"],
+            ok=r["ok"],
+            input_tokens=r.get("input_tokens"),
+            output_tokens=r.get("output_tokens"),
+            cost_usd=r.get("cost_usd"),
+            cost_estimated=r["cost_estimated"],
+            error=r.get("error"),
+        )
+    return len(calls)
+
+
 def runs_dir(chore: Chore) -> Path:
     """`runs/` beside the library (`playbooks/` -> the repo root); git-ignored."""
     return chore.root.resolve().parent.parent / "runs"
 
 
-def write_report(chore: Chore, run: Rehearsal) -> Path:
-    """The full run, transcript included, under `runs/<stamp>-<id>/report.json` (never committed)."""
+def write_report(chore: Chore, run: Rehearsal, base: Path | None = None) -> Path:
+    """The full run, transcript included, under `runs/<stamp>-<id>/report.json` (never committed);
+    `base` puts it under another `runs/` folder."""
     doc = {
         "chore": chore.id,
         **bench_doc(run),
@@ -219,4 +249,4 @@ def write_report(chore: Chore, run: Rehearsal) -> Path:
         "transcript": run.transcript,
         "model_calls": run.calls,
     }
-    return _dump(runs_dir(chore) / f"{run.stamp}-{chore.id}" / "report.json", doc)
+    return _dump((base or runs_dir(chore)) / f"{run.stamp}-{chore.id}" / "report.json", doc)

@@ -366,10 +366,18 @@ class MissingCard(TypedDict):
     expected: NotRequired[ExpectedCard]
 
 
+class NeverLine(TypedDict):
+    """A "she must never..." line. `tool` is the act tool it forbids, when Athena could name one and
+    the person did not also say yes to that tool; a line without one is kept as words."""
+
+    text: str
+    tool: NotRequired[str]
+
+
 class DraftKey(TypedDict):
     marks: list[KeyMark]
     missing: list[MissingCard]
-    never: list[str]  # "she must never..." lines -> forbidden
+    never: list[NeverLine]
 
 
 class Draft(TypedDict):
@@ -500,7 +508,7 @@ class AuthorFailed(TypedDict):
 
 class RehearsalPhase(TypedDict):
     type: Literal["phase"]
-    index: int
+    index: int  # from 1
     app: str
     message: str
 
