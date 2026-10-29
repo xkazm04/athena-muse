@@ -278,7 +278,7 @@ export const samples = [
   { id: "s3", to: "Kite & Copper", subject: "Feature on Friday?", date: "2026-07-02", words: 74, mark: true, excerpt: "Hi both, I'd love to feature 'Low Orbit' this Friday with a full visualizer. Would you be up for it?..." },
   { id: "s4", to: "Juno Park", subject: "Re: credits", date: "2026-08-21", words: 48, mark: true, excerpt: "All sorted, your name and link are in the description now. Thanks again for letting me use it. cheers, Alex" },
   { id: "s5", to: "Marlow", subject: "Fwd: invoice", date: "2026-06-11", words: 12, mark: false, excerpt: "See below. Can you check this?", why_not: "A forward, not your own writing" },
-  { id: "s6", to: "Team Low Tide", subject: "Weekly notes", date: "2026-09-30", words: 310, mark: false, excerpt: "Notes for the week: render queue, the Friday slot, invoices...", why_not: "Written to your team, not to a creator" },
+  { id: "s6", to: "Team Low Tide", subject: "Weekly notes", date: "2026-09-30", words: 310, mark: false, excerpt: "Notes for the week: render queue, the Friday feature, invoices...", why_not: "Written to your team, not to a creator" },
 ];
 
 // Eight style dials, 1-5. `source`: learned (from samples), preset, you.

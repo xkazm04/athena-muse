@@ -3753,7 +3753,7 @@ window.TWIN_DATA = {
         "date": "2026-09-30",
         "words": 310,
         "mark": false,
-        "excerpt": "Notes for the week: render queue, the Friday slot, invoices...",
+        "excerpt": "Notes for the week: render queue, the Friday feature, invoices...",
         "why_not": "Written to your team, not to a creator"
       }
     ],

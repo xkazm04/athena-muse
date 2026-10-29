@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Twins - Mirror</title>
+  <link rel="stylesheet" href="../shared/loop-tide/fonts.css" />
+  <link rel="stylesheet" href="../shared/loop-tide/tokens.css" />
+  <link rel="stylesheet" href="../shared/loop-tide/base.css" />
+  <link rel="stylesheet" href="../shared/loop-tide/coat.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/overview.css" />
+  <link rel="stylesheet" href="css/mirror.css" />
+  <link rel="stylesheet" href="css/chat.css" />
+  <link rel="stylesheet" href="css/panels.css" />
+  <link rel="stylesheet" href="css/rehearsal.css" />
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"><div class="backdrop__shafts"></div><div class="backdrop__vignette"></div></div>
+
+  <header class="top">
+    <a class="brand" href="#overview" aria-label="Athena, twins overview"><span id="brand-seal"></span><span class="brand-name">Athena</span></a>
+    <span class="badge invented" id="invented" tabindex="0">Invented example</span>
+    <nav class="nav" aria-label="Main">
+      <a aria-disabled="true" title="Not part of this prototype">Projects</a>
+      <a aria-disabled="true" title="Not part of this prototype">Chores</a>
+      <a href="#overview" class="on" id="nav-twins">Twins</a>
+      <a aria-disabled="true" title="Not part of this prototype">Athena</a>
+    </nav>
+    <div class="top-right">
+      <button class="btn" data-act="her-window" id="her-btn" aria-expanded="false"><span class="her-dot" aria-hidden="true"></span>Her window</button>
+      <div class="states-wrap">
+        <button class="btn" data-act="states-menu" id="states-btn" aria-haspopup="true" aria-expanded="false"><span class="states-swatch" aria-hidden="true"></span>States</button>
+        <div class="states-pop" id="states-pop" role="menu" hidden></div>
+      </div>
+      <button class="btn btn-quiet theme-btn" data-act="theme" id="theme-btn" aria-label="Switch light or dark"></button>
+    </div>
+  </header>
+
+  <main class="pages">
+    <section id="page-overview" class="page" aria-label="Twins"></section>
+    <section id="page-setup" class="page" aria-label="Set up a twin with Athena" hidden></section>
+  </main>
+
+  <aside id="her-window" class="coat her-window" aria-label="Her window" hidden></aside>
+  <div id="invented-tip" class="invented-tip" role="tooltip" hidden></div>
+
+  <script src="../shared/twin-data.js"></script>
+  <script src="js/variant-data.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/overview.js"></script>
+  <script src="js/draft.js"></script>
+  <script src="js/panels.js"></script>
+  <script src="js/mirror.js"></script>
+  <script src="js/rehearsal.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

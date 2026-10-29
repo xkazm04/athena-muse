@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Twins - Rehearsal</title>
+    <link rel="stylesheet" href="../shared/loop-tide/fonts.css" />
+    <link rel="stylesheet" href="../shared/loop-tide/tokens.css" />
+    <link rel="stylesheet" href="../shared/loop-tide/base.css" />
+    <link rel="stylesheet" href="../shared/loop-tide/coat.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="overview.css" />
+    <link rel="stylesheet" href="setup.css" />
+    <link rel="stylesheet" href="panels.css" />
+    <link rel="stylesheet" href="rehearsal.css" />
+  </head>
+  <body>
+    <div class="app" id="app">
+      <div class="backdrop" aria-hidden="true"><div class="backdrop__shafts"></div><div class="backdrop__vignette"></div></div>
+      <header class="top">
+        <div class="brand"><span id="brand-mark"></span>Athena</div>
+        <span class="badge invented" title="">Invented example</span>
+        <nav class="nav" aria-label="Main">
+          <button class="inert" type="button" tabindex="-1">Projects</button>
+          <button class="inert" type="button" tabindex="-1">Chores</button>
+          <button type="button" data-nav="overview" aria-current="page">Twins</button>
+          <button class="inert" type="button" tabindex="-1">Athena</button>
+        </nav>
+        <div class="tools">
+          <button class="btn" type="button" id="her-btn" aria-expanded="false"><span id="her-ic"></span><span class="lbl-wide">Her window</span></button>
+          <button class="btn" type="button" id="states-btn" aria-expanded="false" aria-haspopup="true"><span id="states-ic"></span>States</button>
+          <button class="btn btn-icon" type="button" id="theme-btn" aria-label="Switch theme"></button>
+        </div>
+      </header>
+      <main id="main"></main>
+      <div class="menu" id="states-menu" role="menu"></div>
+      <section class="herwin coat" id="herwin" aria-label="Her window"></section>
+      <div id="toast-host"></div>
+    </div>
+    <script src="../shared/twin-data.js"></script>
+    <script src="variant-data.js"></script>
+    <script src="util.js"></script>
+    <script src="overview.js"></script>
+    <script src="script.js"></script>
+    <script src="panels.js"></script>
+    <script src="rehearsal.js"></script>
+    <script src="setup.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

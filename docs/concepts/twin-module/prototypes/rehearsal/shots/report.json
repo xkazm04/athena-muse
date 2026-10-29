@@ -1,0 +1,1210 @@
+{
+  "variant": "rehearsal",
+  "results": [
+    {
+      "size": "1280x800",
+      "state": "overview-loading",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-first-run",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-today",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-row-open",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-held-draft",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-handed-back",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-needs-sign-in",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-after-golive",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "overview-error",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-describe",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-thinking",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-slow",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-failed",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f0",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f1",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f2",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f3",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f4",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f5",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f6",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f7",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f8",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f9",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f10",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-f11",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "setup-ready",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "gmail-idle",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "gmail-waiting",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "gmail-connected",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "gmail-failed",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "notion-idle",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "notion-checking",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "notion-connected",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "notion-rejected",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-running",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-waits",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-held",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-editing",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-edited",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-sent-alone",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-resolved",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "rehearsal-handed-back",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1280x800",
+      "state": "golive",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-loading",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-first-run",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-today",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-row-open",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-held-draft",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-handed-back",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-needs-sign-in",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-after-golive",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "overview-error",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-describe",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-thinking",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-slow",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-failed",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f0",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f1",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f2",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f3",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f4",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f5",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f6",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f7",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f8",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f9",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f10",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-f11",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "setup-ready",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "gmail-idle",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "gmail-waiting",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "gmail-connected",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "gmail-failed",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "notion-idle",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "notion-checking",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "notion-connected",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "notion-rejected",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-running",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-waits",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-held",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-editing",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-edited",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-sent-alone",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-resolved",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "rehearsal-handed-back",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    },
+    {
+      "size": "1024x700",
+      "state": "golive",
+      "scroll": {
+        "x": 0,
+        "y": 0
+      },
+      "min_px": 12,
+      "small": [],
+      "banned": [],
+      "errors": [],
+      "shot": null,
+      "ok": true
+    }
+  ],
+  "failures": []
+}

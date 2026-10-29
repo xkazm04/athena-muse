@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Twins - Passport</title>
+  <link rel="stylesheet" href="../shared/loop-tide/fonts.css">
+  <link rel="stylesheet" href="../shared/loop-tide/tokens.css">
+  <link rel="stylesheet" href="../shared/loop-tide/base.css">
+  <link rel="stylesheet" href="../shared/loop-tide/coat.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/overview.css">
+  <link rel="stylesheet" href="css/document.css">
+  <link rel="stylesheet" href="css/work.css">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"><div class="backdrop__shafts"></div><div class="backdrop__vignette"></div></div>
+  <div id="app" class="app">
+    <header class="top">
+      <a class="brand" href="#overview" data-act="nav" data-to="overview" aria-label="Athena: your twins">
+        <span id="brand-seal"></span><b>Athena</b>
+      </a>
+      <span class="badge invented" title="Every name, address, track, amount and conversation here is invented for a design prototype.">Invented example</span>
+      <nav class="nav" aria-label="Places">
+        <span class="nav__i" aria-disabled="true">Projects</span>
+        <span class="nav__i" aria-disabled="true">Chores</span>
+        <a class="nav__i" href="#overview" data-nav="twins" data-act="nav" data-to="overview">Twins</a>
+        <span class="nav__i" aria-disabled="true">Athena</span>
+      </nav>
+      <span class="top__gap"></span>
+      <button id="her-btn" class="btn" data-act="her" aria-pressed="false"><span class="ic-wrap" id="her-ic"></span>Her window</button>
+      <button id="states-btn" class="btn" data-act="menu" aria-haspopup="menu" aria-expanded="false"><span class="states-sw" aria-hidden="true"></span>States</button>
+      <button id="theme-btn" class="btn btn-quiet theme" data-act="theme" aria-label="Switch light or dark"><span class="theme__d" id="theme-d"></span><span class="theme__l" id="theme-l"></span></button>
+      <div id="menu-host"></div>
+    </header>
+    <main id="view-overview" class="view view--overview"></main>
+    <main id="view-setup" class="view view--setup" hidden></main>
+    <div id="her-host"></div>
+  </div>
+  <script src="../shared/twin-data.js"></script>
+  <script src="js/variant-data.js"></script>
+  <script src="js/util.js"></script>
+  <script>
+    document.getElementById("brand-seal").innerHTML = TP.seal(34);
+    document.getElementById("her-ic").innerHTML = TP.icons.chat;
+    document.getElementById("theme-d").innerHTML = TP.icons.moon;
+    document.getElementById("theme-l").innerHTML = TP.icons.sun;
+  </script>
+  <script src="js/document.js"></script>
+  <script src="js/slip.js"></script>
+  <script src="js/rehearsal.js"></script>
+  <script src="js/athena.js"></script>
+  <script src="js/shell.js"></script>
+  <script src="js/overview.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

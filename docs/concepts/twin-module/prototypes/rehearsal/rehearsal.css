@@ -1,0 +1,266 @@
+/* Rehearsal - the dress rehearsal on the practice page, the prompt desk beside it, and the curtain
+ * call when it goes live. */
+
+.script-col.rehearsing {
+  background: color-mix(in srgb, var(--card-bg) 82%, transparent);
+}
+.script-col.rehearsing .clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.beat.tocome {
+  opacity: 0.55;
+}
+.beat.tocome .beat-body {
+  border-style: dashed;
+  background: transparent;
+}
+.beat.tocome header {
+  margin-bottom: 2px;
+}
+.beat.current .beat-body {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--glow);
+}
+.said {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.said .who {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--role-external);
+}
+.said p.one {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.said p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.beat.creator.shown .beat-body,
+.beat.creator.typing .beat-body {
+  border-style: solid;
+  background: color-mix(in srgb, var(--role-external) 7%, transparent);
+}
+.line.drafting {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px dashed var(--border-default);
+}
+.line.drafting .ghost {
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  50% {
+    opacity: 0.4;
+  }
+}
+.learned {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  color: var(--role-human);
+}
+.notion-row.filed {
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--status-success) 45%, transparent);
+  background: color-mix(in srgb, var(--status-success) 7%, transparent);
+}
+
+/* ---------- the prompt desk ---------- */
+.desk .prop-body {
+  display: flex;
+  flex-direction: column;
+}
+.decision,
+.editing,
+.learnt,
+.resolved,
+.handed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.decision .sure {
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--recessed);
+}
+.risks {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 45%, transparent);
+  background: color-mix(in srgb, var(--status-warning) 7%, transparent);
+}
+.risks ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.risks li {
+  display: flex;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+}
+.risks li .ic {
+  margin-top: 1px;
+  color: var(--status-warning);
+}
+.risks.none {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-sm);
+  border-color: var(--border-subtle);
+  background: transparent;
+}
+.risks.none .ic {
+  color: var(--status-success);
+}
+.why-line {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+.why-line .ic {
+  margin-top: 1px;
+}
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.editing textarea {
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  resize: none;
+  border-color: var(--role-human);
+}
+.lesson {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+}
+.lesson .ic {
+  color: var(--role-human);
+  margin-top: 1px;
+}
+.learnt p,
+.resolved p,
+.handed p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.said-q {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--role-external) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--role-external) 30%, transparent);
+}
+.resolved .btn-primary {
+  min-height: 44px;
+  font-size: var(--fs-md);
+}
+.working {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--recessed);
+  font-size: var(--fs-sm);
+}
+.working b {
+  display: block;
+  font-weight: 500;
+}
+.working .small {
+  display: block;
+}
+.desk .prop-foot b {
+  color: var(--role-human);
+}
+
+/* ---------- the curtain call ---------- */
+.curtain {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-lg);
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
+}
+.golive {
+  width: min(440px, 90%);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.golive h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+}
+.golive p {
+  margin: 0;
+  color: var(--muted-foreground);
+}
+.golive ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.golive li {
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.golive .btn-primary {
+  margin-top: 6px;
+  min-height: 42px;
+}
+
+@media (max-height: 760px) {
+  .decision,
+  .editing,
+  .learnt,
+  .resolved,
+  .handed {
+    gap: 8px;
+  }
+  .decision .sure {
+    padding: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line.drafting .ghost {
+    animation: none !important;
+  }
+}

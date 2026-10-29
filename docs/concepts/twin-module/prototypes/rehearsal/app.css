@@ -1,0 +1,434 @@
+/* Rehearsal - the shell: header, menus, her window, toasts, and the atoms every view shares
+ * (pencil and ink, the sure-against-the-bar meter, place tags). Colours are tokens only. */
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  font-size: var(--fs-sm);
+}
+button {
+  font-family: inherit;
+}
+.ic {
+  flex: none;
+  display: inline-block;
+  vertical-align: -3px;
+}
+.mark {
+  flex: none;
+  display: block;
+}
+
+.app {
+  position: relative;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr);
+  overflow: hidden;
+}
+.app > .backdrop {
+  z-index: 0;
+}
+.app > header,
+.app > main {
+  position: relative;
+  z-index: 1;
+}
+main {
+  min-height: 0;
+}
+
+/* ---------- header, like the app's ---------- */
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  backdrop-filter: blur(8px);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: 600;
+  font-size: var(--fs-lg);
+}
+.badge.invented {
+  color: var(--status-warning);
+  border-color: color-mix(in srgb, var(--status-warning) 40%, transparent);
+}
+.nav {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.nav button {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted-foreground);
+  font: 500 var(--fs-sm) / 1 var(--font-sans);
+  padding: 8px 12px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.nav button:hover {
+  color: var(--foreground);
+}
+.nav button[aria-current="page"] {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.nav button.inert {
+  cursor: default;
+  opacity: 0.7;
+}
+.tools {
+  display: flex;
+  gap: var(--sp-2);
+  margin-left: var(--sp-3);
+}
+.tools .btn {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+}
+.btn-icon {
+  width: 32px;
+  padding: 0 !important;
+}
+.btn .count {
+  min-width: 18px;
+  height: 18px;
+  border-radius: var(--r-pill);
+  background: var(--role-human);
+  color: var(--on-human);
+  font-size: var(--fs-xs);
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+}
+
+/* ---------- the States menu ---------- */
+.menu {
+  position: absolute;
+  z-index: 40;
+  top: 48px;
+  right: 56px;
+  width: 300px;
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  padding: var(--sp-2);
+  border-radius: var(--r-lg);
+  background: var(--card-raised);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--coat-shadow);
+  display: none;
+}
+.menu.open {
+  display: block;
+}
+.menu h4 {
+  margin: var(--sp-2) var(--sp-2) var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: 400 var(--fs-sm) / 1.3 var(--font-sans);
+  padding: 6px var(--sp-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.menu button:hover,
+.menu button[aria-current="true"] {
+  background: var(--hover-wash);
+}
+.menu button[aria-current="true"] {
+  color: var(--accent-text);
+}
+
+/* ---------- her window (the past lives here) ---------- */
+.herwin {
+  position: absolute;
+  z-index: 35;
+  top: 58px;
+  right: 16px;
+  width: 340px;
+  height: min(480px, calc(100vh - 80px));
+  display: none;
+  flex-direction: column;
+}
+.herwin.open {
+  display: flex;
+}
+.herwin header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.herwin header b {
+  font-size: var(--fs-md);
+}
+.herwin header small {
+  display: block;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+}
+.herwin header .btn {
+  margin-left: auto;
+}
+.herwin .past {
+  flex: 1;
+  overflow: auto;
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.past .you,
+.past .her {
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+}
+.past .you {
+  align-self: flex-end;
+  max-width: 85%;
+  background: color-mix(in srgb, var(--role-human) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--role-human) 40%, transparent);
+}
+.past .her {
+  background: var(--recess);
+  border: 1px solid var(--edge);
+}
+.past .empty {
+  margin: auto;
+  color: var(--faint);
+  text-align: center;
+}
+
+/* ---------- toast ---------- */
+.toast {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: 62px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-pill);
+  background: var(--card-raised);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-1);
+  font-size: var(--fs-sm);
+  animation: toast-in var(--dur-base) var(--ease-settle);
+}
+.toast .ic {
+  color: var(--status-success);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+/* ---------- shared atoms ---------- */
+.eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.muted {
+  color: var(--muted-foreground);
+}
+.faint {
+  color: var(--muted);
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.badge[data-tone="pending"] {
+  color: var(--status-pending);
+}
+.badge[data-tone="human"] .ic,
+.badge .ic {
+  width: 12px;
+  height: 12px;
+  vertical-align: -1px;
+}
+.badge.solid[data-tone="human"] {
+  background: var(--role-human);
+  color: var(--on-human);
+}
+
+/* her pencil and your ink, legible without a legend */
+.pencil {
+  border: 1px dashed color-mix(in srgb, var(--role-agent) 75%, transparent);
+  background: color-mix(in srgb, var(--role-agent) 8%, transparent);
+}
+.ink {
+  border: 1px solid color-mix(in srgb, var(--role-human) 45%, transparent);
+  box-shadow: inset 3px 0 0 var(--role-human);
+  background: color-mix(in srgb, var(--role-human) 8%, transparent);
+}
+.empty-need {
+  border: 1px dashed var(--border-emphasis);
+  color: var(--muted);
+}
+
+/* a toggle that is her suggestion (pencil ring) or your choice (ink) */
+.tick {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  display: inline-grid;
+  place-items: center;
+  border: 1.5px solid var(--border-emphasis);
+  color: transparent;
+}
+.tick .ic {
+  width: 12px;
+  height: 12px;
+}
+.tick.her {
+  border: 1.5px dashed var(--role-agent);
+  color: var(--role-agent);
+}
+.tick.on {
+  border: 1.5px solid var(--role-human);
+  background: var(--role-human);
+  color: var(--on-human);
+}
+
+/* how sure it is, against the bar */
+.sure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+.sure b {
+  color: var(--foreground);
+  font-size: var(--fs-sm);
+}
+.sure .track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--recessed);
+  border: 1px solid var(--border-subtle);
+}
+.sure .fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+.sure.under .fill {
+  background: var(--status-warning);
+}
+.sure .bar {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--foreground);
+  border-radius: 1px;
+}
+
+/* new things arrive; nothing already placed moves */
+.arrive {
+  animation: arrive 420ms var(--ease-settle) both;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+.w {
+  animation: word 260ms ease-out both;
+}
+@keyframes word {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.dots::after {
+  content: "";
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: dots 1.2s steps(4) infinite;
+}
+@keyframes dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
+
+@media (max-width: 1100px) {
+  .nav button {
+    padding: 8px 9px;
+  }
+  .tools .btn .lbl-wide {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrive,
+  .w,
+  .toast,
+  .spin,
+  .dots::after {
+    animation: none !important;
+  }
+}

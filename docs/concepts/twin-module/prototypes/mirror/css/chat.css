@@ -1,0 +1,256 @@
+/* Mirror - Athena's bottom panel: her line, the one question, three suggestions, your words,
+ * the exit and what she still needs. */
+
+.chat {
+  flex: none;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-color: var(--edge);
+  background: color-mix(in srgb, var(--card-raised) 94%, transparent);
+}
+.chat::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: -1px;
+  height: 2px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, transparent, var(--lt-arc), transparent);
+  opacity: 0.7;
+}
+.c-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.c-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.c-said {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  flex: 1;
+}
+.her-line {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--muted-foreground);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.you-said {
+  flex: none;
+  max-width: 34%;
+  margin: 0 0 0 auto;
+  padding: 1px 8px;
+  border-right: 2px solid var(--role-human);
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.you-said span {
+  color: var(--role-human);
+  font-weight: 600;
+}
+.c-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--foreground);
+}
+.c-status.slow {
+  color: var(--status-warning);
+}
+.c-status.failed {
+  color: var(--status-error);
+}
+.c-status .btn {
+  min-height: 26px;
+}
+#think-t {
+  font-variant-numeric: tabular-nums;
+}
+.c-ask {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.c-ask h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+}
+.c-place {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--accent-text);
+}
+.c-note {
+  margin: 0 0 0 auto;
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c-answers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(200px, 1.1fr);
+  gap: var(--sp-2);
+}
+.sugg {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 4px var(--sp-3) 4px var(--sp-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  background: var(--card-bg);
+  color: var(--foreground);
+  font: 500 var(--fs-sm) / 1.3 var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) ease,
+    background var(--dur-fast) ease;
+}
+.sugg:hover:not(:disabled) {
+  border-color: var(--role-human);
+  background: color-mix(in srgb, var(--role-human) 7%, transparent);
+}
+.sugg:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.sugg kbd {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  color: var(--muted-foreground);
+}
+.sugg span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.own {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+.own .field {
+  min-height: 44px;
+  font-size: var(--fs-sm);
+  border-color: color-mix(in srgb, var(--role-human) 35%, var(--border-default));
+}
+.own .field:focus-visible {
+  border-color: var(--role-human);
+}
+.own .icon-btn {
+  width: 44px;
+  min-height: 44px;
+  flex: none;
+}
+
+/* the side: exit and what she still needs */
+.c-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--border-subtle);
+}
+.exit {
+  min-height: 44px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.exit.glow {
+  box-shadow: 0 0 0 4px var(--glow);
+}
+.exit-later {
+  margin: 0;
+  padding: var(--sp-2);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--r-md);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  text-align: center;
+}
+.needs {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+.needs strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+@media (max-width: 1150px) {
+  .chat {
+    grid-template-columns: minmax(0, 1fr) 190px;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .c-answers {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(170px, 1fr);
+    gap: 6px;
+  }
+  .c-side {
+    padding-left: var(--sp-3);
+  }
+  .c-ask h2 {
+    font-size: var(--fs-md);
+  }
+  .you-said {
+    display: none;
+  }
+  .sugg,
+  .own .field,
+  .own .icon-btn,
+  .exit {
+    min-height: 40px;
+  }
+  .exit {
+    font-size: var(--fs-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sugg {
+    transition: none !important;
+  }
+}
