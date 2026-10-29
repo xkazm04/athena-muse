@@ -172,28 +172,118 @@ A likeness bar climbs from 14% to 100%. The twin's parts hang as marginalia, wit
 - A held draft always shows how sure it was against the bar, plus its risk list, with sign, edit and decline.
 - The overview is a stat strip, then the ledger, with a "Waiting for you" band (all three builders found that the space under the ledger wanted it).
 
-## Build plan (after a variant is picked)
+## Build plan (Passport, agreed 2026-10-29)
 
-Contracts first, one commit per feature, ADRs in the same commit.
-- **ADR 0008, Twins speak through connected accounts.** The connectors and vault are ported from athena-portable (Gmail and Notion); this amends the business-channel rule for Twins.
-- **ADR 0009, the send gate.** It covers the three autonomy levels per channel, the bar and the risk list; one pure function serves both the interactive and the unattended paths, and a paused channel never sends.
-- **WP0, the wire contract.**
-  - New types in `contracts.py` and `contract.ts`, with a parity test: `Twin`, `TwinChannel`, `Piece`, `StyleDial`, `Sample`, `MemoryFact`, `Mission`, `TwinDraft` (`confidence`, `risks`, `decision`), `TwinStats` and `TwinSetupFrame`.
-  - `Surface` gains `twin`, and the ledger gains a space filter (business-channel G23).
-- **WP1, the connectors port.** `src/athena/connectors/`: specs, vault, seal, loopback sign-in, probe and the routes.
-- **WP2, the twin store and setup turn.**
-  - The setup conversation reuses the draft/stage mechanics: one question, suggestions, pieces with `origin` and coverage.
-  - Voice comes only from samples, and memory is proposed, then kept or dropped.
-- **WP3, missions and the gate.**
-  - The mission runner drafts toward the goal.
-  - Every decision goes through the one gate function.
-  - Every send is a card or an "alone" ledger row.
-  - A preset chore files the outcome.
-  - The rehearsal runs on a Notion practice page.
-- **WP4, the Twins page.**
-  - The `twins` and `twin/<id>` routes.
-  - A `StatStrip` and a `Ledger` table extracted into `src/ui/` (the Costs table becomes its second caller).
-  - The chosen variant's setup page, with Athena's bottom panel built from `stage/parts` on a generic coverage.
+Wave 4 settled the architecture:
+- **Replies:** the daemon polls Gmail threads that have an open mission while it runs; nothing runs while it is closed.
+- **Sends:** v1 sends real email to any recipient. The send rule and the risk list are the only guard.
+- **Setup turn:** the onboarding-v2 drafts machinery is generalised to carry a twin rubric, not copied.
+- **Connectors:** athena-portable's vault, seal, Google sign-in, Gmail and Notion are ported; its MCP client is not.
+
+Repo law applies throughout: the contract comes first, one commit per feature, and ADRs land in the commit they decide.
+
+### Decisions to record
+
+- **ADR 0008, Twins speak through connected accounts.**
+  - The Gmail and Notion connectors and the vault are ported from athena-portable.
+  - Credentials live under the daemon's data dir, sealed by DPAPI or the keyring, and are probed before they are kept.
+  - Twin Gmail sends may go to any recipient; this replaces the vault's "an empty allow-list refuses every write" rule for twins only.
+  - It amends the business-channel rule "no per-service connectors" for Twins.
+- **ADR 0009, the send rule.**
+  - `decide(channel, draft) -> Decision` is one pure function. A draft is sent alone only when all of these hold:
+    - the channel is connected and the twin is live;
+    - the level is `auto` (or the `split` level for this kind of message is `auto`);
+    - `confidence >= bar`;
+    - `risks` is empty.
+  - Everything else waits, with a reason. A paused twin or channel never sends.
+  - The interactive path, the poller and the rehearsal call the same function.
+  - A waiting draft is a signature card whose text the person may edit. An alone send writes a ledger row and a mission turn.
+- **ADR 0010, one shaping conversation, two rubrics.**
+  - The drafts machinery carries a rubric object: places, required coverage, meanings and kinds.
+  - Chore drafts and twin setup are two rubrics on the same code.
+
+### Wire contract (WP0, committed by the Director with compilable stubs)
+
+`contracts.py` and `contract.ts` change together, and `tests/test_contract_parity.py` gains the new enums, caps and routes.
+
+**Enums.**
+
+| enum | values |
+|---|---|
+| `Place` | `who` `channels` `voice` `knowledge` `chores` `never` `autonomy` `memory` `mission` |
+| `ChannelKind` | `gmail` `notion` |
+| `Autonomy` | `review` `assist` `auto` |
+| `TwinState` | `setting_up` `live` `paused` |
+| `ChannelStatus` | `connected` `needs_sign_in` `disconnected` |
+| `ChannelHealth` | `active` `quiet` `stale` |
+| `MissionState` | `open` `resolved` `handed_back` |
+| `Decision` | `sent_alone` `waits` |
+| `WaitReason` | `review` `assist` `first_message` `below_bar` `risk` `paused` |
+| `Mark` | `me` `edited` `not_me` |
+
+`Surface` gains `twin`. `ActionName` gains `twin_send` (gated: one Gmail message, in-thread when replying) and `twin_note` (gated: one Notion append or create, used by preset chores).
+
+**Types.** The field names are the ones in the prototypes' [`shared/SCHEMA.md`](prototypes/shared/SCHEMA.md). The daemon owns every derived number: `readiness`, `stats`, `coverage` and `open_missions`.
+- `TwinSummary`, `TwinDetail`, `TwinChannel` (`kind`, `account`, `status`, `autonomy`, `bar`, `split`, `scope`, `health`, `last_at`).
+- `Piece` (`id`, `place`, `label`, `detail`, `origin`, `confirmed`, `evidence`), `StyleDial`, `Sample`, `MemoryFact`, `ChorePreset`.
+- `Mission` (with `beats: {label, done}[]` for the nested script) and `MissionTurn`.
+- `TwinDraft` (`id`, `mission`, `channel`, `to`, `subject`, `text`, `confidence`, `risks`, `decision`, `reason`, `card_id`).
+- `TwinStats` and `TwinPage {twins, stats}`.
+
+**Absent values.** Every key is always present. An unmeasured value is `null` and renders "-", never 0.
+
+**Routes.**
+
+| purpose | routes |
+|---|---|
+| Overview | `GET /twins` -> `TwinPage` |
+| Create | `POST /twins {space_id}` -> `TwinDetail` |
+| One twin | `GET /twins/{id}` -> `TwinDetail` |
+| Setup conversation | `POST /twins/{id}/say {text?, choice?}` (NDJSON `TurnEvent` plus `sketch`/`ask`/`coverage`, as drafts); `POST /twins/{id}/confirm {pieces}`; `POST /twins/{id}/drop {piece}` |
+| Setup panels | `POST /twins/{id}/samples {ids}`; `/dials {dials}`; `/pages {ids}`; `/chores {ids}`; `/autonomy {channel, autonomy, bar, split?}`; `/memory {id, keep, reason?}` |
+| Rehearsal | `POST /twins/{id}/rehearse {goal}` (NDJSON turns); `POST /twins/{id}/rehearse/mark {turn, mark, edited_text?}` |
+| Going live and pausing | `POST /twins/{id}/golive`; `POST /twins/{id}/pause` |
+| Missions | `POST /twins/{id}/missions {thread, goal}` -> `Mission`; `GET /twins/{id}/missions/{mid}` |
+| Connectors | `GET /connectors`; `POST /connectors/{kind}/connect {client_id, client_secret}` or `{key}`; `GET /connectors/{kind}/flow`; `POST /connectors/{kind}/disconnect`; `POST /connectors/{kind}/probe` |
+| Signature decisions | `POST /decisions/{id} {verdict, edited?: {text}}`. The executor runs off the event loop, and a failed executor returns the card to `waiting` with a problem line. |
+
+### Work packages
+
+Packages run in order where they share files, and in parallel otherwise.
+
+- **WP1, generalise the drafts machinery.**
+  - Scope: `drafts/rubric.py`, `drafts/sketch.py`, `drafts/shape.py`, `turn.py`, `engine/scripted.py`, `stage/select.ts`, `stage/parts/Ask.tsx`.
+  - A `Rubric`, a `Design` protocol and the surface taken from the design; `StillNeeds`/`EnoughButton` work on a generic coverage.
+  - Acceptance: every existing drafts and stage test passes unchanged in meaning, and a toy second rubric runs a scripted turn.
+- **WP2, port the connectors.**
+  - Scope: `src/athena/connectors/` and `routes_connectors.py`, with ported tests.
+  - The MCP client is dropped and its manifest types are stubbed.
+  - New: `read_thread` and `send_mail` with `thread_id` / `In-Reply-To`.
+  - The vault root becomes the data dir.
+  - Setup shows the "your own Google client" step in plain words.
+- **WP3, the twin store and setup.**
+  - Scope: `src/athena/twins/` (store, the twin rubric, setup routes, samples, dials, pages, chore presets as playbook data, memory, rehearsal on a Notion practice page with Athena playing the other side) and `store.py` tables.
+  - The erase cascade covers the new tables.
+  - The scripted engine plays the setup with no key.
+  - Depends on WP1 and WP2.
+- **WP4, missions, the send rule and the poller.**
+  - Scope: `twins/missions.py`, `twins/decide.py`, a Starlette lifespan poller (off when `ATHENA_TWIN_POLL=0` and in tests), and the `gate.py` edited args with off-loop execution.
+  - `turn.execute` gains `twin_send` and `twin_note`, and CardView's text becomes editable.
+  - Depends on WP2 and WP3.
+- **WP5, the Passport page.** Built in parallel with WP2-WP4, on a generated fixture.
+  - Scope: `apps/desktop/src/main/twins/` with the `twins`, `twin/<id>`, `twin/<id>/mission/<mid>`, `twin/<id>/draft/<did>` and `twin/<id>/voice` routes.
+  - `StatStrip` and `Ledger` move to `src/ui/`, and the Costs table becomes the second caller.
+  - The setup spread and slip go here, with Athena's bottom panel built from `stage/parts`.
+  - The fixture is generated through the daemon's twin rules once WP3 lands; until then it is generated from the prototype's source, in wire shape, and labelled.
+  - The borrowed ideas are nested, per the owner's rule:
+    - a "sounds like" line on the voice section opens the voice page;
+    - beat dots on a mission row open the mission script;
+    - a two-line waiting card opens the draft beside the message it answers.
+  - Fidelity is checked against `prototypes/passport` the way the onboarding-v2 port was (style contract, role map, 0 deviations).
+- **WP6, the live seam.**
+  - A Playwright script drives the built app against a real daemon: setup on the scripted engine and on Claude Code, then the rehearsal on a Notion practice page.
+  - One real Gmail send to the owner's own address, run only with the owner present.
+  - The docs and the README status are updated.
 
 ## Open (owner)
 
