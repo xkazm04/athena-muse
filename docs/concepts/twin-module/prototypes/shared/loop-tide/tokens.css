@@ -1,0 +1,228 @@
+/* Loop Tide - tokens.
+ *
+ * Meta's mark is a loop with no start or end. Here it is never drawn as a shape: it is the way the
+ * water moves (Backdrop) and one arc of light that runs the rim of her window (coat.css).
+ *
+ * Dark is the default. [data-theme="light"] forces light, [data-theme="dark"] forces dark, and with
+ * neither set the page follows the system. The light block therefore appears twice (explicit, and
+ * under the media query); keep the two equal.
+ *
+ * Contrast notes (measured against --background / the named rung):
+ *   dark   --muted 5.35:1 on the canvas; white on --btn-primary 5.39:1; --primary-fg on --primary 5.7:1
+ *   light  --accent-text 5.46:1 on the weakest rung (--recessed); --primary 5.29:1 on --recessed
+ * The person's colour is pink (--role-human). Green, amber and red mean status and nothing else.
+ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #060a17;
+  --foreground: #e8f1ff;
+  --muted-foreground: #a3bbe0;
+  --muted: #6b86b4;
+  --card-bg: #0b1430;
+  --card-raised: #111d42;
+  --recessed: #03060f;
+  --primary: #2b8cff;
+  --primary-fg: #020f2b;
+  --accent: #4aa3ff;
+  --accent-text: var(--accent);
+  --btn-primary: #0064e0;
+  --on-primary: #ffffff;
+  --border-subtle: rgba(130, 170, 230, 0.1);
+  --border-default: rgba(130, 170, 230, 0.18);
+  --border-emphasis: rgba(130, 170, 230, 0.38);
+  --hover-wash: rgba(74, 163, 255, 0.08);
+
+  --role-human: #f472b6;
+  --on-human: #2a0618; /* ink on pink, 6.97:1 */
+  --role-agent: #a78bfa;
+  --role-external: #9ccfff;
+  --status-info: #5cb4ff;
+  --status-pending: #a78bfa;
+  --status-success: #34d399;
+  --status-warning: #fbbf24;
+  --status-error: #f87171;
+
+  --focus: #8cc4ff;
+  --glow: rgba(0, 128, 251, 0.26);
+  --scrim: rgba(2, 5, 14, 0.58);
+  --shadow-1: 0 1px 2px rgba(0, 4, 20, 0.45);
+
+  /* the loop's light */
+  --lt-arc: #6fb6ff;
+  --lt-arc-hot: #e6f2ff;
+  --lt-arc-dim: rgba(0, 100, 224, 0.55);
+  --lt-rim: rgba(255, 255, 255, 0.07);
+  --lt-current: #4aa3ff;
+  --lt-light: 0;
+
+  /* her window: cobalt glass */
+  --faint: #93acd8;
+  --glass: radial-gradient(130% 90% at 15% 0%, #15377a 0%, #0c1d48 40%, #060e26 100%);
+  --glass-solid: #0c1d48;
+  --edge: rgba(90, 160, 255, 0.24);
+  --recess: rgba(2, 6, 20, 0.52);
+  --raised: rgba(20, 42, 96, 0.74);
+  --wash: rgba(74, 163, 255, 0.09);
+  --coat-shadow: 0 22px 48px rgba(0, 6, 28, 0.62), 0 2px 6px rgba(0, 4, 18, 0.45);
+
+  /* the seal */
+  --seal-dome-a: #1a5fd0;
+  --seal-dome-b: #071a48;
+  --seal-glow: rgba(0, 128, 251, 0.42);
+  --seal-gleam: rgba(255, 255, 255, 0.42);
+  --seal-mark: #f0f6ff;
+  --seal-orb-core: #66b6ff;
+  --seal-orb-edge: #0064e0;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #edf1f8;
+  --foreground: #0a1430;
+  --muted-foreground: #36486c;
+  --muted: #52668d;
+  --card-bg: #f8faff;
+  --card-raised: #ffffff;
+  --recessed: #e1e7f2;
+  --primary: #0057c8;
+  --primary-fg: #ffffff;
+  --accent: #1a73e8;
+  --accent-text: #0055c4;
+  --btn-primary: #0064e0;
+  --on-primary: #ffffff;
+  --border-subtle: rgba(10, 30, 80, 0.08);
+  --border-default: rgba(10, 30, 80, 0.14);
+  --border-emphasis: rgba(10, 30, 80, 0.34);
+  --hover-wash: rgba(0, 100, 224, 0.07);
+
+  --role-human: #be185d;
+  --on-human: #ffffff; /* 6.04:1 on the light pink */
+  --role-agent: #6d28d9;
+  --role-external: #0b4f9c;
+  --status-info: #1d4ed8;
+  --status-pending: #6d28d9;
+  --status-success: #047857;
+  --status-warning: #b45309;
+  --status-error: #b91c1c;
+
+  --focus: #0064e0;
+  --glow: rgba(0, 100, 224, 0.18);
+  --scrim: rgba(237, 241, 248, 0.62);
+  --shadow-1: 0 1px 2px rgba(10, 30, 80, 0.12);
+
+  --lt-arc: #0a7cff;
+  --lt-arc-hot: #7fc0ff;
+  --lt-arc-dim: rgba(0, 100, 224, 0.35);
+  --lt-rim: rgba(255, 255, 255, 0.9);
+  --lt-current: #0064e0;
+  --lt-light: 1;
+
+  --faint: #4a5d82;
+  --glass: radial-gradient(130% 90% at 15% 0%, #ffffff 0%, #eef4fd 44%, #dde8f9 100%);
+  --glass-solid: #eaf1fc;
+  --edge: rgba(0, 100, 224, 0.3);
+  --recess: rgba(10, 30, 80, 0.05);
+  --raised: rgba(255, 255, 255, 0.86);
+  --wash: rgba(0, 100, 224, 0.07);
+  --coat-shadow: 0 16px 34px rgba(10, 40, 110, 0.22), 0 2px 5px rgba(10, 40, 110, 0.16);
+
+  --seal-dome-a: #2a7cf0;
+  --seal-dome-b: #0a3f9e;
+  --seal-glow: rgba(0, 100, 224, 0.26);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --background: #edf1f8;
+    --foreground: #0a1430;
+    --muted-foreground: #36486c;
+    --muted: #52668d;
+    --card-bg: #f8faff;
+    --card-raised: #ffffff;
+    --recessed: #e1e7f2;
+    --primary: #0057c8;
+    --primary-fg: #ffffff;
+    --accent: #1a73e8;
+    --accent-text: #0055c4;
+    --btn-primary: #0064e0;
+    --on-primary: #ffffff;
+    --border-subtle: rgba(10, 30, 80, 0.08);
+    --border-default: rgba(10, 30, 80, 0.14);
+    --border-emphasis: rgba(10, 30, 80, 0.34);
+    --hover-wash: rgba(0, 100, 224, 0.07);
+
+    --role-human: #be185d;
+  --on-human: #ffffff; /* 6.04:1 on the light pink */
+    --role-agent: #6d28d9;
+    --role-external: #0b4f9c;
+    --status-info: #1d4ed8;
+    --status-pending: #6d28d9;
+    --status-success: #047857;
+    --status-warning: #b45309;
+    --status-error: #b91c1c;
+
+    --focus: #0064e0;
+    --glow: rgba(0, 100, 224, 0.18);
+    --scrim: rgba(237, 241, 248, 0.62);
+    --shadow-1: 0 1px 2px rgba(10, 30, 80, 0.12);
+
+    --lt-arc: #0a7cff;
+    --lt-arc-hot: #7fc0ff;
+    --lt-arc-dim: rgba(0, 100, 224, 0.35);
+    --lt-rim: rgba(255, 255, 255, 0.9);
+    --lt-current: #0064e0;
+    --lt-light: 1;
+
+    --faint: #4a5d82;
+    --glass: radial-gradient(130% 90% at 15% 0%, #ffffff 0%, #eef4fd 44%, #dde8f9 100%);
+    --glass-solid: #eaf1fc;
+    --edge: rgba(0, 100, 224, 0.3);
+    --recess: rgba(10, 30, 80, 0.05);
+    --raised: rgba(255, 255, 255, 0.86);
+    --wash: rgba(0, 100, 224, 0.07);
+    --coat-shadow: 0 16px 34px rgba(10, 40, 110, 0.22), 0 2px 5px rgba(10, 40, 110, 0.16);
+
+    --seal-dome-a: #2a7cf0;
+    --seal-dome-b: #0a3f9e;
+    --seal-glow: rgba(0, 100, 224, 0.26);
+  }
+}
+
+/* Scale tokens: the same in both themes. 12 px is the smallest type size that exists. */
+:root {
+  --font-sans: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 18px;
+  --fs-xl: 24px;
+  --fs-2xl: 32px;
+  --lh-tight: 1.25;
+  --lh-body: 1.5;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  --ease-settle: cubic-bezier(0.22, 0.8, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+}

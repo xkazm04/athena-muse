@@ -1,0 +1,239 @@
+/* Loop Tide - base: font, page, and the few primitives WP4 and WP5 compose.
+ * Motion is transform and opacity only; reduced motion stills everything. */
+
+/* @fontsource import replaced by ../fonts.css for disk use: 400.css */
+/* @fontsource import replaced by ../fonts.css for disk use: 500.css */
+/* @fontsource import replaced by ../fonts.css for disk use: 600.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Her window is transparent: nothing paints outside the coat. */
+body.her {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 36px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  background: var(--card-raised);
+  color: var(--foreground);
+  font: 500 var(--fs-sm) / 1 var(--font-sans);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    transform var(--dur-fast) ease;
+}
+.btn:hover {
+  background: var(--hover-wash);
+  border-color: var(--border-emphasis);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--btn-primary);
+  border-color: transparent;
+  color: var(--on-primary);
+}
+.btn-primary:hover {
+  background: var(--btn-primary);
+  border-color: transparent;
+  filter: brightness(1.12);
+}
+.btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted-foreground);
+}
+.btn-quiet:hover {
+  color: var(--foreground);
+}
+
+/* ---- surfaces ---- */
+.plane {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--sp-4);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.badge[data-tone="info"] {
+  color: var(--status-info);
+}
+.badge[data-tone="success"] {
+  color: var(--status-success);
+}
+.badge[data-tone="warning"] {
+  color: var(--status-warning);
+}
+.badge[data-tone="error"] {
+  color: var(--status-error);
+}
+/* the person's own colour, for what is waiting on them */
+.badge[data-tone="human"] {
+  color: var(--role-human);
+  border-color: currentColor;
+}
+
+.field {
+  width: 100%;
+  min-height: 36px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  background: var(--recessed);
+  color: var(--foreground);
+  font: 400 var(--fs-md) / var(--lh-body) var(--font-sans);
+}
+.field::placeholder {
+  color: var(--muted);
+}
+.field:focus-visible {
+  border-color: var(--focus);
+  outline-offset: 0;
+}
+textarea.field {
+  resize: vertical;
+}
+
+/* ---- the water behind the main window ----
+ * Bloom and shafts are plain CSS so the theme stands without the canvas. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--background);
+  pointer-events: none;
+}
+.backdrop::before {
+  content: "";
+  position: absolute;
+  left: -12%;
+  top: -18%;
+  width: 72%;
+  height: 100%;
+  background:
+    radial-gradient(closest-side at 46% 50%, color-mix(in srgb, var(--btn-primary) 34%, transparent), transparent 70%),
+    radial-gradient(closest-side at 64% 40%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 80%);
+  opacity: 0.75;
+  animation: lt-bloom 11s ease-in-out infinite alternate;
+}
+.backdrop__shafts {
+  position: absolute;
+  inset: -20% -10% 0;
+  background: repeating-linear-gradient(
+    103deg,
+    transparent 0 140px,
+    color-mix(in srgb, var(--accent) 7%, transparent) 150px 190px,
+    transparent 200px 360px
+  );
+  opacity: 0.42;
+  transform-origin: 50% 0;
+  animation: lt-sway 16s ease-in-out infinite alternate;
+}
+.backdrop__current {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  animation: lt-in 1.6s var(--ease-settle) 0.2s forwards;
+}
+[data-theme="light"] .backdrop__current {
+  mix-blend-mode: multiply;
+}
+.backdrop__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 55%, var(--background) 100%);
+}
+@keyframes lt-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lt-bloom {
+  from {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
+}
+@keyframes lt-sway {
+  from {
+    transform: rotate(-1.2deg);
+  }
+  to {
+    transform: rotate(1.2deg);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .backdrop__current {
+    mix-blend-mode: multiply;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .backdrop__current {
+    opacity: 1;
+  }
+}
