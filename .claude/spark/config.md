@@ -10,7 +10,7 @@ locale_count: 1
 ## Gates
 always: `node scripts/check.mjs`; `uv run ruff check src tests`; `uv run ruff format --check src tests`; `uv run mypy`; `uv run pytest -q`; `pnpm -C apps/desktop typecheck`; `pnpm -C apps/desktop lint`; `pnpm -C apps/desktop test`
 when src-tauri changed: `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml`
-builder: the `always` set for the side it touched (Python or desktop)
+builder: the `always` set for the side it touched (Python or desktop); when a gate's output is piped (`| tail`), run it under `set -o pipefail` - a piped failure once reached a commit
 
 ## Rituals
 none
@@ -34,3 +34,7 @@ default
 - 2026-10-26: the Bash tool mis-parses long heredocs containing apostrophes; write files with Write and keep shell scripts short.
 - 2026-10-27 (chore-onboarding-v2): plan-only spark; scouting the parked plan of record first turned the supersede question into one click.
 - 2026-10-28 (business-channel): athena-portable (sibling, built browser + gate + MCP client) was missed by targeting and surfaced only via the owner's doctrine; scout `../athena-*` sibling repos for prior art in Phase 2 of any spark touching hands, engines or apps.
+- 2026-10-29 (onboarding-v2 build): a generated fixture in exact wire shape, produced through the daemon's own rules and used as the store's oracle, caught three contract gaps before any view was built (an extra event field, the open question not stored, the quote not kept). Generate fixtures through the real code, never by hand.
+- 2026-10-29: parallel UI builders need distinct dev-server ports written into each brief, and `pnpm -C <dir> dev -- --port N` passes a literal `--` to Vite: use `pnpm -C <dir> exec vite --port N --strictPort`.
+- 2026-10-29: `uv run <daemon>` starts the daemon as a child; terminating the wrapper leaves it serving its port, and a later run silently talked to the stale one. End the process tree (`taskkill /T`) and assert the engine you asked for answered.
+- 2026-10-29: the live seam on the built app found the one defect no unit test could (an authored world whose last phase could not act: 1 of 5). Measure the fix live before and after; it scored 5 of 5.
