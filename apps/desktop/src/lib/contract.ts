@@ -791,6 +791,8 @@ export interface Connection {
   last_checked?: string;
   /** Plain words. */
   problem?: string;
+  /** Until connected: how to connect, in plain words (Gmail: your own Google client). */
+  guide?: string;
 }
 
 export interface ConnectionList {
@@ -802,6 +804,8 @@ export interface ConnectFlow {
   state: ConnectState;
   /** Plain words. */
   detail?: string;
+  /** While waiting: Google's sign-in page, for when the browser did not open. */
+  url?: string;
 }
 
 export interface NewTwinBody {

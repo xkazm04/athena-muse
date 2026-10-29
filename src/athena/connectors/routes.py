@@ -1,41 +1,76 @@
-"""Routes over connected accounts: the list, connect (Google sign-in or a Notion key), the sign-in
-flow, disconnect and probe.
+"""Routes over connected accounts (ADR 0008): the list, connect (Google sign-in or a Notion key),
+the sign-in flow, disconnect and probe.
 
-Stubs for now: every route is registered and answers 501 naming the work package that builds it.
-A package replaces its stubs with handlers and deletes their rows from `tests/test_twin_stubs.py`.
+`GET /connectors` -> `ConnectionList`; `POST /connectors/{kind}/connect {client_id, client_secret}`
+or `{key}` -> `ConnectFlow`; `GET /connectors/{kind}/flow` -> `ConnectFlow`;
+`POST /connectors/{kind}/disconnect` and `/probe` -> `Connection`. Connecting, disconnecting and
+probing may dial a service, so they run off the event loop. Nothing here is, returns or logs a
+credential: the body's values go to the vault and nowhere else.
 """
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from typing import Any
 
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from athena.app import Daemon
-from athena.contracts import ROUTES
+from athena.connectors.part import KINDS
+from athena.contracts import ROUTES, ChannelKind, ConnectBody
 from athena.errors import ApiError
 
-# (route key, methods, the package that builds it)
-STUBS: tuple[tuple[str, tuple[str, ...], str], ...] = (
-    ("connectors", ("GET",), "WP2"),
-    ("connector_connect", ("POST",), "WP2"),
-    ("connector_flow", ("GET",), "WP2"),
-    ("connector_disconnect", ("POST",), "WP2"),
-    ("connector_probe", ("POST",), "WP2"),
-)
+BODY_KEYS = ("client_id", "client_secret", "key")
 
 
-def not_built(package: str) -> Callable[[Request], Awaitable[Response]]:
-    """A handler that answers 501 `{error: "bad_request", reason: "not built yet: <package>"}`."""
+def _kind(request: Request) -> ChannelKind:
+    kind = request.path_params["kind"]
+    for known in KINDS:
+        if kind == known:
+            return known
+    raise ApiError("unknown_ref", f"there is no {kind} to connect; one of {', '.join(KINDS)}")
 
-    async def stub(_: Request) -> Response:
-        return ApiError("bad_request", f"not built yet: {package}", status=501).response()
 
-    return stub
+async def _connect_body(request: Request) -> ConnectBody:
+    try:
+        data: Any = await request.json()
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        raise ApiError("bad_request", "send a JSON object")
+    if set(data) - set(BODY_KEYS) or not all(isinstance(v, str) for v in data.values()):
+        raise ApiError("bad_request", "send client_id and client_secret, or key, as text")
+    body: ConnectBody = {}
+    for name in BODY_KEYS:
+        if name in data:
+            body[name] = data[name]  # type: ignore[literal-required]
+    return body
 
 
 def routes(daemon: Daemon) -> list[BaseRoute]:
-    del daemon  # the stubs need nothing yet
-    return [Route(ROUTES[key], not_built(package), methods=list(methods)) for key, methods, package in STUBS]
+    async def connections(_: Request) -> Response:
+        return JSONResponse(daemon.connectors.connections())
+
+    async def connect(request: Request) -> Response:
+        kind = _kind(request)
+        body = await _connect_body(request)
+        return JSONResponse(await run_in_threadpool(daemon.connectors.connect, kind, body))
+
+    async def flow(request: Request) -> Response:
+        return JSONResponse(daemon.connectors.flow(_kind(request)))
+
+    async def disconnect(request: Request) -> Response:
+        return JSONResponse(await run_in_threadpool(daemon.connectors.disconnect, _kind(request)))
+
+    async def probe(request: Request) -> Response:
+        return JSONResponse(await run_in_threadpool(daemon.connectors.probe, _kind(request)))
+
+    return [
+        Route(ROUTES["connectors"], connections, methods=["GET"]),
+        Route(ROUTES["connector_connect"], connect, methods=["POST"]),
+        Route(ROUTES["connector_flow"], flow, methods=["GET"]),
+        Route(ROUTES["connector_disconnect"], disconnect, methods=["POST"]),
+        Route(ROUTES["connector_probe"], probe, methods=["POST"]),
+    ]

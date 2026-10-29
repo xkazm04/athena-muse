@@ -878,6 +878,7 @@ class Connection(TypedDict):
     account: NotRequired[str]
     last_checked: NotRequired[str]
     problem: NotRequired[str]  # plain words
+    guide: NotRequired[str]  # until connected: how to connect, in plain words (Gmail: your own Google client)
 
 
 class ConnectionList(TypedDict):
@@ -889,6 +890,7 @@ class ConnectFlow(TypedDict):
 
     state: ConnectState
     detail: NotRequired[str]  # plain words
+    url: NotRequired[str]  # while waiting: Google's sign-in page, for when the browser did not open
 
 
 class NewTwinBody(TypedDict):

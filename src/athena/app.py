@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from athena.busy import Busy
+from athena.connectors.part import Connectors
 from athena.conversation import Conversation
 from athena.drafts.store import Drafts
 from athena.events import Events
@@ -30,6 +31,7 @@ class Daemon:
     settings: Settings
     gate: Gate
     drafts: Drafts
+    connectors: Connectors  # connected accounts (ADR 0008); nothing on disk or on the wire without a data dir
 
     @classmethod
     def open(cls, data_dir: Path | None) -> Daemon:
@@ -50,6 +52,7 @@ class Daemon:
             settings=Settings(store),
             gate=Gate(store, events),
             drafts=Drafts(store, data_dir),
+            connectors=Connectors.open(data_dir),
         )
 
     def active_space(self) -> str:

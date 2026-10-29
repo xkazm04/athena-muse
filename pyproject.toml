@@ -10,6 +10,11 @@ dependencies = [
   "httpx>=0.27",
 ]
 
+# The keyring seal for connected accounts off Windows (ADR 0008); Windows seals with DPAPI and needs
+# nothing. Without it, elsewhere, a credential rests in an owner-only file that says so.
+[project.optional-dependencies]
+connectors = ["keyring>=25"]
+
 [project.scripts]
 athena-daemon = "athena.server:main"
 

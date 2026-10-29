@@ -31,14 +31,9 @@ STUBS = (
     ("POST", "twin_pause", "WP3"),
     ("POST", "twin_missions", "WP4"),
     ("GET", "twin_mission", "WP4"),
-    ("GET", "connectors", "WP2"),
-    ("POST", "connector_connect", "WP2"),
-    ("GET", "connector_flow", "WP2"),
-    ("POST", "connector_disconnect", "WP2"),
-    ("POST", "connector_probe", "WP2"),
 )
 
-PARAMS = {"id": "tw_000000000000", "mid": "ms_000000000000", "kind": "gmail"}
+PARAMS = {"id": "tw_000000000000", "mid": "ms_000000000000"}
 
 
 @pytest.mark.parametrize(("method", "key", "package"), STUBS)
