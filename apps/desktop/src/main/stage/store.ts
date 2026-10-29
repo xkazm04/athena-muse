@@ -5,7 +5,7 @@
 
 import { create } from "zustand";
 import * as api from "../../lib/api";
-import type { AuthorEvent, Coverage, Draft, RehearsalEvent, SayBody, StageView } from "../../lib/contract";
+import type { AuthorEvent, Coverage, Draft, PracticeApp, RehearsalEvent, SayBody, StageView } from "../../lib/contract";
 import { DaemonError } from "../../lib/daemon";
 import { reasonOf } from "../store";
 import { DROP_MS, LINE_MAX, LINES_MAX, applyOps, allMarked, isAgreed, isPencil, keyOf, openSlots } from "./select";
@@ -91,8 +91,9 @@ function skipOpen(cov: Coverage): Coverage {
 }
 
 /** The step a draft leaves when the written chore changes: the later steps' results are stale. */
-function written(draft: Draft, chore_id: string): Draft {
-  const out: Draft = { ...draft, step: "preview", chore_id };
+function written(draft: Draft, chore_id: string, practice: PracticeApp[]): Draft {
+  const out: Draft = { ...draft, step: "preview", chore_id, practice };
+  delete out.ask;
   delete out.expected;
   delete out.key;
   delete out.bench;
@@ -112,8 +113,12 @@ export function reduce(state: StageState, event: StageEvent): StageState {
   const d = state.draft;
   const frame = state.frame;
   switch (event.type) {
-    case "draft":
-      return withDraft(state, event.draft);
+    case "draft": {
+      // A reopened stage shows the question the draft still holds open.
+      const next = withDraft(state, event.draft);
+      if (frame.ask || !event.draft.ask || event.draft.step !== "shape") return next;
+      return { ...next, frame: { ...next.frame, ask: event.draft.ask } };
+    }
     case "start":
       return {
         ...state,
@@ -130,9 +135,14 @@ export function reduce(state: StageState, event: StageEvent): StageState {
     }
     case "ask":
       return { ...state, frame: { ...frame, ask: event.ask }, replyAsked: true };
-    case "coverage":
+    case "coverage": {
+      // The reply counted (drafts/shape.py `settle`): the draft keeps this reply's question, or none.
       if (!d) return state;
-      return { ...state, draft: { ...d, coverage: event.coverage, agreed: event.agreed, step: "shape" } };
+      const settled: Draft = { ...d, coverage: event.coverage, agreed: event.agreed, step: "shape" };
+      if (state.replyAsked && frame.ask) settled.ask = frame.ask;
+      else delete settled.ask;
+      return { ...state, draft: settled };
+    }
     case "done":
       return {
         ...state,
@@ -156,7 +166,7 @@ export function reduce(state: StageState, event: StageEvent): StageState {
       return {
         ...state,
         author: [...state.author, event],
-        draft: d ? written(d, event.chore_id) : d,
+        draft: d ? written(d, event.chore_id, event.practice) : d,
         work: null,
         frame: { ...frame, phase: "idle" },
         marks: {},

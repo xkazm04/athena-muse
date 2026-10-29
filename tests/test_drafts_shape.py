@@ -534,3 +534,20 @@ def test_a_reply_that_does_not_count_is_not_counted(daemon: Daemon) -> None:
     events = list(shape.say(daemon, Stage(("", [])), draft_id, "", None, "drawing"))  # type: ignore[arg-type]
     assert events[-1]["type"] == "error"
     assert "views" not in daemon.drafts.get(draft_id)
+
+
+def test_the_persons_node_keeps_its_quote_and_the_open_question_is_kept(client: TestClient) -> None:
+    draft = new_draft(client)
+    first = say(client, draft["id"])
+    node = of(first, "sketch")[0]["ops"][0]["node"]
+    assert node["origin"] == "you" and node["quote"] and node["quote"].casefold() in NEED.casefold()
+    stored = client.get(f"/drafts/{draft['id']}", headers=H).json()
+    assert stored["ask"] == of(first, "ask")[0]["ask"]  # a reopened stage shows the open question
+
+
+def test_a_proposal_never_carries_a_quote() -> None:
+    from athena.drafts.sketch import apply, empty
+
+    node = {"id": "a", "kind": "app", "slot": "apps", "label": "Mail", "origin": "athena", "confirmed": False}
+    sketch, _ = apply(empty(), [{"op": "add", "node": {**node, "quote": "my own words here"}}])  # type: ignore[typeddict-item]
+    assert "quote" not in sketch["nodes"][0]

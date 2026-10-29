@@ -92,6 +92,8 @@ export interface SketchNode {
   origin: NodeOrigin;
   confirmed: boolean;
   detail?: string;
+  /** On the person's nodes: their own words it was drawn from, verbatim. */
+  quote?: string;
 }
 
 export interface SketchEdge {
@@ -120,6 +122,18 @@ export interface Ask {
 }
 
 export type Coverage = Record<Slot, CoverageValue>;
+
+/** One invented app of a written chore, as the person sees it on the stage. */
+export interface PracticeApp {
+  app_id: string;
+  name: string;
+  /** What she can look at there, in plain words. */
+  reads: string[];
+  /** What she can do there (each waits for a signature). */
+  acts: string[];
+  /** Invented rows across the tables she reads there. */
+  rows: number;
+}
 
 /** A card Athena expects to file on her practice apps; the person's marks turn it into the key. */
 export interface ExpectedCard {
@@ -171,6 +185,10 @@ export interface Draft {
   created: string;
   updated: string;
   chore_id?: string;
+  /** Once written: her practice apps. */
+  practice?: PracticeApp[];
+  /** While shaping: the question still open, so a reopened stage shows it. */
+  ask?: Ask;
   expected?: ExpectedCard[];
   key?: DraftKey;
   bench?: BenchSummary;
@@ -220,7 +238,7 @@ export interface VerdictBody {
 export type AuthorEvent =
   | { type: "writing" }
   | { type: "repair"; problems: string[] }
-  | { type: "written"; chore_id: string }
+  | { type: "written"; chore_id: string; practice: PracticeApp[] }
   | { type: "author_failed"; problems: string[] }
   | { type: "error"; error: ErrorWord; reason: string };
 

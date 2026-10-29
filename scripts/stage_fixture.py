@@ -67,12 +67,17 @@ def draft(base: Draft, **changes: Any) -> Draft:
     return cast("Draft", out)
 
 
-def wire_ops(raw: list[dict[str, Any]]) -> list[SketchOp]:
-    """The source's ops as the daemon takes them: an added node's origin decides `confirmed`."""
+def wire_ops(raw: list[dict[str, Any]], said: list[str]) -> list[SketchOp]:
+    """The source's ops as the daemon takes them: an added node's origin decides `confirmed`, and a
+    node is the person's only with a quote found in their own words (the daemon's rule)."""
     out: list[SketchOp] = []
     for op in raw:
         if op["op"] == "add":
-            node = {k: v for k, v in op["node"].items() if k != "quote"}
+            node = dict(op["node"])
+            if node["origin"] == "you":
+                quote = node.get("quote", "")
+                if len(quote.split()) < 3 or not any(quote.casefold() in s.casefold() for s in said):
+                    raise SystemExit(f"node {node['id']}: quote {quote!r} is not in the person's words")
             node["confirmed"] = node["origin"] == "you"
             out.append(cast("SketchOp", {"op": "add", "node": node}))
         else:
@@ -100,14 +105,20 @@ def build() -> dict[str, Any]:
     )
     first = current
     frames: list[dict[str, Any]] = []
+    said = [src["need"]]
     for i, f in enumerate(src["frames"]):
         user = f["user"]
         say: dict[str, Any] = {"text": "" if i == 0 else user.get("text", "")}
         if user.get("choice"):
             say = {"text": "", "choice": user["choice"]}
-        sketch, applied = apply(current["sketch"], wire_ops(f["ops"]))
+        said.append(user.get("choice") or user.get("text", ""))
+        sketch, applied = apply(current["sketch"], wire_ops(f["ops"], said))
         updated = clock.tick(f["elapsed_s"])
         current = draft(current, step="shape", sketch=sketch, updated=updated)
+        if f.get("ask"):
+            current["ask"] = f["ask"]
+        else:
+            cast("dict[str, Any]", current).pop("ask", None)
         turn_id = f"turn_00000000{i:04x}"
         events: list[dict[str, Any]] = [
             {"type": "start", "turn_id": turn_id, "engine": "claude_code", "simulated": False},
@@ -132,7 +143,21 @@ def build() -> dict[str, Any]:
         {"at_s": e["elapsed_s"], "event": {"type": e["t"], **{k: e[k] for k in fields[e["t"]]}}}
         for e in a["events"]
     ]
-    written = draft(agreed_draft, step="preview", chore_id=CHORE_ID, updated=clock.tick(73))
+    practice = [
+        {
+            "app_id": APP_IDS[x["name"]],
+            "name": x["name"].removesuffix(" (practice)"),
+            "reads": x["reads"],
+            "acts": x["acts"],
+            "rows": x["rows"],
+        }
+        for x in a["practice_apps"]
+    ]
+    author[-1]["event"]["practice"] = practice
+    stale = {k: v for k, v in agreed_draft.items() if k != "ask"}
+    written = draft(
+        cast("Draft", stale), step="preview", chore_id=CHORE_ID, practice=practice, updated=clock.tick(73)
+    )
     failed = a["failed_alternative"]
     author_failed = [
         {"at_s": 0, "event": {"type": "writing"}},
@@ -187,11 +212,11 @@ def build() -> dict[str, Any]:
                     "space_id": REHEARSAL_SPACE,
                     "action": "portal_act",
                     "label": c["label"],
-                    "args": {
-                        "chore": CHORE_ID,
+                    "args": {  # as the daemon files a portal card: app, tool, params, chore
                         "app": APP_IDS[c["app"]],
                         "tool": c["tool"],
-                        "line": c["key"],
+                        "params": {"line_id": c["key"]},
+                        "chore": CHORE_ID,
                     },
                     "state": "waiting",
                     "created": (START + timedelta(seconds=e["at_s"])).isoformat().replace("+00:00", "Z"),

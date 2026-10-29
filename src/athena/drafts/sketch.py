@@ -102,6 +102,8 @@ def _add(sketch: Sketch, raw: dict[str, Any]) -> SketchOp:
     detail = _detail(raw["detail"]) if raw.get("detail") is not None else ""
     if detail:
         node["detail"] = detail
+    if node["origin"] == "you" and isinstance(raw.get("quote"), str) and raw["quote"].strip():
+        node["quote"] = _detail(raw["quote"])  # the caller proved it is the person's words
     sketch["nodes"].append(node)
     return {"op": "add", "node": copy.deepcopy(node)}
 

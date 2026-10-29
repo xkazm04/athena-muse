@@ -49,6 +49,11 @@ def test_write_from_an_agreed_draft_yields_a_folder_load_chore_accepts(daemon: D
     assert json.loads((root / "truth.json").read_text(encoding="utf-8")) == {"targets": [], "forbidden": []}
     stored = daemon.drafts.get(draft["id"])
     assert stored["step"] == "preview" and stored["chore_id"] == chore_id
+    assert "ask" not in stored  # the sketch's open question ends with the sketch
+    practice = stored["practice"]
+    assert practice == events[-1]["practice"] and [p["app_id"] for p in practice] == ["school", "club"]
+    assert practice[0]["name"] == "Maple School portal" and practice[0]["rows"] > 0
+    assert practice[0]["reads"] and all(isinstance(x, str) for p in practice for x in p["reads"] + p["acts"])
     rows = daemon.ledger.page(10)["rows"]
     assert [(r["surface"], r["space_id"], r["ok"]) for r in rows] == [("design", draft["space_id"], True)]
 
@@ -149,7 +154,7 @@ def test_the_chore_id_is_unique_across_both_libraries(
     monkeypatch.setenv(PLAYBOOKS_ENV, str(library))
     draft = agreed_draft(daemon)
     events = write(daemon, Fake(), draft["id"])
-    assert events[-1] == {"type": "written", "chore_id": "the-club-invoice-checked-against-3"}
+    assert (events[-1]["type"], events[-1]["chore_id"]) == ("written", "the-club-invoice-checked-against-3")
 
 
 def test_slugs_are_short_ids_cut_at_a_word() -> None:

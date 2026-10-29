@@ -301,6 +301,7 @@ class SketchNode(TypedDict):
     origin: NodeOrigin  # "you": the person's own words, confirmed when added; "athena": a proposal
     confirmed: bool
     detail: NotRequired[str]
+    quote: NotRequired[str]  # on the person's nodes: their own words it was drawn from, verbatim
 
 
 # `from` is a Python keyword, so this one is spelled the functional way.
@@ -336,6 +337,16 @@ class Coverage(TypedDict):
     hand: CoverageValue
     output: CoverageValue
     never: CoverageValue
+
+
+class PracticeApp(TypedDict):
+    """One invented app of a written chore, as the person sees it on the stage."""
+
+    app_id: str
+    name: str
+    reads: list[str]  # what she can look at there, in plain words
+    acts: list[str]  # what she can do there (each waits for a signature)
+    rows: int  # invented rows across the tables she reads there
 
 
 class ExpectedCard(TypedDict):
@@ -392,6 +403,8 @@ class Draft(TypedDict):
     created: str
     updated: str
     chore_id: NotRequired[str]  # once written
+    practice: NotRequired[list[PracticeApp]]  # once written: her practice apps
+    ask: NotRequired[Ask]  # while shaping: the question still open, so a reopened stage shows it
     expected: NotRequired[list[ExpectedCard]]  # once previewed
     key: NotRequired[DraftKey]  # once marked
     bench: NotRequired[BenchSummary]  # once a test run has finished
@@ -506,6 +519,7 @@ class AuthorRepair(TypedDict):
 class AuthorWritten(TypedDict):
     type: Literal["written"]
     chore_id: str
+    practice: list[PracticeApp]
 
 
 class AuthorFailed(TypedDict):

@@ -143,15 +143,27 @@ const SMALL = new Set(["a", "an", "the", "and", "or", "of", "to", "in", "on", "a
 const WORD = /[\p{L}\p{N}$']+/gu;
 
 /**
- * Where the person's own pieces sit in their sentence. The wire does not carry the quote a piece
- * came from, so this finds, per piece in the person's words, the longest run of two or more words
- * its label shares with the sentence (not only small words). Marks never overlap; the earlier wins.
+ * Where the person's own pieces sit in their sentence: the piece's quote, found verbatim (the daemon
+ * proved it is the person's words). A piece without one (an older draft) falls back to the longest
+ * run of two or more words its label shares with the sentence. Marks never overlap; the earlier wins.
  */
+/** A practice app's plain name by its id, from the written chore; the id when it is not known. */
+export function appNameOf(draft: Draft | null): (appId: string) => string {
+  const names = new Map((draft?.practice ?? []).map((a) => [a.app_id, a.name]));
+  return (appId) => names.get(appId) ?? appId;
+}
+
 export function needMarks(need: string, nodes: readonly SketchNode[]): NeedMark[] {
   const words = [...need.matchAll(WORD)].map((m) => ({ w: norm(m[0]), start: m.index, end: m.index + m[0].length }));
   const found: NeedMark[] = [];
+  const lower = need.toLowerCase();
   for (const node of nodes) {
     if (node.origin !== "you") continue;
+    if (node.quote) {
+      const at = lower.indexOf(node.quote.toLowerCase());
+      if (at >= 0) found.push({ node_id: node.id, start: at, end: at + node.quote.length });
+      if (at >= 0) continue;
+    }
     const label = [...node.label.matchAll(WORD)].map((m) => norm(m[0]));
     let best: { i: number; n: number } | null = null;
     for (let i = 0; i < words.length; i++) {

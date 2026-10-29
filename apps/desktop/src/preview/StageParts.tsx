@@ -30,7 +30,7 @@ import {
   VerdictActions,
   VerdictRows,
 } from "../main/stage/parts";
-import { authorOf, isPencil, needMarks, runOf, scoreOf, sealOf, shownSketch, stepOf } from "../main/stage/select";
+import { appNameOf, authorOf, isPencil, needMarks, runOf, scoreOf, sealOf, shownSketch, stepOf } from "../main/stage/select";
 import type { ReplyPhase, StageAction, StageState } from "../main/stage/types";
 import { STAGE_WORDS } from "../main/stage/words";
 import type { SpaceSummary } from "../lib/contract";
@@ -153,11 +153,9 @@ export function PartsBoard({ state, phase, clock, dispatch, project, chore }: Pa
           </Slot>
           <Slot name="Practice-app tiles">
             <div className="pv-row">
-              {d.sketch.nodes
-                .filter((n) => n.slot === "apps")
-                .map((n) => (
-                  <PracticeTile key={n.id} name={n.label} words={w} />
-                ))}
+              {(d.practice ?? []).map((a) => (
+                <PracticeTile key={a.app_id} name={a.name} reads={a.reads} does={a.acts} rows={a.rows} words={w} />
+              ))}
             </div>
           </Slot>
         </>
@@ -218,7 +216,7 @@ export function PartsBoard({ state, phase, clock, dispatch, project, chore }: Pa
       {d && step === "rehearse" && (
         <Slot name={w.running}>
           <RunProgress label={w.running} elapsedS={clock} aboutS={240} words={w} />
-          <PhaseList phases={run.phases} done={false} words={w} />
+          <PhaseList phases={run.phases} done={false} appName={appNameOf(d)} words={w} />
           <FiledCards cards={run.cards} words={w} />
         </Slot>
       )}
@@ -226,7 +224,7 @@ export function PartsBoard({ state, phase, clock, dispatch, project, chore }: Pa
       {d && step === "verdict" && score && (
         <Slot name="Score, her cards beside your marks">
           <ScoreLine score={score} words={w} />
-          <PhaseList phases={run.phases} done words={w} />
+          <PhaseList phases={run.phases} done appName={appNameOf(d)} words={w} />
           <VerdictRows score={score} words={w} />
           <VerdictActions
             onKeep={() => dispatch({ type: "verdict", verdict: "keep" })}

@@ -184,7 +184,12 @@ describe("selectors", () => {
   it("marks the person's phrases in their sentence, never overlapping", () => {
     const marks = needMarks(STAGED.need, after(0).sketch.nodes);
     const text = marks.map((m) => STAGED.need.slice(m.start, m.end).toLowerCase());
-    expect(text).toContain("school portal");
+    // the quotes the person's pieces were drawn from, verbatim (the winners' three marks)
+    expect(text).toEqual([
+      "check the after-school club's invoice against the days my kids actually went",
+      "the school portal has attendance",
+      "dispute the extra days",
+    ]);
     for (let i = 1; i < marks.length; i++) expect(marks[i]!.start).toBeGreaterThanOrEqual(marks[i - 1]!.end);
   });
 

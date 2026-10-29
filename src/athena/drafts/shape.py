@@ -229,6 +229,10 @@ class Design:
         if self.ask is not None:
             asked[self.ask["slot"]] = asked.get(self.ask["slot"], 0) + 1
         draft = cast("Draft", {**self.draft, "sketch": self.sketch, "step": "shape"})
+        if self.ask is not None:  # the open question is kept, so a reopened stage shows it
+            draft["ask"] = self.ask
+        else:
+            cast("dict[str, Any]", draft).pop("ask", None)
         if self.view is not None:  # the comparison between the stage's views counts only replies that count
             views = dict(self.draft.get("views", {}))
             views[self.view] = views.get(self.view, 0) + 1
@@ -313,6 +317,7 @@ class Design:
         if _arg(call, "detail"):
             node["detail"] = _arg(call, "detail")
         if theirs:
+            node["quote"] = _plain(quote).strip(_QUOTE_MARKS)
             return node, " It is in the person's own words, so it is theirs."
         if quote:
             return node, " That quote is not in the person's own words, so it stays your proposal."

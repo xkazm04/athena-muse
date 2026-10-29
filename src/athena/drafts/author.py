@@ -31,7 +31,7 @@ from athena.chores.spec import (
     load_chore,
     load_library,
 )
-from athena.contracts import REPAIRS_MAX, Draft
+from athena.contracts import REPAIRS_MAX, Draft, PracticeApp
 from athena.drafts.rubric import SLOTS
 from athena.drafts.shape import SLOT_MEANING
 from athena.engine import Engine, EngineError, TextDelta, Usage
@@ -179,6 +179,29 @@ def key_param(chore: Chore, app_id: str, tool: str) -> str:
         return ""
     marked = [p for p, spec in t.params.items() if spec.get("key") is True]
     return marked[0] if marked else next(iter(t.params))
+
+
+def _clause(text: str) -> str:
+    """A tool's description as one short line: its first sentence, without the closing stop."""
+    first = " ".join(text.split()).split(". ")[0]
+    return first.rstrip(".")
+
+
+def practice(chore: Chore) -> list[PracticeApp]:
+    """Her practice apps as the stage shows them: what she reads and does there, and the rows."""
+    out: list[PracticeApp] = []
+    for a in chore.apps:
+        tables = {str(t.returns.get("table")) for t in a.tools if t.kind == "READ" and t.returns.get("table")}
+        out.append(
+            {
+                "app_id": a.app_id,
+                "name": a.name,
+                "reads": [_clause(t.description) or t.name for t in a.tools if t.kind == "READ"],
+                "acts": [_clause(t.description) or t.name for t in a.tools if t.kind != "READ"],
+                "rows": sum(len(chore.tables.get(name, [])) for name in tables),
+            }
+        )
+    return out
 
 
 def act_tools(chore: Chore) -> list[tuple[str, str]]:
@@ -579,11 +602,12 @@ def _write(daemon: Daemon, engine: Engine, draft_id: str, folder: Path) -> Itera
             problems, chore_id = _attempt(answer, folder, chore_id, draft, taken)
             if not problems and chore_id is not None:
                 done = cast("dict[str, Any]", dict(daemon.drafts.get(draft_id)))
-                done.update(step="preview", chore_id=chore_id)
-                for stale in ("expected", "key", "bench", "verdict", "note"):
+                apps = practice(load_chore(folder / chore_id, origin="yours"))
+                done.update(step="preview", chore_id=chore_id, practice=apps)
+                for stale in ("ask", "expected", "key", "bench", "verdict", "note"):
                     done.pop(stale, None)
                 daemon.drafts.put(cast("Draft", done))
-                yield {"type": "written", "chore_id": chore_id}
+                yield {"type": "written", "chore_id": chore_id, "practice": apps}
                 return
             if attempt < REPAIRS_MAX:
                 yield {"type": "repair", "problems": [plain(p) for p in problems]}

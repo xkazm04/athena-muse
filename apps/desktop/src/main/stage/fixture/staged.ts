@@ -56,7 +56,8 @@ export const STAGED: Staged = {
                 "slot": "need",
                 "label": "Check the club invoice against real attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "check the after-school club's invoice against the days my kids actually went"
               }
             },
             {
@@ -79,7 +80,8 @@ export const STAGED: Staged = {
                 "slot": "apps",
                 "label": "School portal: attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "the school portal has attendance"
               }
             },
             {
@@ -101,7 +103,8 @@ export const STAGED: Staged = {
                 "slot": "output",
                 "label": "Dispute for the extra days",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "dispute the extra days"
               }
             },
             {
@@ -172,7 +175,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -189,7 +193,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -205,7 +210,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             }
           ],
           "edges": [
@@ -234,7 +240,17 @@ export const STAGED: Staged = {
           "output": 1,
           "never": 0
         },
-        "agreed": false
+        "agreed": false,
+        "ask": {
+          "slot": "apps",
+          "text": "Where does the invoice arrive, and where do you dispute it?",
+          "suggestions": [
+            "Email PDF, I reply to billing",
+            "The club's parent portal, both",
+            "Email in, dispute on the portal"
+          ],
+          "follow_up": 0
+        }
       }
     },
     {
@@ -278,7 +294,8 @@ export const STAGED: Staged = {
                 "label": "Brightside Parents portal",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "billing queries"
+                "detail": "billing queries",
+                "quote": "dispute on the portal"
               }
             },
             {
@@ -360,7 +377,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -377,7 +395,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -393,7 +412,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             },
             {
               "id": "n6",
@@ -402,7 +422,8 @@ export const STAGED: Staged = {
               "label": "Brightside Parents portal",
               "origin": "you",
               "confirmed": true,
-              "detail": "billing queries"
+              "detail": "billing queries",
+              "quote": "dispute on the portal"
             },
             {
               "id": "n7",
@@ -451,7 +472,17 @@ export const STAGED: Staged = {
           "output": 1,
           "never": 0
         },
-        "agreed": false
+        "agreed": false,
+        "ask": {
+          "slot": "inputs",
+          "text": "Which kids are on the invoice, and what does a day cost?",
+          "suggestions": [
+            "Mila and Teo, $18 a day each",
+            "Just one child",
+            "It varies by day"
+          ],
+          "follow_up": 0
+        }
       },
       "confirm": {
         "node_ids": [
@@ -470,7 +501,8 @@ export const STAGED: Staged = {
                 "slot": "need",
                 "label": "Check the club invoice against real attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "check the after-school club's invoice against the days my kids actually went"
               },
               {
                 "id": "n2",
@@ -487,7 +519,8 @@ export const STAGED: Staged = {
                 "slot": "apps",
                 "label": "School portal: attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "the school portal has attendance"
               },
               {
                 "id": "n4",
@@ -503,7 +536,8 @@ export const STAGED: Staged = {
                 "slot": "output",
                 "label": "Dispute for the extra days",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "dispute the extra days"
               },
               {
                 "id": "n6",
@@ -512,7 +546,8 @@ export const STAGED: Staged = {
                 "label": "Brightside Parents portal",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "billing queries"
+                "detail": "billing queries",
+                "quote": "dispute on the portal"
               },
               {
                 "id": "n7",
@@ -561,7 +596,17 @@ export const STAGED: Staged = {
             "output": 1,
             "never": 0
           },
-          "agreed": false
+          "agreed": false,
+          "ask": {
+            "slot": "inputs",
+            "text": "Which kids are on the invoice, and what does a day cost?",
+            "suggestions": [
+              "Mila and Teo, $18 a day each",
+              "Just one child",
+              "It varies by day"
+            ],
+            "follow_up": 0
+          }
         }
       }
     },
@@ -594,7 +639,8 @@ export const STAGED: Staged = {
                 "label": "Invoice lines",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "Mila and Teo, $18 a day"
+                "detail": "Mila and Teo, $18 a day",
+                "quote": "Mila and Teo, $18 a day each"
               }
             },
             {
@@ -687,7 +733,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -704,7 +751,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -720,7 +768,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             },
             {
               "id": "n6",
@@ -729,7 +778,8 @@ export const STAGED: Staged = {
               "label": "Brightside Parents portal",
               "origin": "you",
               "confirmed": true,
-              "detail": "billing queries"
+              "detail": "billing queries",
+              "quote": "dispute on the portal"
             },
             {
               "id": "n7",
@@ -746,7 +796,8 @@ export const STAGED: Staged = {
               "label": "Invoice lines",
               "origin": "you",
               "confirmed": true,
-              "detail": "Mila and Teo, $18 a day"
+              "detail": "Mila and Teo, $18 a day",
+              "quote": "Mila and Teo, $18 a day each"
             },
             {
               "id": "n9",
@@ -815,7 +866,17 @@ export const STAGED: Staged = {
           "output": 1,
           "never": 0
         },
-        "agreed": false
+        "agreed": false,
+        "ask": {
+          "slot": "inputs",
+          "text": "Should days the club was closed count as extra too?",
+          "suggestions": [
+            "Yes, closed means not billed",
+            "No, only absences",
+            "Only if no replacement was offered"
+          ],
+          "follow_up": 1
+        }
       }
     },
     {
@@ -910,7 +971,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -927,7 +989,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -943,7 +1006,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             },
             {
               "id": "n6",
@@ -952,7 +1016,8 @@ export const STAGED: Staged = {
               "label": "Brightside Parents portal",
               "origin": "you",
               "confirmed": true,
-              "detail": "billing queries"
+              "detail": "billing queries",
+              "quote": "dispute on the portal"
             },
             {
               "id": "n7",
@@ -969,7 +1034,8 @@ export const STAGED: Staged = {
               "label": "Invoice lines",
               "origin": "you",
               "confirmed": true,
-              "detail": "Mila and Teo, $18 a day"
+              "detail": "Mila and Teo, $18 a day",
+              "quote": "Mila and Teo, $18 a day each"
             },
             {
               "id": "n9",
@@ -1054,7 +1120,17 @@ export const STAGED: Staged = {
           "output": 1,
           "never": 0
         },
-        "agreed": false
+        "agreed": false,
+        "ask": {
+          "slot": "hand",
+          "text": "What should I prepare, and what waits for you?",
+          "suggestions": [
+            "Each billing query waits for my yes",
+            "Send them all once I've seen the list",
+            "Only queries over $50 wait"
+          ],
+          "follow_up": 0
+        }
       },
       "confirm": {
         "node_ids": [
@@ -1074,7 +1150,8 @@ export const STAGED: Staged = {
                 "slot": "need",
                 "label": "Check the club invoice against real attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "check the after-school club's invoice against the days my kids actually went"
               },
               {
                 "id": "n2",
@@ -1091,7 +1168,8 @@ export const STAGED: Staged = {
                 "slot": "apps",
                 "label": "School portal: attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "the school portal has attendance"
               },
               {
                 "id": "n4",
@@ -1107,7 +1185,8 @@ export const STAGED: Staged = {
                 "slot": "output",
                 "label": "Dispute for the extra days",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "dispute the extra days"
               },
               {
                 "id": "n6",
@@ -1116,7 +1195,8 @@ export const STAGED: Staged = {
                 "label": "Brightside Parents portal",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "billing queries"
+                "detail": "billing queries",
+                "quote": "dispute on the portal"
               },
               {
                 "id": "n7",
@@ -1133,7 +1213,8 @@ export const STAGED: Staged = {
                 "label": "Invoice lines",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "Mila and Teo, $18 a day"
+                "detail": "Mila and Teo, $18 a day",
+                "quote": "Mila and Teo, $18 a day each"
               },
               {
                 "id": "n9",
@@ -1218,7 +1299,17 @@ export const STAGED: Staged = {
             "output": 1,
             "never": 0
           },
-          "agreed": false
+          "agreed": false,
+          "ask": {
+            "slot": "hand",
+            "text": "What should I prepare, and what waits for you?",
+            "suggestions": [
+              "Each billing query waits for my yes",
+              "Send them all once I've seen the list",
+              "Only queries over $50 wait"
+            ],
+            "follow_up": 0
+          }
         }
       }
     },
@@ -1250,7 +1341,8 @@ export const STAGED: Staged = {
                 "slot": "hand",
                 "label": "Your yes on each billing query",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "Each billing query waits for my yes"
               }
             },
             {
@@ -1321,7 +1413,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -1338,7 +1431,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -1354,7 +1448,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             },
             {
               "id": "n6",
@@ -1363,7 +1458,8 @@ export const STAGED: Staged = {
               "label": "Brightside Parents portal",
               "origin": "you",
               "confirmed": true,
-              "detail": "billing queries"
+              "detail": "billing queries",
+              "quote": "dispute on the portal"
             },
             {
               "id": "n7",
@@ -1380,7 +1476,8 @@ export const STAGED: Staged = {
               "label": "Invoice lines",
               "origin": "you",
               "confirmed": true,
-              "detail": "Mila and Teo, $18 a day"
+              "detail": "Mila and Teo, $18 a day",
+              "quote": "Mila and Teo, $18 a day each"
             },
             {
               "id": "n9",
@@ -1412,7 +1509,8 @@ export const STAGED: Staged = {
               "slot": "hand",
               "label": "Your yes on each billing query",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Each billing query waits for my yes"
             }
           ],
           "edges": [
@@ -1477,7 +1575,17 @@ export const STAGED: Staged = {
           "output": 1,
           "never": 0
         },
-        "agreed": false
+        "agreed": false,
+        "ask": {
+          "slot": "steps",
+          "text": "Are there days that look extra but are still charged?",
+          "suggestions": [
+            "Same-day cancellations are still charged",
+            "No exceptions",
+            "Not sure, show me and I'll decide"
+          ],
+          "follow_up": 1
+        }
       }
     },
     {
@@ -1507,7 +1615,8 @@ export const STAGED: Staged = {
                 "slot": "never",
                 "label": "Leave same-day cancellations alone",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "Same-day cancellations are still charged"
               }
             },
             {
@@ -1519,7 +1628,8 @@ export const STAGED: Staged = {
                 "label": "Sign-out times",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "club register"
+                "detail": "club register",
+                "quote": "if I'm late for pickup after 6pm"
               }
             },
             {
@@ -1530,7 +1640,8 @@ export const STAGED: Staged = {
                 "slot": "steps",
                 "label": "Check late-pickup fees against sign-out",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "late for pickup after 6pm, check those too"
               }
             },
             {
@@ -1594,7 +1705,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -1611,7 +1723,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -1627,7 +1740,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             },
             {
               "id": "n6",
@@ -1636,7 +1750,8 @@ export const STAGED: Staged = {
               "label": "Brightside Parents portal",
               "origin": "you",
               "confirmed": true,
-              "detail": "billing queries"
+              "detail": "billing queries",
+              "quote": "dispute on the portal"
             },
             {
               "id": "n7",
@@ -1653,7 +1768,8 @@ export const STAGED: Staged = {
               "label": "Invoice lines",
               "origin": "you",
               "confirmed": true,
-              "detail": "Mila and Teo, $18 a day"
+              "detail": "Mila and Teo, $18 a day",
+              "quote": "Mila and Teo, $18 a day each"
             },
             {
               "id": "n9",
@@ -1685,7 +1801,8 @@ export const STAGED: Staged = {
               "slot": "hand",
               "label": "Your yes on each billing query",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Each billing query waits for my yes"
             },
             {
               "id": "n13",
@@ -1693,7 +1810,8 @@ export const STAGED: Staged = {
               "slot": "never",
               "label": "Leave same-day cancellations alone",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Same-day cancellations are still charged"
             },
             {
               "id": "n14",
@@ -1702,7 +1820,8 @@ export const STAGED: Staged = {
               "label": "Sign-out times",
               "origin": "you",
               "confirmed": true,
-              "detail": "club register"
+              "detail": "club register",
+              "quote": "if I'm late for pickup after 6pm"
             },
             {
               "id": "n15",
@@ -1710,7 +1829,8 @@ export const STAGED: Staged = {
               "slot": "steps",
               "label": "Check late-pickup fees against sign-out",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "late for pickup after 6pm, check those too"
             }
           ],
           "edges": [
@@ -1783,7 +1903,17 @@ export const STAGED: Staged = {
           "output": 1,
           "never": 1
         },
-        "agreed": true
+        "agreed": true,
+        "ask": {
+          "slot": "never",
+          "text": "Is there anything I must never do here?",
+          "suggestions": [
+            "Never pay the invoice",
+            "Never cancel a booking",
+            "Never contact the school"
+          ],
+          "follow_up": 0
+        }
       }
     },
     {
@@ -1814,7 +1944,8 @@ export const STAGED: Staged = {
                 "slot": "never",
                 "label": "Never pay the invoice",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "Never pay the invoice"
               }
             },
             {
@@ -1875,7 +2006,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -1892,7 +2024,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -1908,7 +2041,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             },
             {
               "id": "n6",
@@ -1917,7 +2051,8 @@ export const STAGED: Staged = {
               "label": "Brightside Parents portal",
               "origin": "you",
               "confirmed": true,
-              "detail": "billing queries"
+              "detail": "billing queries",
+              "quote": "dispute on the portal"
             },
             {
               "id": "n7",
@@ -1934,7 +2069,8 @@ export const STAGED: Staged = {
               "label": "Invoice lines",
               "origin": "you",
               "confirmed": true,
-              "detail": "Mila and Teo, $18 a day"
+              "detail": "Mila and Teo, $18 a day",
+              "quote": "Mila and Teo, $18 a day each"
             },
             {
               "id": "n9",
@@ -1966,7 +2102,8 @@ export const STAGED: Staged = {
               "slot": "hand",
               "label": "Your yes on each billing query",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Each billing query waits for my yes"
             },
             {
               "id": "n13",
@@ -1974,7 +2111,8 @@ export const STAGED: Staged = {
               "slot": "never",
               "label": "Leave same-day cancellations alone",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Same-day cancellations are still charged"
             },
             {
               "id": "n14",
@@ -1983,7 +2121,8 @@ export const STAGED: Staged = {
               "label": "Sign-out times",
               "origin": "you",
               "confirmed": true,
-              "detail": "club register"
+              "detail": "club register",
+              "quote": "if I'm late for pickup after 6pm"
             },
             {
               "id": "n15",
@@ -1991,7 +2130,8 @@ export const STAGED: Staged = {
               "slot": "steps",
               "label": "Check late-pickup fees against sign-out",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "late for pickup after 6pm, check those too"
             },
             {
               "id": "n16",
@@ -1999,7 +2139,8 @@ export const STAGED: Staged = {
               "slot": "never",
               "label": "Never pay the invoice",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Never pay the invoice"
             },
             {
               "id": "n17",
@@ -2080,7 +2221,17 @@ export const STAGED: Staged = {
           "output": 1,
           "never": 1
         },
-        "agreed": true
+        "agreed": true,
+        "ask": {
+          "slot": "output",
+          "text": "What should you have at the end of each month?",
+          "suggestions": [
+            "A short list: disputed days and the total",
+            "Just the filed queries",
+            "A line for my budget sheet"
+          ],
+          "follow_up": 0
+        }
       }
     },
     {
@@ -2111,7 +2262,8 @@ export const STAGED: Staged = {
                 "slot": "output",
                 "label": "Monthly list: disputed days and total",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "A short list: disputed days and the total"
               }
             },
             {
@@ -2260,7 +2412,8 @@ export const STAGED: Staged = {
               "slot": "need",
               "label": "Check the club invoice against real attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "check the after-school club's invoice against the days my kids actually went"
             },
             {
               "id": "n2",
@@ -2277,7 +2430,8 @@ export const STAGED: Staged = {
               "slot": "apps",
               "label": "School portal: attendance",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "the school portal has attendance"
             },
             {
               "id": "n4",
@@ -2293,7 +2447,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Dispute for the extra days",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "dispute the extra days"
             },
             {
               "id": "n6",
@@ -2302,7 +2457,8 @@ export const STAGED: Staged = {
               "label": "Brightside Parents portal",
               "origin": "you",
               "confirmed": true,
-              "detail": "billing queries"
+              "detail": "billing queries",
+              "quote": "dispute on the portal"
             },
             {
               "id": "n7",
@@ -2319,7 +2475,8 @@ export const STAGED: Staged = {
               "label": "Invoice lines",
               "origin": "you",
               "confirmed": true,
-              "detail": "Mila and Teo, $18 a day"
+              "detail": "Mila and Teo, $18 a day",
+              "quote": "Mila and Teo, $18 a day each"
             },
             {
               "id": "n9",
@@ -2351,7 +2508,8 @@ export const STAGED: Staged = {
               "slot": "hand",
               "label": "Your yes on each billing query",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Each billing query waits for my yes"
             },
             {
               "id": "n13",
@@ -2359,7 +2517,8 @@ export const STAGED: Staged = {
               "slot": "never",
               "label": "Leave same-day cancellations alone",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Same-day cancellations are still charged"
             },
             {
               "id": "n14",
@@ -2368,7 +2527,8 @@ export const STAGED: Staged = {
               "label": "Sign-out times",
               "origin": "you",
               "confirmed": true,
-              "detail": "club register"
+              "detail": "club register",
+              "quote": "if I'm late for pickup after 6pm"
             },
             {
               "id": "n15",
@@ -2376,7 +2536,8 @@ export const STAGED: Staged = {
               "slot": "steps",
               "label": "Check late-pickup fees against sign-out",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "late for pickup after 6pm, check those too"
             },
             {
               "id": "n16",
@@ -2384,7 +2545,8 @@ export const STAGED: Staged = {
               "slot": "never",
               "label": "Never pay the invoice",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "Never pay the invoice"
             },
             {
               "id": "n17",
@@ -2400,7 +2562,8 @@ export const STAGED: Staged = {
               "slot": "output",
               "label": "Monthly list: disputed days and total",
               "origin": "you",
-              "confirmed": true
+              "confirmed": true,
+              "quote": "A short list: disputed days and the total"
             },
             {
               "id": "n18",
@@ -2568,7 +2731,8 @@ export const STAGED: Staged = {
                 "slot": "need",
                 "label": "Check the club invoice against real attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "check the after-school club's invoice against the days my kids actually went"
               },
               {
                 "id": "n2",
@@ -2585,7 +2749,8 @@ export const STAGED: Staged = {
                 "slot": "apps",
                 "label": "School portal: attendance",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "the school portal has attendance"
               },
               {
                 "id": "n4",
@@ -2601,7 +2766,8 @@ export const STAGED: Staged = {
                 "slot": "output",
                 "label": "Dispute for the extra days",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "dispute the extra days"
               },
               {
                 "id": "n6",
@@ -2610,7 +2776,8 @@ export const STAGED: Staged = {
                 "label": "Brightside Parents portal",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "billing queries"
+                "detail": "billing queries",
+                "quote": "dispute on the portal"
               },
               {
                 "id": "n7",
@@ -2627,7 +2794,8 @@ export const STAGED: Staged = {
                 "label": "Invoice lines",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "Mila and Teo, $18 a day"
+                "detail": "Mila and Teo, $18 a day",
+                "quote": "Mila and Teo, $18 a day each"
               },
               {
                 "id": "n9",
@@ -2659,7 +2827,8 @@ export const STAGED: Staged = {
                 "slot": "hand",
                 "label": "Your yes on each billing query",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "Each billing query waits for my yes"
               },
               {
                 "id": "n13",
@@ -2667,7 +2836,8 @@ export const STAGED: Staged = {
                 "slot": "never",
                 "label": "Leave same-day cancellations alone",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "Same-day cancellations are still charged"
               },
               {
                 "id": "n14",
@@ -2676,7 +2846,8 @@ export const STAGED: Staged = {
                 "label": "Sign-out times",
                 "origin": "you",
                 "confirmed": true,
-                "detail": "club register"
+                "detail": "club register",
+                "quote": "if I'm late for pickup after 6pm"
               },
               {
                 "id": "n15",
@@ -2684,7 +2855,8 @@ export const STAGED: Staged = {
                 "slot": "steps",
                 "label": "Check late-pickup fees against sign-out",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "late for pickup after 6pm, check those too"
               },
               {
                 "id": "n16",
@@ -2692,7 +2864,8 @@ export const STAGED: Staged = {
                 "slot": "never",
                 "label": "Never pay the invoice",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "Never pay the invoice"
               },
               {
                 "id": "n17",
@@ -2708,7 +2881,8 @@ export const STAGED: Staged = {
                 "slot": "output",
                 "label": "Monthly list: disputed days and total",
                 "origin": "you",
-                "confirmed": true
+                "confirmed": true,
+                "quote": "A short list: disputed days and the total"
               },
               {
                 "id": "n18",
@@ -2880,7 +3054,41 @@ export const STAGED: Staged = {
       "at_s": 73,
       "event": {
         "type": "written",
-        "chore_id": "club-invoice-check"
+        "chore_id": "club-invoice-check",
+        "practice": [
+          {
+            "app_id": "mail",
+            "name": "Mail",
+            "reads": [
+              "Find the Brightside invoice",
+              "Read an invoice's lines"
+            ],
+            "acts": [],
+            "rows": 3
+          },
+          {
+            "app_id": "oakridge",
+            "name": "Oakridge Primary parent portal",
+            "reads": [
+              "Attendance for a child and month"
+            ],
+            "acts": [],
+            "rows": 44
+          },
+          {
+            "app_id": "brightside",
+            "name": "Brightside Parents",
+            "reads": [
+              "Club calendar",
+              "Sign-out register",
+              "Open billing queries"
+            ],
+            "acts": [
+              "File a billing query"
+            ],
+            "rows": 71
+          }
+        ]
       }
     }
   ],
@@ -2897,7 +3105,8 @@ export const STAGED: Staged = {
           "slot": "need",
           "label": "Check the club invoice against real attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "check the after-school club's invoice against the days my kids actually went"
         },
         {
           "id": "n2",
@@ -2914,7 +3123,8 @@ export const STAGED: Staged = {
           "slot": "apps",
           "label": "School portal: attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "the school portal has attendance"
         },
         {
           "id": "n4",
@@ -2930,7 +3140,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Dispute for the extra days",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "dispute the extra days"
         },
         {
           "id": "n6",
@@ -2939,7 +3150,8 @@ export const STAGED: Staged = {
           "label": "Brightside Parents portal",
           "origin": "you",
           "confirmed": true,
-          "detail": "billing queries"
+          "detail": "billing queries",
+          "quote": "dispute on the portal"
         },
         {
           "id": "n7",
@@ -2956,7 +3168,8 @@ export const STAGED: Staged = {
           "label": "Invoice lines",
           "origin": "you",
           "confirmed": true,
-          "detail": "Mila and Teo, $18 a day"
+          "detail": "Mila and Teo, $18 a day",
+          "quote": "Mila and Teo, $18 a day each"
         },
         {
           "id": "n9",
@@ -2988,7 +3201,8 @@ export const STAGED: Staged = {
           "slot": "hand",
           "label": "Your yes on each billing query",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Each billing query waits for my yes"
         },
         {
           "id": "n13",
@@ -2996,7 +3210,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Leave same-day cancellations alone",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Same-day cancellations are still charged"
         },
         {
           "id": "n14",
@@ -3005,7 +3220,8 @@ export const STAGED: Staged = {
           "label": "Sign-out times",
           "origin": "you",
           "confirmed": true,
-          "detail": "club register"
+          "detail": "club register",
+          "quote": "if I'm late for pickup after 6pm"
         },
         {
           "id": "n15",
@@ -3013,7 +3229,8 @@ export const STAGED: Staged = {
           "slot": "steps",
           "label": "Check late-pickup fees against sign-out",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "late for pickup after 6pm, check those too"
         },
         {
           "id": "n16",
@@ -3021,7 +3238,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Never pay the invoice",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Never pay the invoice"
         },
         {
           "id": "n17",
@@ -3037,7 +3255,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Monthly list: disputed days and total",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "A short list: disputed days and the total"
         },
         {
           "id": "n18",
@@ -3184,7 +3403,41 @@ export const STAGED: Staged = {
       "never": 1
     },
     "agreed": true,
-    "chore_id": "club-invoice-check"
+    "chore_id": "club-invoice-check",
+    "practice": [
+      {
+        "app_id": "mail",
+        "name": "Mail",
+        "reads": [
+          "Find the Brightside invoice",
+          "Read an invoice's lines"
+        ],
+        "acts": [],
+        "rows": 3
+      },
+      {
+        "app_id": "oakridge",
+        "name": "Oakridge Primary parent portal",
+        "reads": [
+          "Attendance for a child and month"
+        ],
+        "acts": [],
+        "rows": 44
+      },
+      {
+        "app_id": "brightside",
+        "name": "Brightside Parents",
+        "reads": [
+          "Club calendar",
+          "Sign-out register",
+          "Open billing queries"
+        ],
+        "acts": [
+          "File a billing query"
+        ],
+        "rows": 71
+      }
+    ]
   },
   "authorFailed": [
     {
@@ -3237,7 +3490,8 @@ export const STAGED: Staged = {
           "slot": "need",
           "label": "Check the club invoice against real attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "check the after-school club's invoice against the days my kids actually went"
         },
         {
           "id": "n2",
@@ -3254,7 +3508,8 @@ export const STAGED: Staged = {
           "slot": "apps",
           "label": "School portal: attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "the school portal has attendance"
         },
         {
           "id": "n4",
@@ -3270,7 +3525,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Dispute for the extra days",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "dispute the extra days"
         },
         {
           "id": "n6",
@@ -3279,7 +3535,8 @@ export const STAGED: Staged = {
           "label": "Brightside Parents portal",
           "origin": "you",
           "confirmed": true,
-          "detail": "billing queries"
+          "detail": "billing queries",
+          "quote": "dispute on the portal"
         },
         {
           "id": "n7",
@@ -3296,7 +3553,8 @@ export const STAGED: Staged = {
           "label": "Invoice lines",
           "origin": "you",
           "confirmed": true,
-          "detail": "Mila and Teo, $18 a day"
+          "detail": "Mila and Teo, $18 a day",
+          "quote": "Mila and Teo, $18 a day each"
         },
         {
           "id": "n9",
@@ -3328,7 +3586,8 @@ export const STAGED: Staged = {
           "slot": "hand",
           "label": "Your yes on each billing query",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Each billing query waits for my yes"
         },
         {
           "id": "n13",
@@ -3336,7 +3595,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Leave same-day cancellations alone",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Same-day cancellations are still charged"
         },
         {
           "id": "n14",
@@ -3345,7 +3605,8 @@ export const STAGED: Staged = {
           "label": "Sign-out times",
           "origin": "you",
           "confirmed": true,
-          "detail": "club register"
+          "detail": "club register",
+          "quote": "if I'm late for pickup after 6pm"
         },
         {
           "id": "n15",
@@ -3353,7 +3614,8 @@ export const STAGED: Staged = {
           "slot": "steps",
           "label": "Check late-pickup fees against sign-out",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "late for pickup after 6pm, check those too"
         },
         {
           "id": "n16",
@@ -3361,7 +3623,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Never pay the invoice",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Never pay the invoice"
         },
         {
           "id": "n17",
@@ -3377,7 +3640,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Monthly list: disputed days and total",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "A short list: disputed days and the total"
         },
         {
           "id": "n18",
@@ -3582,7 +3846,8 @@ export const STAGED: Staged = {
           "slot": "need",
           "label": "Check the club invoice against real attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "check the after-school club's invoice against the days my kids actually went"
         },
         {
           "id": "n2",
@@ -3599,7 +3864,8 @@ export const STAGED: Staged = {
           "slot": "apps",
           "label": "School portal: attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "the school portal has attendance"
         },
         {
           "id": "n4",
@@ -3615,7 +3881,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Dispute for the extra days",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "dispute the extra days"
         },
         {
           "id": "n6",
@@ -3624,7 +3891,8 @@ export const STAGED: Staged = {
           "label": "Brightside Parents portal",
           "origin": "you",
           "confirmed": true,
-          "detail": "billing queries"
+          "detail": "billing queries",
+          "quote": "dispute on the portal"
         },
         {
           "id": "n7",
@@ -3641,7 +3909,8 @@ export const STAGED: Staged = {
           "label": "Invoice lines",
           "origin": "you",
           "confirmed": true,
-          "detail": "Mila and Teo, $18 a day"
+          "detail": "Mila and Teo, $18 a day",
+          "quote": "Mila and Teo, $18 a day each"
         },
         {
           "id": "n9",
@@ -3673,7 +3942,8 @@ export const STAGED: Staged = {
           "slot": "hand",
           "label": "Your yes on each billing query",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Each billing query waits for my yes"
         },
         {
           "id": "n13",
@@ -3681,7 +3951,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Leave same-day cancellations alone",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Same-day cancellations are still charged"
         },
         {
           "id": "n14",
@@ -3690,7 +3961,8 @@ export const STAGED: Staged = {
           "label": "Sign-out times",
           "origin": "you",
           "confirmed": true,
-          "detail": "club register"
+          "detail": "club register",
+          "quote": "if I'm late for pickup after 6pm"
         },
         {
           "id": "n15",
@@ -3698,7 +3970,8 @@ export const STAGED: Staged = {
           "slot": "steps",
           "label": "Check late-pickup fees against sign-out",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "late for pickup after 6pm, check those too"
         },
         {
           "id": "n16",
@@ -3706,7 +3979,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Never pay the invoice",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Never pay the invoice"
         },
         {
           "id": "n17",
@@ -3722,7 +3996,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Monthly list: disputed days and total",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "A short list: disputed days and the total"
         },
         {
           "id": "n18",
@@ -3870,6 +4145,40 @@ export const STAGED: Staged = {
     },
     "agreed": true,
     "chore_id": "club-invoice-check",
+    "practice": [
+      {
+        "app_id": "mail",
+        "name": "Mail",
+        "reads": [
+          "Find the Brightside invoice",
+          "Read an invoice's lines"
+        ],
+        "acts": [],
+        "rows": 3
+      },
+      {
+        "app_id": "oakridge",
+        "name": "Oakridge Primary parent portal",
+        "reads": [
+          "Attendance for a child and month"
+        ],
+        "acts": [],
+        "rows": 44
+      },
+      {
+        "app_id": "brightside",
+        "name": "Brightside Parents",
+        "reads": [
+          "Club calendar",
+          "Sign-out register",
+          "Open billing queries"
+        ],
+        "acts": [
+          "File a billing query"
+        ],
+        "rows": 71
+      }
+    ],
     "expected": [
       {
         "id": "e1",
@@ -3957,7 +4266,8 @@ export const STAGED: Staged = {
           "slot": "need",
           "label": "Check the club invoice against real attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "check the after-school club's invoice against the days my kids actually went"
         },
         {
           "id": "n2",
@@ -3974,7 +4284,8 @@ export const STAGED: Staged = {
           "slot": "apps",
           "label": "School portal: attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "the school portal has attendance"
         },
         {
           "id": "n4",
@@ -3990,7 +4301,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Dispute for the extra days",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "dispute the extra days"
         },
         {
           "id": "n6",
@@ -3999,7 +4311,8 @@ export const STAGED: Staged = {
           "label": "Brightside Parents portal",
           "origin": "you",
           "confirmed": true,
-          "detail": "billing queries"
+          "detail": "billing queries",
+          "quote": "dispute on the portal"
         },
         {
           "id": "n7",
@@ -4016,7 +4329,8 @@ export const STAGED: Staged = {
           "label": "Invoice lines",
           "origin": "you",
           "confirmed": true,
-          "detail": "Mila and Teo, $18 a day"
+          "detail": "Mila and Teo, $18 a day",
+          "quote": "Mila and Teo, $18 a day each"
         },
         {
           "id": "n9",
@@ -4048,7 +4362,8 @@ export const STAGED: Staged = {
           "slot": "hand",
           "label": "Your yes on each billing query",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Each billing query waits for my yes"
         },
         {
           "id": "n13",
@@ -4056,7 +4371,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Leave same-day cancellations alone",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Same-day cancellations are still charged"
         },
         {
           "id": "n14",
@@ -4065,7 +4381,8 @@ export const STAGED: Staged = {
           "label": "Sign-out times",
           "origin": "you",
           "confirmed": true,
-          "detail": "club register"
+          "detail": "club register",
+          "quote": "if I'm late for pickup after 6pm"
         },
         {
           "id": "n15",
@@ -4073,7 +4390,8 @@ export const STAGED: Staged = {
           "slot": "steps",
           "label": "Check late-pickup fees against sign-out",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "late for pickup after 6pm, check those too"
         },
         {
           "id": "n16",
@@ -4081,7 +4399,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Never pay the invoice",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Never pay the invoice"
         },
         {
           "id": "n17",
@@ -4097,7 +4416,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Monthly list: disputed days and total",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "A short list: disputed days and the total"
         },
         {
           "id": "n18",
@@ -4245,6 +4565,40 @@ export const STAGED: Staged = {
     },
     "agreed": true,
     "chore_id": "club-invoice-check",
+    "practice": [
+      {
+        "app_id": "mail",
+        "name": "Mail",
+        "reads": [
+          "Find the Brightside invoice",
+          "Read an invoice's lines"
+        ],
+        "acts": [],
+        "rows": 3
+      },
+      {
+        "app_id": "oakridge",
+        "name": "Oakridge Primary parent portal",
+        "reads": [
+          "Attendance for a child and month"
+        ],
+        "acts": [],
+        "rows": 44
+      },
+      {
+        "app_id": "brightside",
+        "name": "Brightside Parents",
+        "reads": [
+          "Club calendar",
+          "Sign-out register",
+          "Open billing queries"
+        ],
+        "acts": [
+          "File a billing query"
+        ],
+        "rows": 71
+      }
+    ],
     "expected": [
       {
         "id": "e1",
@@ -4369,10 +4723,12 @@ export const STAGED: Staged = {
           "action": "portal_act",
           "label": "File a billing query: Mila, Tue 7 Oct, absent ($18)",
           "args": {
-            "chore": "club-invoice-check",
             "app": "brightside",
             "tool": "file_billing_query",
-            "line": "mila-2026-10-07"
+            "params": {
+              "line_id": "mila-2026-10-07"
+            },
+            "chore": "club-invoice-check"
           },
           "state": "waiting",
           "created": "2026-10-28T15:32:11Z"
@@ -4389,10 +4745,12 @@ export const STAGED: Staged = {
           "action": "portal_act",
           "label": "File a billing query: Mila, Wed 8 Oct, absent ($18)",
           "args": {
-            "chore": "club-invoice-check",
             "app": "brightside",
             "tool": "file_billing_query",
-            "line": "mila-2026-10-08"
+            "params": {
+              "line_id": "mila-2026-10-08"
+            },
+            "chore": "club-invoice-check"
           },
           "state": "waiting",
           "created": "2026-10-28T15:32:13Z"
@@ -4409,10 +4767,12 @@ export const STAGED: Staged = {
           "action": "portal_act",
           "label": "File a billing query: Teo, Tue 21 Oct, absent ($18)",
           "args": {
-            "chore": "club-invoice-check",
             "app": "brightside",
             "tool": "file_billing_query",
-            "line": "teo-2026-10-21"
+            "params": {
+              "line_id": "teo-2026-10-21"
+            },
+            "chore": "club-invoice-check"
           },
           "state": "waiting",
           "created": "2026-10-28T15:32:16Z"
@@ -4429,10 +4789,12 @@ export const STAGED: Staged = {
           "action": "portal_act",
           "label": "File a billing query: Mila and Teo, Fri 24 Oct, club closed ($36)",
           "args": {
-            "chore": "club-invoice-check",
             "app": "brightside",
             "tool": "file_billing_query",
-            "line": "both-2026-10-24"
+            "params": {
+              "line_id": "both-2026-10-24"
+            },
+            "chore": "club-invoice-check"
           },
           "state": "waiting",
           "created": "2026-10-28T15:32:29Z"
@@ -4488,7 +4850,8 @@ export const STAGED: Staged = {
           "slot": "need",
           "label": "Check the club invoice against real attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "check the after-school club's invoice against the days my kids actually went"
         },
         {
           "id": "n2",
@@ -4505,7 +4868,8 @@ export const STAGED: Staged = {
           "slot": "apps",
           "label": "School portal: attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "the school portal has attendance"
         },
         {
           "id": "n4",
@@ -4521,7 +4885,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Dispute for the extra days",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "dispute the extra days"
         },
         {
           "id": "n6",
@@ -4530,7 +4895,8 @@ export const STAGED: Staged = {
           "label": "Brightside Parents portal",
           "origin": "you",
           "confirmed": true,
-          "detail": "billing queries"
+          "detail": "billing queries",
+          "quote": "dispute on the portal"
         },
         {
           "id": "n7",
@@ -4547,7 +4913,8 @@ export const STAGED: Staged = {
           "label": "Invoice lines",
           "origin": "you",
           "confirmed": true,
-          "detail": "Mila and Teo, $18 a day"
+          "detail": "Mila and Teo, $18 a day",
+          "quote": "Mila and Teo, $18 a day each"
         },
         {
           "id": "n9",
@@ -4579,7 +4946,8 @@ export const STAGED: Staged = {
           "slot": "hand",
           "label": "Your yes on each billing query",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Each billing query waits for my yes"
         },
         {
           "id": "n13",
@@ -4587,7 +4955,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Leave same-day cancellations alone",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Same-day cancellations are still charged"
         },
         {
           "id": "n14",
@@ -4596,7 +4965,8 @@ export const STAGED: Staged = {
           "label": "Sign-out times",
           "origin": "you",
           "confirmed": true,
-          "detail": "club register"
+          "detail": "club register",
+          "quote": "if I'm late for pickup after 6pm"
         },
         {
           "id": "n15",
@@ -4604,7 +4974,8 @@ export const STAGED: Staged = {
           "slot": "steps",
           "label": "Check late-pickup fees against sign-out",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "late for pickup after 6pm, check those too"
         },
         {
           "id": "n16",
@@ -4612,7 +4983,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Never pay the invoice",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Never pay the invoice"
         },
         {
           "id": "n17",
@@ -4628,7 +5000,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Monthly list: disputed days and total",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "A short list: disputed days and the total"
         },
         {
           "id": "n18",
@@ -4776,6 +5149,40 @@ export const STAGED: Staged = {
     },
     "agreed": true,
     "chore_id": "club-invoice-check",
+    "practice": [
+      {
+        "app_id": "mail",
+        "name": "Mail",
+        "reads": [
+          "Find the Brightside invoice",
+          "Read an invoice's lines"
+        ],
+        "acts": [],
+        "rows": 3
+      },
+      {
+        "app_id": "oakridge",
+        "name": "Oakridge Primary parent portal",
+        "reads": [
+          "Attendance for a child and month"
+        ],
+        "acts": [],
+        "rows": 44
+      },
+      {
+        "app_id": "brightside",
+        "name": "Brightside Parents",
+        "reads": [
+          "Club calendar",
+          "Sign-out register",
+          "Open billing queries"
+        ],
+        "acts": [
+          "File a billing query"
+        ],
+        "rows": 71
+      }
+    ],
     "expected": [
       {
         "id": "e1",
@@ -4899,7 +5306,8 @@ export const STAGED: Staged = {
           "slot": "need",
           "label": "Check the club invoice against real attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "check the after-school club's invoice against the days my kids actually went"
         },
         {
           "id": "n2",
@@ -4916,7 +5324,8 @@ export const STAGED: Staged = {
           "slot": "apps",
           "label": "School portal: attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "the school portal has attendance"
         },
         {
           "id": "n4",
@@ -4932,7 +5341,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Dispute for the extra days",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "dispute the extra days"
         },
         {
           "id": "n6",
@@ -4941,7 +5351,8 @@ export const STAGED: Staged = {
           "label": "Brightside Parents portal",
           "origin": "you",
           "confirmed": true,
-          "detail": "billing queries"
+          "detail": "billing queries",
+          "quote": "dispute on the portal"
         },
         {
           "id": "n7",
@@ -4958,7 +5369,8 @@ export const STAGED: Staged = {
           "label": "Invoice lines",
           "origin": "you",
           "confirmed": true,
-          "detail": "Mila and Teo, $18 a day"
+          "detail": "Mila and Teo, $18 a day",
+          "quote": "Mila and Teo, $18 a day each"
         },
         {
           "id": "n9",
@@ -4990,7 +5402,8 @@ export const STAGED: Staged = {
           "slot": "hand",
           "label": "Your yes on each billing query",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Each billing query waits for my yes"
         },
         {
           "id": "n13",
@@ -4998,7 +5411,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Leave same-day cancellations alone",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Same-day cancellations are still charged"
         },
         {
           "id": "n14",
@@ -5007,7 +5421,8 @@ export const STAGED: Staged = {
           "label": "Sign-out times",
           "origin": "you",
           "confirmed": true,
-          "detail": "club register"
+          "detail": "club register",
+          "quote": "if I'm late for pickup after 6pm"
         },
         {
           "id": "n15",
@@ -5015,7 +5430,8 @@ export const STAGED: Staged = {
           "slot": "steps",
           "label": "Check late-pickup fees against sign-out",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "late for pickup after 6pm, check those too"
         },
         {
           "id": "n16",
@@ -5023,7 +5439,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Never pay the invoice",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Never pay the invoice"
         },
         {
           "id": "n17",
@@ -5039,7 +5456,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Monthly list: disputed days and total",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "A short list: disputed days and the total"
         },
         {
           "id": "n18",
@@ -5187,6 +5605,40 @@ export const STAGED: Staged = {
     },
     "agreed": true,
     "chore_id": "club-invoice-check",
+    "practice": [
+      {
+        "app_id": "mail",
+        "name": "Mail",
+        "reads": [
+          "Find the Brightside invoice",
+          "Read an invoice's lines"
+        ],
+        "acts": [],
+        "rows": 3
+      },
+      {
+        "app_id": "oakridge",
+        "name": "Oakridge Primary parent portal",
+        "reads": [
+          "Attendance for a child and month"
+        ],
+        "acts": [],
+        "rows": 44
+      },
+      {
+        "app_id": "brightside",
+        "name": "Brightside Parents",
+        "reads": [
+          "Club calendar",
+          "Sign-out register",
+          "Open billing queries"
+        ],
+        "acts": [
+          "File a billing query"
+        ],
+        "rows": 71
+      }
+    ],
     "expected": [
       {
         "id": "e1",
@@ -5312,7 +5764,8 @@ export const STAGED: Staged = {
           "slot": "need",
           "label": "Check the club invoice against real attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "check the after-school club's invoice against the days my kids actually went"
         },
         {
           "id": "n2",
@@ -5329,7 +5782,8 @@ export const STAGED: Staged = {
           "slot": "apps",
           "label": "School portal: attendance",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "the school portal has attendance"
         },
         {
           "id": "n4",
@@ -5345,7 +5799,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Dispute for the extra days",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "dispute the extra days"
         },
         {
           "id": "n6",
@@ -5354,7 +5809,8 @@ export const STAGED: Staged = {
           "label": "Brightside Parents portal",
           "origin": "you",
           "confirmed": true,
-          "detail": "billing queries"
+          "detail": "billing queries",
+          "quote": "dispute on the portal"
         },
         {
           "id": "n7",
@@ -5371,7 +5827,8 @@ export const STAGED: Staged = {
           "label": "Invoice lines",
           "origin": "you",
           "confirmed": true,
-          "detail": "Mila and Teo, $18 a day"
+          "detail": "Mila and Teo, $18 a day",
+          "quote": "Mila and Teo, $18 a day each"
         },
         {
           "id": "n9",
@@ -5403,7 +5860,8 @@ export const STAGED: Staged = {
           "slot": "hand",
           "label": "Your yes on each billing query",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Each billing query waits for my yes"
         },
         {
           "id": "n13",
@@ -5411,7 +5869,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Leave same-day cancellations alone",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Same-day cancellations are still charged"
         },
         {
           "id": "n14",
@@ -5420,7 +5879,8 @@ export const STAGED: Staged = {
           "label": "Sign-out times",
           "origin": "you",
           "confirmed": true,
-          "detail": "club register"
+          "detail": "club register",
+          "quote": "if I'm late for pickup after 6pm"
         },
         {
           "id": "n15",
@@ -5428,7 +5888,8 @@ export const STAGED: Staged = {
           "slot": "steps",
           "label": "Check late-pickup fees against sign-out",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "late for pickup after 6pm, check those too"
         },
         {
           "id": "n16",
@@ -5436,7 +5897,8 @@ export const STAGED: Staged = {
           "slot": "never",
           "label": "Never pay the invoice",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "Never pay the invoice"
         },
         {
           "id": "n17",
@@ -5452,7 +5914,8 @@ export const STAGED: Staged = {
           "slot": "output",
           "label": "Monthly list: disputed days and total",
           "origin": "you",
-          "confirmed": true
+          "confirmed": true,
+          "quote": "A short list: disputed days and the total"
         },
         {
           "id": "n18",
@@ -5600,6 +6063,40 @@ export const STAGED: Staged = {
     },
     "agreed": true,
     "chore_id": "club-invoice-check",
+    "practice": [
+      {
+        "app_id": "mail",
+        "name": "Mail",
+        "reads": [
+          "Find the Brightside invoice",
+          "Read an invoice's lines"
+        ],
+        "acts": [],
+        "rows": 3
+      },
+      {
+        "app_id": "oakridge",
+        "name": "Oakridge Primary parent portal",
+        "reads": [
+          "Attendance for a child and month"
+        ],
+        "acts": [],
+        "rows": 44
+      },
+      {
+        "app_id": "brightside",
+        "name": "Brightside Parents",
+        "reads": [
+          "Club calendar",
+          "Sign-out register",
+          "Open billing queries"
+        ],
+        "acts": [
+          "File a billing query"
+        ],
+        "rows": 71
+      }
+    ],
     "expected": [
       {
         "id": "e1",

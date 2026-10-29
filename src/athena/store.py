@@ -40,13 +40,18 @@ CREATE TABLE IF NOT EXISTS drafts (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL, step TEXT NOT NULL, need TEXT NOT NULL, sketch TEXT NOT NULL,
   coverage TEXT NOT NULL, skipped TEXT NOT NULL DEFAULT '[]', asked TEXT NOT NULL DEFAULT '{}', chore_id TEXT,
   key TEXT, bench TEXT, verdict TEXT, note TEXT, created TEXT NOT NULL, updated TEXT NOT NULL, expected TEXT,
-  views TEXT);
+  views TEXT, ask TEXT, practice TEXT);
 CREATE INDEX IF NOT EXISTS drafts_space ON drafts (space_id);
 """
 
 # Columns added after a table first shipped: (table, column, type). `CREATE TABLE IF NOT EXISTS` leaves
 # an older table as it was, so migrate() adds each one that is missing.
-_ADDED = (("drafts", "expected", "TEXT"), ("drafts", "views", "TEXT"))
+_ADDED = (
+    ("drafts", "expected", "TEXT"),
+    ("drafts", "views", "TEXT"),
+    ("drafts", "ask", "TEXT"),
+    ("drafts", "practice", "TEXT"),
+)
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.
 _FTS = """
