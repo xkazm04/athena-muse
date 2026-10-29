@@ -1,0 +1,1922 @@
+/* Orbit (A/3), ported. The question is at the centre; everything she has understood circles it.
+ * Every selector is scoped under [data-stage-view="orbit"]: the two views share class names in the
+ * winners, so nothing here may reach the Drawing view. Loop Tide tokens only; literal colours and
+ * layers live in named local properties below. The winner's own look is kept in the form it had
+ * (dashed pencil, the drawn ink border, color-mix washes, the rim-lit glass card). */
+
+[data-stage-view="orbit"] {
+  /* sizes per window (the compact set is below, for a frame up to 1180 wide or 704 tall) */
+  --ob-zone-w: 252px;
+  --ob-moat: 30px;
+  --ob-gap: 6px;
+  --ob-chip-h: 48px;
+  --ob-chip-h-top: 48px;
+  --ob-chip-h-bottom: 40px;
+  --ob-chip-min: 180px;
+  --ob-line-h: 29px;
+  --ob-line-gap: 3px;
+  --ob-hub-pad: 26px;
+  --ob-side-pane: 232px;
+  --ob-ink: color-mix(in srgb, var(--lt-arc) 80%, transparent);
+
+  /* layers, low to high */
+  --ob-z-under: -1;
+  --ob-z-links: 1;
+  --ob-z-chip: 2;
+  --ob-z-hub: 3;
+  --ob-z-ring: 4;
+  --ob-z-chip-up: 20;
+  --ob-z-tip: 40;
+  --ob-z-card: 60;
+  --ob-z-flight: 70;
+
+  /* the winner's shadows, which have no token */
+  --ob-shadow-card: 0 18px 44px rgba(0, 6, 28, 0.34);
+  --ob-shadow-tip: 0 8px 24px rgba(0, 6, 28, 0.3);
+
+  container-type: size;
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ================================================================ the orbit's grid */
+[data-stage-view="orbit"] .ob-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--ob-zone-w) minmax(0, 1fr) var(--ob-zone-w);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "steps steps steps"
+    "left hub right"
+    ". never .";
+  column-gap: var(--ob-moat);
+  row-gap: var(--ob-moat);
+  width: 100%;
+  max-width: 1480px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 14px 16px 16px;
+}
+
+/* ================================================================ zones */
+[data-stage-view="orbit"] .ob-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .ob-col--left {
+  grid-area: left;
+}
+[data-stage-view="orbit"] .ob-col--right {
+  grid-area: right;
+}
+[data-stage-view="orbit"] .ob-zone {
+  --ob-cell-h: var(--ob-chip-h);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .ob-col .ob-zone {
+  flex: 1 1 0;
+}
+[data-stage-view="orbit"] .ob-zone[data-zone="steps"] {
+  --ob-cell-h: var(--ob-chip-h-top);
+  grid-area: steps;
+}
+[data-stage-view="orbit"] .ob-zone[data-zone="never"] {
+  --ob-cell-h: var(--ob-chip-h-bottom);
+  grid-area: never;
+}
+[data-stage-view="orbit"] .ob-zone__cap {
+  position: relative;
+  z-index: var(--ob-z-chip);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px 2px;
+  color: var(--muted);
+  font: 600 var(--fs-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  transition:
+    color var(--dur-base) ease,
+    opacity var(--dur-base) ease;
+}
+[data-stage-view="orbit"] .ob-zone__name {
+  white-space: nowrap;
+}
+[data-stage-view="orbit"] .ob-zone__cells {
+  position: relative;
+  display: grid;
+  flex: 1 1 0;
+  grid-template-columns: repeat(var(--ob-cols, 1), minmax(0, 1fr));
+  grid-auto-rows: var(--ob-cell-h);
+  align-content: start;
+  gap: var(--ob-gap);
+  min-height: 0;
+}
+/* the steps row has room for two rows of one-line chips; the never line for one row */
+[data-stage-view="orbit"] .ob-zone[data-zone="steps"] .ob-zone__cells {
+  flex: none;
+  height: max(var(--ob-chip-h-top), calc(2 * var(--ob-line-h) + var(--ob-line-gap)));
+}
+[data-stage-view="orbit"] .ob-zone[data-zone="never"] .ob-zone__cells {
+  flex: none;
+  height: var(--ob-chip-h-bottom);
+}
+[data-stage-view="orbit"] .ob-zone[data-dense] .ob-zone__cells {
+  grid-auto-rows: var(--ob-line-h);
+  row-gap: var(--ob-line-gap);
+}
+
+/* the place she is asking about, the place an arc points at */
+[data-stage-view="orbit"] .ob-zone[data-asked] .ob-zone__cap {
+  color: var(--foreground);
+}
+[data-stage-view="orbit"] .ob-zone[data-asked] .ob-zone__name::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--role-agent);
+  vertical-align: 1px;
+  animation: orbit-breathe 1.5s ease-in-out infinite;
+}
+[data-stage-view="orbit"] .ob-zone[data-lit] .ob-zone__cap {
+  color: var(--accent-text);
+}
+[data-stage-view="orbit"] .ob-zone[data-lit] .ob-zone__cells::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  z-index: var(--ob-z-under);
+  border-radius: 16px;
+  background: var(--wash);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+/* an empty place keeps one ghost, so the structure shows from the first second */
+[data-stage-view="orbit"] .ob-ghost {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--border-default);
+  border-radius: 13px;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--card-bg) 34%, transparent);
+  font-size: var(--fs-sm);
+}
+
+/* ================================================================ chips */
+[data-stage-view="orbit"] .ob-chip {
+  position: relative;
+  z-index: var(--ob-z-chip);
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border: 1.5px solid transparent;
+  border-radius: 13px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-1);
+  font-size: var(--fs-sm);
+  transition:
+    opacity var(--dur-base) ease,
+    border-color var(--dur-base) ease,
+    background var(--dur-base) ease,
+    box-shadow var(--dur-base) ease,
+    transform var(--dur-base) var(--ease-settle);
+}
+[data-stage-view="orbit"] .ob-chip[data-kind="gate"] {
+  --ob-ink: var(--role-human);
+}
+[data-stage-view="orbit"] .ob-chip[data-kind="never"] {
+  --ob-ink: color-mix(in srgb, var(--foreground) 55%, transparent);
+}
+[data-stage-view="orbit"] .ob-chip[data-state="pencil"] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--role-agent) 66%, transparent);
+  background: color-mix(in srgb, var(--role-agent) 8%, var(--card-bg));
+}
+[data-stage-view="orbit"] .ob-chip[data-kind="gate"][data-state="pencil"] {
+  border-color: color-mix(in srgb, var(--role-human) 66%, transparent);
+}
+[data-stage-view="orbit"] .ob-chip:hover,
+[data-stage-view="orbit"] .ob-chip:focus-within,
+[data-stage-view="orbit"] .ob-chip[data-open] {
+  z-index: var(--ob-z-chip-up);
+}
+
+[data-stage-view="orbit"] .ob-chip__body {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 10px 0 11px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: 500 var(--fs-sm) / 1.22 var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+[data-stage-view="orbit"] .ob-chip__body:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+[data-stage-view="orbit"] .ob-chip__ic {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+[data-stage-view="orbit"] .ob-chip[data-kind="gate"] .ob-chip__ic {
+  color: var(--role-human);
+}
+[data-stage-view="orbit"] .ob-chip[data-kind="app"] .ob-chip__ic {
+  color: var(--role-external);
+}
+[data-stage-view="orbit"] .ob-chip[data-kind="step"] .ob-chip__ic path + path {
+  opacity: 0.55;
+}
+[data-stage-view="orbit"] .ob-chip__label {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+[data-stage-view="orbit"] .ob-zone[data-zone="steps"] .ob-chip__label {
+  -webkit-line-clamp: 3;
+}
+
+/* whose idea: pink for the person, violet for her */
+[data-stage-view="orbit"] .ob-chip__dot {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  z-index: var(--ob-z-chip);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--role-agent);
+  box-shadow: 0 0 0 2px var(--background);
+}
+[data-stage-view="orbit"] .ob-chip[data-origin="you"] .ob-chip__dot {
+  background: var(--role-human);
+}
+
+/* ink: a border that draws itself round the chip, then settles */
+[data-stage-view="orbit"] .ob-chip__draw {
+  position: absolute;
+  inset: -1.5px;
+  width: calc(100% + 3px);
+  height: calc(100% + 3px);
+  overflow: visible;
+  pointer-events: none;
+}
+[data-stage-view="orbit"] .ob-chip__draw rect {
+  x: 0.75px;
+  y: 0.75px;
+  width: calc(100% - 1.5px);
+  height: calc(100% - 1.5px);
+  rx: 12.5px;
+  fill: none;
+  stroke: var(--ob-ink);
+  stroke-width: 1.5px;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 0.65s var(--ease-settle);
+}
+[data-stage-view="orbit"] .ob-chip[data-state="ink"] {
+  border-color: transparent;
+}
+[data-stage-view="orbit"] .ob-chip[data-state="ink"] .ob-chip__draw rect {
+  stroke-dashoffset: 0;
+}
+[data-stage-view="orbit"] .ob-chip__ink {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 8px;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--role-agent) 70%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--role-agent);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    transform var(--dur-fast) ease;
+}
+[data-stage-view="orbit"] .ob-chip__ink::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+[data-stage-view="orbit"] .ob-chip__ink:hover:not(:disabled),
+[data-stage-view="orbit"] .ob-chip__ink:focus-visible {
+  background: var(--role-agent);
+  color: var(--card-bg);
+  transform: scale(1.08);
+}
+[data-stage-view="orbit"] .ob-chip__ink:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+[data-stage-view="orbit"] .ob-chip__ink svg,
+[data-stage-view="orbit"] .ob-chip__done svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+[data-stage-view="orbit"] .ob-tick {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+}
+[data-stage-view="orbit"] .ob-chip__done {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: var(--ob-ink);
+  color: var(--card-bg);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.6);
+}
+[data-stage-view="orbit"] .ob-chip[data-inked] {
+  animation: orbit-settle 0.7s var(--ease-settle);
+}
+[data-stage-view="orbit"] .ob-chip[data-inked] .ob-chip__done {
+  animation: orbit-done-pop 1.3s var(--ease-settle) both;
+}
+[data-stage-view="orbit"] .ob-chip[data-inked] .ob-chip__done .ob-tick {
+  animation: orbit-tick-draw 0.5s ease-out 0.12s both;
+}
+[data-stage-view="orbit"] .ob-chip[data-changed] .ob-chip__label {
+  animation: orbit-flash-in 0.7s ease-out;
+}
+
+/* arrival: each piece lands in its cell after her phrases have flown */
+[data-stage-view="orbit"] .ob-chip::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 2px solid var(--lt-arc);
+  border-radius: 17px;
+  opacity: 0;
+  pointer-events: none;
+}
+[data-stage-view="orbit"] .ob-chip[data-arriving] {
+  animation: orbit-land 0.55s var(--ease-settle) var(--ob-delay, 0ms) both;
+}
+[data-stage-view="orbit"] .ob-chip[data-arriving]::after {
+  animation: orbit-halo 1.9s ease-out var(--ob-delay, 0ms) both;
+}
+[data-stage-view="orbit"] .ob-chip[data-fresh] {
+  box-shadow:
+    var(--shadow-1),
+    0 0 0 3px color-mix(in srgb, var(--lt-arc) 32%, transparent);
+}
+
+/* pointing at a piece lights it, its links and its neighbours */
+[data-stage-view="orbit"] .ob-chip[data-heat="hot"] {
+  box-shadow:
+    var(--shadow-1),
+    0 0 0 3px color-mix(in srgb, var(--lt-arc) 40%, transparent),
+    0 10px 24px var(--glow);
+}
+[data-stage-view="orbit"] .ob-chip[data-heat="near"] {
+  box-shadow:
+    var(--shadow-1),
+    0 0 0 2px color-mix(in srgb, var(--lt-arc) 26%, transparent);
+}
+[data-stage-view="orbit"] .ob-chip[data-heat="dim"] {
+  opacity: 0.5;
+}
+[data-stage-view="orbit"][data-hot] .ob-zone__cap {
+  opacity: 0.55;
+}
+
+/* her card: the whole label, whose idea, ink it or rub it out */
+[data-stage-view="orbit"] .ob-chip__card {
+  position: absolute;
+  z-index: var(--ob-z-card);
+  width: 256px;
+  animation: orbit-card-in 0.16s var(--ease-settle) 0.08s both;
+}
+[data-stage-view="orbit"] .ob-chip__card::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  z-index: var(--ob-z-under);
+}
+[data-stage-view="orbit"] .ob-chip__card[data-side="left"] {
+  top: -6px;
+  left: calc(100% + 10px);
+}
+[data-stage-view="orbit"] .ob-chip__card[data-side="right"] {
+  top: -6px;
+  right: calc(100% + 10px);
+}
+[data-stage-view="orbit"] .ob-chip__card[data-side="top"] {
+  top: calc(100% + 9px);
+  left: 0;
+}
+[data-stage-view="orbit"] .ob-chip__card[data-side="bottom"] {
+  bottom: calc(100% + 9px);
+  left: 0;
+}
+[data-stage-view="orbit"] .ob-chip[data-end] .ob-chip__card[data-side="left"],
+[data-stage-view="orbit"] .ob-chip[data-end] .ob-chip__card[data-side="right"] {
+  top: auto;
+  bottom: -6px;
+}
+[data-stage-view="orbit"] .ob-chip[data-end] .ob-chip__card[data-side="top"],
+[data-stage-view="orbit"] .ob-chip[data-end] .ob-chip__card[data-side="bottom"] {
+  right: 0;
+  left: auto;
+}
+[data-stage-view="orbit"] .ob-chip__card .sp-card {
+  max-width: none;
+  gap: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-emphasis);
+  border-radius: 14px;
+  background: var(--card-raised);
+  color: var(--foreground);
+  box-shadow: var(--ob-shadow-card);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  text-align: left;
+}
+[data-stage-view="orbit"] .ob-chip__card .sp-kind {
+  color: var(--muted);
+  font: 600 var(--fs-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-stage-view="orbit"] .ob-chip__card .sp-card__label {
+  margin-top: 4px;
+  font-size: var(--fs-md);
+  line-height: 1.3;
+}
+[data-stage-view="orbit"] .ob-chip__card .sp-card__detail {
+  margin-top: 3px;
+}
+[data-stage-view="orbit"] .ob-chip__card .sp-card__who {
+  margin-top: 8px;
+}
+[data-stage-view="orbit"] .ob-chip__card .sp-card__actions {
+  margin-top: 10px;
+}
+[data-stage-view="orbit"] .ob-chip__card [data-role="ink"] {
+  border-color: transparent;
+  background: var(--role-agent);
+  color: var(--card-bg);
+}
+
+/* past a zone's room: "+n more" opens the zone's whole list */
+[data-stage-view="orbit"] .ob-more {
+  position: relative;
+  z-index: var(--ob-z-chip);
+  min-width: 0;
+}
+[data-stage-view="orbit"] .ob-more:focus-within {
+  z-index: var(--ob-z-chip-up);
+}
+[data-stage-view="orbit"] .ob-more__btn {
+  width: 100%;
+  height: 100%;
+  border: 1.5px dashed var(--border-emphasis);
+  border-radius: 13px;
+  background: var(--card-bg);
+  color: var(--muted-foreground);
+  font: 600 var(--fs-xs) / 1 var(--font-sans);
+  cursor: pointer;
+}
+[data-stage-view="orbit"] .ob-more__btn[aria-expanded="true"],
+[data-stage-view="orbit"] .ob-more__btn:hover {
+  border-color: var(--lt-arc);
+  background: var(--wash);
+  color: var(--foreground);
+}
+[data-stage-view="orbit"] .ob-more__list {
+  position: absolute;
+  z-index: var(--ob-z-card);
+  display: grid;
+  grid-auto-rows: var(--ob-line-h);
+  gap: var(--ob-line-gap);
+  width: 260px;
+  padding: 10px;
+  border: 1px solid var(--border-emphasis);
+  border-radius: 14px;
+  background: var(--card-raised);
+  box-shadow: var(--ob-shadow-card);
+  animation: orbit-card-in 0.16s var(--ease-settle) both;
+}
+[data-stage-view="orbit"] .ob-more__list[data-side="left"] {
+  bottom: 0;
+  left: calc(100% + 10px);
+}
+[data-stage-view="orbit"] .ob-more__list[data-side="right"] {
+  right: calc(100% + 10px);
+  bottom: 0;
+}
+[data-stage-view="orbit"] .ob-more__list[data-side="top"] {
+  top: calc(100% + 9px);
+  right: 0;
+}
+[data-stage-view="orbit"] .ob-more__list[data-side="bottom"] {
+  right: 0;
+  bottom: calc(100% + 9px);
+}
+[data-stage-view="orbit"] .ob-more__list .ob-chip__body {
+  font-size: var(--fs-xs);
+  line-height: 1.15;
+}
+[data-stage-view="orbit"] .ob-more__list .ob-chip__label {
+  -webkit-line-clamp: 1;
+}
+[data-stage-view="orbit"] .ob-more__list .ob-chip__ink {
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+}
+
+/* one-line chips, once a zone is past its room at full height */
+[data-stage-view="orbit"] .ob-zone[data-dense] .ob-chip__body {
+  font-size: var(--fs-xs);
+  line-height: 1.15;
+}
+[data-stage-view="orbit"] .ob-zone[data-dense] .ob-chip__label {
+  -webkit-line-clamp: 1;
+}
+[data-stage-view="orbit"] .ob-zone[data-dense] .ob-chip__ink {
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+}
+[data-stage-view="orbit"] .ob-zone[data-dense] .ob-chip__ic {
+  width: 14px;
+  height: 14px;
+}
+
+/* the later steps: the picture is context, quieter, still there to point at */
+[data-stage-view="orbit"][data-context] .ob-chip {
+  opacity: 0.66;
+}
+[data-stage-view="orbit"][data-context] .ob-chip:hover,
+[data-stage-view="orbit"][data-context] .ob-chip:focus-within {
+  opacity: 1;
+}
+[data-stage-view="orbit"][data-context] .ob-zone__cap {
+  opacity: 0.7;
+}
+[data-stage-view="orbit"][data-context] .ob-links {
+  opacity: 0.7;
+}
+
+/* ================================================================ links */
+[data-stage-view="orbit"] .ob-links,
+[data-stage-view="orbit"] .ob-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+[data-stage-view="orbit"] .ob-links {
+  z-index: var(--ob-z-links);
+  transition: opacity var(--dur-base) ease;
+}
+[data-stage-view="orbit"] .ob-ring {
+  z-index: var(--ob-z-ring);
+}
+[data-stage-view="orbit"] .ob-link {
+  transition: opacity var(--dur-base) ease;
+}
+[data-stage-view="orbit"] .ob-link__base {
+  fill: none;
+  stroke: var(--lt-arc);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.5;
+}
+[data-stage-view="orbit"] .ob-link:not([data-ink]) .ob-link__base {
+  stroke: var(--role-agent);
+  stroke-dasharray: 4 5;
+  opacity: 0.62;
+}
+[data-stage-view="orbit"] .ob-ah {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+[data-stage-view="orbit"] .ob-ah--ink {
+  stroke: var(--lt-arc);
+}
+[data-stage-view="orbit"] .ob-ah--pen {
+  stroke: var(--role-agent);
+}
+[data-stage-view="orbit"] .ob-link__flow {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 10;
+  opacity: 0;
+}
+[data-stage-view="orbit"] .ob-link[data-heat="dim"] {
+  opacity: 0.2;
+}
+[data-stage-view="orbit"] .ob-link[data-heat="hot"] .ob-link__base {
+  stroke-width: 2;
+  opacity: 1;
+}
+[data-stage-view="orbit"] .ob-link[data-heat="hot"] .ob-link__flow {
+  opacity: 1;
+  animation: orbit-flow 0.9s linear infinite;
+}
+[data-stage-view="orbit"][data-working][data-step="shape"] .ob-link__flow {
+  stroke-width: 3;
+  stroke-dasharray: 18 var(--ob-len, 400px);
+  opacity: 0.95;
+  animation: orbit-pulse 2s linear infinite;
+}
+[data-stage-view="orbit"] .ob-link[data-drawing] {
+  animation: orbit-fade 0.18s linear var(--ob-delay, 0ms) backwards;
+}
+[data-stage-view="orbit"] .ob-link[data-drawing] .ob-link__base {
+  animation: orbit-draw 0.65s var(--ease-settle) var(--ob-delay, 0ms) backwards;
+}
+
+/* ================================================================ the ring round the card */
+[data-stage-view="orbit"] .ob-arc {
+  outline: none;
+  pointer-events: none;
+}
+[data-stage-view="orbit"] .ob-arc__line {
+  fill: none;
+  stroke: var(--border-emphasis);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1 7;
+  opacity: 0.9;
+  transition:
+    stroke var(--dur-base) ease,
+    stroke-width var(--dur-fast) ease;
+}
+[data-stage-view="orbit"] .ob-arc[data-cov="0.5"] .ob-arc__line {
+  stroke: var(--role-agent);
+  stroke-dasharray: 8 6;
+}
+[data-stage-view="orbit"] .ob-arc[data-cov="1"] .ob-arc__line {
+  stroke: var(--lt-arc);
+  stroke-dasharray: none;
+}
+/* left open with a default ("That's enough, write it") */
+[data-stage-view="orbit"] .ob-arc[data-cov="skipped"] .ob-arc__line {
+  stroke: var(--muted);
+  stroke-dasharray: 2 5;
+}
+[data-stage-view="orbit"] .ob-arc__hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 18;
+  cursor: help;
+  pointer-events: stroke;
+}
+[data-stage-view="orbit"] .ob-arc[data-asked] .ob-arc__line {
+  stroke-width: 4;
+  filter: drop-shadow(0 0 5px var(--lt-arc));
+  animation: orbit-breathe 1.5s ease-in-out infinite;
+}
+[data-stage-view="orbit"][data-working] .ob-arc[data-asked] .ob-arc__line {
+  animation-duration: 0.9s;
+}
+[data-stage-view="orbit"] .ob-arc[data-lit] .ob-arc__line,
+[data-stage-view="orbit"] .ob-arc:focus-visible .ob-arc__line {
+  stroke-width: 5.5;
+}
+[data-stage-view="orbit"] .ob-arc:focus-visible .ob-arc__line {
+  filter: drop-shadow(0 0 6px var(--focus));
+}
+[data-stage-view="orbit"] .ob-tip {
+  position: absolute;
+  z-index: var(--ob-z-tip);
+  padding: 6px 11px;
+  border: 1px solid var(--border-emphasis);
+  border-radius: var(--r-pill);
+  background: var(--card-raised);
+  color: var(--foreground);
+  box-shadow: var(--ob-shadow-tip);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: orbit-tip-in var(--dur-fast) ease both;
+}
+
+/* her phrases flying to the pieces they became */
+[data-stage-view="orbit"] .ob-flights {
+  position: absolute;
+  inset: 0;
+  z-index: var(--ob-z-flight);
+  pointer-events: none;
+}
+[data-stage-view="orbit"] .ob-flight {
+  position: absolute;
+  display: block;
+  overflow: hidden;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--role-human) 24%, var(--card-bg));
+  color: var(--foreground);
+  box-shadow: 0 8px 24px var(--glow);
+  font-size: var(--fs-sm);
+  line-height: 1.42;
+  opacity: 0;
+  transform-origin: 0 0;
+  animation: orbit-fly var(--ob-fly, 720ms) var(--ease-settle) var(--ob-fly-at, 0ms) forwards;
+}
+
+/* ================================================================ the card at the centre */
+[data-stage-view="orbit"] .ob-hub {
+  position: relative;
+  z-index: var(--ob-z-hub);
+  grid-area: hub;
+  align-self: center;
+  width: 100%;
+  height: 100%;
+  max-height: 640px;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .ob-hub__glass {
+  position: absolute;
+  inset: 0;
+}
+[data-stage-view="orbit"] .ob-hub__body {
+  position: absolute;
+  inset: 0;
+  z-index: var(--ob-z-links);
+}
+[data-stage-view="orbit"] .ob-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: var(--ob-hub-pad);
+  overflow: hidden;
+  animation: orbit-view-in var(--dur-base) var(--ease-settle) both;
+}
+[data-stage-view="orbit"] .ob-view .btn {
+  min-height: 38px;
+}
+[data-stage-view="orbit"] .ob-view .btn:not(.btn-primary):not(.btn-quiet) {
+  border-color: var(--edge);
+  background: var(--raised);
+}
+[data-stage-view="orbit"] .ob-view .btn:not(.btn-primary):not(.btn-quiet):hover:not(:disabled) {
+  border-color: var(--lt-arc);
+  background: var(--wash);
+}
+[data-stage-view="orbit"] .ob-view .btn-quiet:hover:not(:disabled) {
+  background: var(--wash);
+}
+[data-stage-view="orbit"] .ob-view .field {
+  border-color: var(--edge);
+  background: var(--recess);
+}
+
+/* a later step's head: her seal, the step, what is happening */
+[data-stage-view="orbit"] .ob-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+[data-stage-view="orbit"] .ob-head__words {
+  min-width: 0;
+}
+[data-stage-view="orbit"] .ob-eyebrow {
+  margin: 0 0 4px;
+  color: var(--muted-foreground);
+  font: 600 var(--fs-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+[data-stage-view="orbit"] .ob-title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+[data-stage-view="orbit"] .ob-sub {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+  line-height: 1.4;
+}
+
+/* ---- shaping: what you said, her line, the one question, the way out ---- */
+[data-stage-view="orbit"] .ob-view--shape {
+  gap: 10px;
+}
+[data-stage-view="orbit"] .ob-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+[data-stage-view="orbit"] .ob-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 12px;
+  border-left: 3px solid var(--role-human);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--role-human) 8%, transparent);
+}
+[data-stage-view="orbit"] .ob-quote__you {
+  flex: none;
+  padding-top: 1px;
+  color: var(--role-human);
+  font: 600 var(--fs-xs) / 1.5 var(--font-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+[data-stage-view="orbit"] .ob-quote [data-role="need"] {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--fs-sm);
+  line-height: 1.42;
+}
+/* the sentence's caption is said by "You" beside it; kept for screen readers */
+[data-stage-view="orbit"] .ob-quote .sp-need__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+[data-stage-view="orbit"] .ob-quote .sp-need__text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: inherit;
+}
+[data-stage-view="orbit"] .ob-quote .sp-need__mark {
+  margin: 0 -1px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--role-human) 24%, transparent);
+  color: inherit;
+  box-shadow: inset 0 -2px 0 var(--role-human);
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+[data-stage-view="orbit"] .ob-quote .sp-need__mark:hover,
+[data-stage-view="orbit"] .ob-quote .sp-need__mark:focus-visible {
+  background: color-mix(in srgb, var(--role-human) 46%, transparent);
+}
+/* her first reply: the phrases she understood light up one by one, then fly */
+[data-stage-view="orbit"] .ob-quote[data-arriving] .sp-need__mark {
+  animation: orbit-mark-on 0.35s ease var(--ob-mark-at, 380ms) both;
+}
+[data-stage-view="orbit"] .ob-quote[data-arriving] .sp-need__mark:nth-of-type(2) {
+  --ob-mark-at: 840ms;
+}
+[data-stage-view="orbit"] .ob-quote[data-arriving] .sp-need__mark:nth-of-type(3) {
+  --ob-mark-at: 1300ms;
+}
+[data-stage-view="orbit"] .ob-quote[data-arriving] .sp-need__mark:nth-of-type(4) {
+  --ob-mark-at: 1760ms;
+}
+[data-stage-view="orbit"] .ob-quote[data-arriving] .sp-need__mark:nth-of-type(5) {
+  --ob-mark-at: 2220ms;
+}
+[data-stage-view="orbit"] .ob-quote[data-arriving] .sp-need__mark:nth-of-type(6) {
+  --ob-mark-at: 2680ms;
+}
+
+[data-stage-view="orbit"] .ob-speaker {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+[data-stage-view="orbit"] .ob-line {
+  flex: 1;
+  min-width: 0;
+  min-height: calc(2 * 1.42 * var(--fs-md));
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+  line-height: 1.42;
+}
+[data-stage-view="orbit"] .ob-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: safe center;
+  gap: 10px;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .ob-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-stage-view="orbit"] .ob-ask .sp-question {
+  gap: 6px;
+}
+[data-stage-view="orbit"] .sp-question__about {
+  color: var(--muted);
+  font: 600 var(--fs-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+[data-stage-view="orbit"] [data-role="ask-text"],
+[data-stage-view="orbit"] .ob-whole__title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+}
+[data-stage-view="orbit"] .ob-whole {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+[data-stage-view="orbit"] .ob-whole__count {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+}
+[data-stage-view="orbit"] .ob-ask .sp-suggestions {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+[data-stage-view="orbit"] .ob-ask .sp-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  min-height: 40px;
+  padding: 6px 14px 6px 9px;
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  background: var(--raised);
+  color: var(--foreground);
+  font: 400 var(--fs-md) / 1.3 var(--font-sans);
+  text-align: left;
+  transition:
+    border-color var(--dur-fast) ease,
+    background var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-settle);
+}
+[data-stage-view="orbit"] .ob-ask .sp-suggestion:hover:not(:disabled) {
+  border-color: var(--lt-arc);
+  background: var(--wash);
+  transform: translateX(3px);
+}
+[data-stage-view="orbit"] .ob-ask .sp-suggestion__key {
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--recess);
+  color: var(--role-agent);
+  font: 600 var(--fs-xs) / 1 var(--font-sans);
+}
+[data-stage-view="orbit"] .ob-ask .sp-suggestion__text {
+  overflow: visible;
+  white-space: normal;
+}
+[data-stage-view="orbit"] .ob-view--shape .sp-composer {
+  gap: 8px;
+}
+[data-stage-view="orbit"] .ob-view--shape .sp-composer .field,
+[data-stage-view="orbit"] .ob-view--shape .sp-composer .btn {
+  min-height: 40px;
+}
+
+/* what you said, while she reads it; her notices */
+[data-stage-view="orbit"] .sp-echo {
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--role-human);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--role-human) 11%, transparent);
+  font-size: var(--fs-md);
+  line-height: 1.35;
+}
+[data-stage-view="orbit"] .sp-echo__who {
+  color: var(--role-human);
+  font: 600 var(--fs-xs) / 1 var(--font-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+[data-stage-view="orbit"] .sp-echo__text {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+[data-stage-view="orbit"] .sp-notice {
+  gap: 10px;
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+}
+[data-stage-view="orbit"] .sp-notice[data-phase="slow"],
+[data-stage-view="orbit"] .sp-notice[data-phase="failed"] {
+  padding: 12px 14px;
+  border: 1px solid var(--status-warning);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--status-warning) 8%, transparent);
+  color: var(--foreground);
+  font-size: var(--fs-sm);
+}
+[data-stage-view="orbit"] .sp-notice[data-phase="failed"] {
+  border-color: var(--status-error);
+  background: color-mix(in srgb, var(--status-error) 8%, transparent);
+}
+[data-stage-view="orbit"] .sp-dots {
+  gap: 4px;
+}
+[data-stage-view="orbit"] .sp-dots i {
+  width: 6px;
+  height: 6px;
+  background: var(--lt-arc);
+  animation: orbit-dot 1.2s ease-in-out infinite;
+}
+[data-stage-view="orbit"] .sp-revisit {
+  padding: 8px 12px;
+  border: 1px solid var(--status-warning);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--status-warning) 9%, transparent);
+  line-height: 1.4;
+}
+
+[data-stage-view="orbit"] .ob-foot {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--edge);
+}
+[data-stage-view="orbit"] .ob-foot .sp-still {
+  color: var(--muted-foreground);
+  line-height: 1.35;
+}
+[data-stage-view="orbit"] .ob-foot__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-stage-view="orbit"] .ob-inkall {
+  gap: 8px;
+}
+[data-stage-view="orbit"] .ob-inkall svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+[data-stage-view="orbit"] .ob-foot .sp-enough {
+  display: flex;
+  flex: 1;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-left: auto;
+}
+[data-stage-view="orbit"] .ob-foot .sp-enough__open {
+  display: -webkit-box;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.35;
+  text-align: right;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+[data-stage-view="orbit"] .ob-view .ob-foot [data-role="exit"].btn {
+  position: relative;
+  flex: none;
+  min-height: 40px;
+  padding: 0 22px;
+  border-color: transparent;
+  background: var(--btn-primary);
+  color: var(--on-primary);
+  opacity: 0.62;
+}
+[data-stage-view="orbit"] .ob-view .ob-foot [data-role="exit"].btn:hover:not(:disabled),
+[data-stage-view="orbit"] .ob-view .ob-foot [data-role="exit"][data-ready].btn {
+  opacity: 1;
+}
+[data-stage-view="orbit"] .ob-view .ob-foot [data-role="exit"][data-ready].btn:disabled {
+  opacity: 0.5;
+}
+[data-stage-view="orbit"] .ob-foot [data-role="exit"][data-ready]:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--lt-arc);
+  border-radius: 14px;
+  opacity: 0;
+  pointer-events: none;
+  animation: orbit-cta 3s ease-in-out infinite;
+}
+
+/* ---- writing ---- */
+[data-stage-view="orbit"] .sp-progress__bar {
+  height: 8px;
+  border: 1px solid var(--edge);
+  background: var(--recess);
+}
+[data-stage-view="orbit"] .sp-progress__bar i {
+  background: linear-gradient(90deg, var(--btn-primary), var(--lt-arc));
+}
+[data-stage-view="orbit"] .sp-progress__clock {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+[data-stage-view="orbit"] .sp-problems {
+  padding: 12px 14px;
+  border: 1px solid var(--status-warning);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--status-warning) 8%, transparent);
+  line-height: 1.4;
+}
+[data-stage-view="orbit"] .sp-problems[data-tone="failed"] {
+  border-color: var(--status-error);
+  background: color-mix(in srgb, var(--status-error) 8%, transparent);
+}
+[data-stage-view="orbit"] .sp-problems__title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+[data-stage-view="orbit"] .ob-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+[data-stage-view="orbit"] .sp-tile {
+  padding: 12px 13px;
+  border: 1px solid var(--edge);
+  border-radius: 13px;
+  background: var(--raised);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+[data-stage-view="orbit"] .sp-tile[data-fresh] {
+  animation: orbit-tile-in 0.4s var(--ease-settle) both;
+}
+[data-stage-view="orbit"] .sp-tile[data-fresh]:nth-child(2) {
+  animation-delay: 0.12s;
+}
+[data-stage-view="orbit"] .sp-tile[data-fresh]:nth-child(3) {
+  animation-delay: 0.24s;
+}
+[data-stage-view="orbit"] .sp-tile__name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.25;
+}
+[data-stage-view="orbit"] .sp-tile__line b {
+  color: var(--foreground);
+  font-weight: 600;
+}
+[data-stage-view="orbit"] .sp-tile__rows {
+  margin-top: auto;
+  border: 0;
+  padding: 0;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+[data-stage-view="orbit"] .ob-go {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+[data-stage-view="orbit"] .ob-view .ob-go__btn {
+  min-height: 44px;
+  padding: 0 var(--sp-5);
+  font-size: var(--fs-md);
+}
+[data-stage-view="orbit"] .ob-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+}
+
+/* ---- the check step: one card at a time, Y and N ---- */
+[data-stage-view="orbit"] .ob-view--check {
+  gap: 10px;
+}
+[data-stage-view="orbit"] .ob-dots {
+  display: flex;
+  gap: 6px;
+}
+[data-stage-view="orbit"] .ob-dot {
+  flex: 1;
+  max-width: 62px;
+  min-height: 36px;
+  border: 1.5px solid var(--role-human);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--foreground);
+  font: 600 var(--fs-sm) / 1 var(--font-sans);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) ease,
+    transform var(--dur-fast) ease;
+}
+[data-stage-view="orbit"] .ob-dot:hover {
+  transform: translateY(-1px);
+}
+[data-stage-view="orbit"] .ob-dot[data-mark="yes"] {
+  background: var(--role-human);
+  color: var(--on-human);
+}
+[data-stage-view="orbit"] .ob-dot[data-mark="no"] {
+  border-color: var(--muted);
+  background: var(--recess);
+  color: var(--muted-foreground);
+}
+[data-stage-view="orbit"] .ob-dot[aria-current="true"] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--role-human) 28%, transparent);
+  transform: translateY(-1px);
+}
+[data-stage-view="orbit"] .ob-deck {
+  position: relative;
+  display: grid;
+  flex: 1;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .ob-deck__slot {
+  position: relative;
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition:
+    opacity var(--dur-base) ease,
+    transform var(--dur-base) var(--ease-settle);
+}
+[data-stage-view="orbit"] .ob-deck__slot:not([data-front]) {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.98);
+}
+[data-stage-view="orbit"] .ob-deck__n {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: var(--ob-z-links);
+  margin: 0;
+  color: var(--muted);
+  font: 600 var(--fs-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+[data-stage-view="orbit"] .ob-deck .sp-check {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  background: var(--card-raised);
+}
+[data-stage-view="orbit"] .ob-deck .sp-check[data-mark="yes"] {
+  border-color: var(--role-human);
+}
+[data-stage-view="orbit"] .ob-deck .sp-check__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-stage-view="orbit"] .ob-deck .sp-check__app {
+  order: -1;
+  align-self: flex-start;
+  padding: 2px 10px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-pill);
+  background: var(--raised);
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.5;
+}
+[data-stage-view="orbit"] .ob-deck .sp-check__label {
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  line-height: 1.3;
+}
+[data-stage-view="orbit"] .ob-deck .sp-check__why {
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+[data-stage-view="orbit"] .ob-deck .sp-check__marks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: auto;
+}
+[data-stage-view="orbit"] .ob-deck .sp-mark {
+  min-height: 48px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  font: 600 var(--fs-md) / 1 var(--font-sans);
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
+}
+[data-stage-view="orbit"] .ob-deck .sp-mark[data-v="yes"]:hover,
+[data-stage-view="orbit"] .ob-deck .sp-mark[data-v="yes"][aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--role-human);
+  color: var(--on-human);
+}
+[data-stage-view="orbit"] .ob-deck .sp-mark[data-v="no"][aria-pressed="true"] {
+  border-color: var(--muted);
+  background: var(--recess);
+  color: var(--foreground);
+}
+[data-stage-view="orbit"] .ob-deck__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+[data-stage-view="orbit"] .ob-deck__hint {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-stage-view="orbit"] .ob-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .sp-lines {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 13px;
+  background: var(--raised);
+}
+[data-stage-view="orbit"] .sp-lines__title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+[data-stage-view="orbit"] .sp-lines__list li {
+  padding: 4px 4px 4px 10px;
+  border-left: 3px solid var(--role-human);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--role-human) 8%, transparent);
+  line-height: 1.35;
+}
+[data-stage-view="orbit"] .sp-lines__list .btn {
+  min-height: 32px;
+}
+[data-stage-view="orbit"] .ob-lines__go {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+}
+
+/* ---- the test run and the verdict: two panes in the card ---- */
+[data-stage-view="orbit"] .ob-view--run,
+[data-stage-view="orbit"] .ob-view--verdict {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ob-side-pane);
+  align-content: stretch;
+  gap: 0 20px;
+}
+[data-stage-view="orbit"] .ob-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .ob-pane--side {
+  padding-left: 18px;
+  border-left: 1px solid var(--edge);
+}
+[data-stage-view="orbit"] .sp-phases__list {
+  display: grid;
+  gap: 6px;
+}
+[data-stage-view="orbit"] .sp-phase {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--foreground);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.35;
+}
+[data-stage-view="orbit"] .sp-phase::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--btn-primary);
+}
+[data-stage-view="orbit"] .sp-phase[aria-current="step"] {
+  border-color: var(--lt-arc);
+  background: var(--wash);
+}
+[data-stage-view="orbit"] .sp-phase[aria-current="step"]::before {
+  border: 2px solid var(--lt-arc);
+  border-right-color: transparent;
+  background: transparent;
+  animation: orbit-spin 0.9s linear infinite;
+}
+[data-stage-view="orbit"] .sp-phases__now {
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+[data-stage-view="orbit"] .sp-filed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+[data-stage-view="orbit"] .sp-filed__title {
+  color: var(--muted-foreground);
+  font: 600 var(--fs-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+[data-stage-view="orbit"] .sp-filed__list {
+  gap: 6px;
+  margin: 0;
+}
+[data-stage-view="orbit"] .sp-slip {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--role-human) 8%, transparent);
+  line-height: 1.3;
+  white-space: normal;
+  animation: orbit-tile-in 0.4s var(--ease-settle);
+}
+[data-stage-view="orbit"] .sp-vrows {
+  gap: 6px;
+}
+[data-stage-view="orbit"] .sp-vrow {
+  padding: 5px 9px;
+  border: 1px solid var(--edge);
+  border-radius: 11px;
+  background: var(--raised);
+  line-height: 1.3;
+}
+[data-stage-view="orbit"] .sp-vrow[data-filed="true"] .sp-vrow__label {
+  font-weight: 500;
+}
+[data-stage-view="orbit"] .sp-score {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--status-success);
+  border-radius: 14px;
+  background: var(--raised);
+}
+[data-stage-view="orbit"] .sp-score[data-short] {
+  border-color: var(--status-warning);
+}
+[data-stage-view="orbit"] .sp-score[data-short] .sp-score__headline {
+  color: var(--status-warning);
+}
+[data-stage-view="orbit"] .sp-score__headline {
+  color: var(--foreground);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.25;
+}
+[data-stage-view="orbit"] .sp-score__reasons {
+  padding-left: var(--sp-4);
+  font-size: var(--fs-xs);
+}
+[data-stage-view="orbit"] .sp-verdict {
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: auto;
+}
+[data-stage-view="orbit"] .sp-verdict .btn,
+[data-stage-view="orbit"] .sp-verdict__note {
+  width: 100%;
+}
+[data-stage-view="orbit"] .ob-view--saved {
+  justify-content: center;
+}
+[data-stage-view="orbit"] .sp-saved__title {
+  color: var(--foreground);
+  font-size: var(--fs-xl);
+}
+
+/* ================================================================ a compact frame */
+@container (max-width: 1180px) or (max-height: 704px) {
+  [data-stage-view="orbit"] .ob-stage {
+    --ob-zone-w: 190px;
+    --ob-moat: 26px;
+    --ob-gap: 5px;
+    --ob-chip-h: 44px;
+    --ob-chip-h-top: 54px;
+    --ob-chip-h-bottom: 36px;
+    --ob-chip-min: 150px;
+    --ob-hub-pad: 16px;
+    --ob-side-pane: 204px;
+    row-gap: 24px;
+    padding: 10px 14px 12px;
+  }
+  [data-stage-view="orbit"] .ob-chip__body {
+    font-size: var(--fs-xs);
+  }
+  [data-stage-view="orbit"] .ob-zone[data-zone="steps"] .ob-chip__ic {
+    display: none;
+  }
+  [data-stage-view="orbit"] .ob-chip__ink {
+    width: 22px;
+    height: 22px;
+    margin-right: 6px;
+  }
+  [data-stage-view="orbit"] .ob-zone__cap {
+    letter-spacing: 0.04em;
+  }
+  [data-stage-view="orbit"] .ob-view {
+    gap: 8px;
+  }
+  [data-stage-view="orbit"] .ob-view--shape {
+    gap: 8px;
+  }
+  [data-stage-view="orbit"] .ob-hub .seal__svg {
+    width: 38px;
+    height: 38px;
+  }
+  [data-stage-view="orbit"] .sp-question__about {
+    display: none;
+  }
+  [data-stage-view="orbit"] [data-role="ask-text"],
+  [data-stage-view="orbit"] .ob-whole__title,
+  [data-stage-view="orbit"] .ob-title {
+    font-size: var(--fs-lg);
+  }
+  [data-stage-view="orbit"] .ob-line {
+    min-height: calc(2 * 1.4 * var(--fs-sm));
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+  }
+  [data-stage-view="orbit"] .ob-sub {
+    font-size: var(--fs-sm);
+  }
+  [data-stage-view="orbit"] .ob-ask .sp-suggestions {
+    gap: 6px;
+    margin-top: 6px;
+  }
+  [data-stage-view="orbit"] .ob-ask .sp-suggestion {
+    min-height: 34px;
+    padding: 3px 12px 3px 8px;
+    font-size: var(--fs-sm);
+  }
+  [data-stage-view="orbit"] .ob-view--shape .sp-composer .field,
+  [data-stage-view="orbit"] .ob-view--shape .sp-composer .btn,
+  [data-stage-view="orbit"] .ob-view .btn {
+    min-height: 36px;
+  }
+  [data-stage-view="orbit"] .ob-foot {
+    gap: 6px;
+    padding-top: 6px;
+  }
+  [data-stage-view="orbit"] .ob-deck .sp-check {
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  [data-stage-view="orbit"] .ob-deck .sp-check__label {
+    font-size: var(--fs-md);
+  }
+  [data-stage-view="orbit"] .ob-deck .sp-mark {
+    min-height: 42px;
+  }
+  [data-stage-view="orbit"] .sp-lines {
+    gap: 5px;
+    padding: 8px 10px;
+  }
+  [data-stage-view="orbit"] .sp-tile {
+    padding: 8px 10px;
+  }
+  [data-stage-view="orbit"] .sp-phase {
+    padding: 5px 8px;
+  }
+  [data-stage-view="orbit"] .sp-score {
+    padding: 10px 12px;
+  }
+  [data-stage-view="orbit"] .sp-vrow {
+    padding: 4px 8px;
+  }
+  [data-stage-view="orbit"] .sp-vrow__sub,
+  [data-stage-view="orbit"] .ob-view--check .ob-sub,
+  [data-stage-view="orbit"] .ob-view--verdict .ob-eyebrow,
+  [data-stage-view="orbit"] .ob-view--run .ob-eyebrow {
+    display: none;
+  }
+  [data-stage-view="orbit"] .sp-vrows,
+  [data-stage-view="orbit"] .ob-lines {
+    gap: 5px;
+  }
+  [data-stage-view="orbit"] .sp-lines .field,
+  [data-stage-view="orbit"] .sp-lines .btn {
+    min-height: 32px;
+  }
+  [data-stage-view="orbit"] .ob-pane--side {
+    padding-left: 14px;
+  }
+}
+
+/* ================================================================ motion */
+@keyframes orbit-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes orbit-land {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes orbit-halo {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.97);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+@keyframes orbit-settle {
+  0% {
+    transform: scale(1);
+  }
+  38% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes orbit-done-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  40% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+@keyframes orbit-tick-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes orbit-flash-in {
+  0% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes orbit-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes orbit-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+@keyframes orbit-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+@keyframes orbit-pulse {
+  from {
+    stroke-dashoffset: 18px;
+  }
+  to {
+    stroke-dashoffset: calc(-1 * var(--ob-len, 400px));
+  }
+}
+@keyframes orbit-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes orbit-draw {
+  from {
+    stroke-dasharray: var(--ob-len) var(--ob-len);
+    stroke-dashoffset: var(--ob-len);
+    opacity: 1;
+  }
+  to {
+    stroke-dasharray: var(--ob-len) var(--ob-len);
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@keyframes orbit-fly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(calc(var(--ob-dx) * 0.55), calc(var(--ob-dy) * 0.55 - 26px)) scale(calc(1 + (var(--ob-s) - 1) * 0.5));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--ob-dx), var(--ob-dy)) scale(var(--ob-s));
+  }
+}
+@keyframes orbit-mark-on {
+  from {
+    background: transparent;
+    box-shadow: inset 0 -2px 0 transparent;
+  }
+}
+@keyframes orbit-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes orbit-tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes orbit-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes orbit-cta {
+  0%,
+  60%,
+  100% {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  25% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+/* Reduced motion: every arrival, flight, draw and settle is an instant change. The winner's
+ * stylesheet had no such block; the port has one. */
+@media (prefers-reduced-motion: reduce) {
+  [data-stage-view="orbit"] *,
+  [data-stage-view="orbit"] *::before,
+  [data-stage-view="orbit"] *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  [data-stage-view="orbit"] .ob-flights {
+    display: none;
+  }
+}
