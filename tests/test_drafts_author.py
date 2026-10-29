@@ -232,3 +232,14 @@ def test_a_busy_project_refuses_a_write(daemon: Daemon) -> None:
     with daemon.busy.turn(draft["space_id"]), pytest.raises(ApiError) as info:
         author.write(daemon, Fake(), draft["id"])
     assert info.value.error == "space_busy"
+
+
+def test_a_simulated_athena_says_plainly_that_she_cannot_write_and_calls_nothing(daemon: Daemon) -> None:
+    from athena.engine.scripted import ScriptedEngine
+
+    draft = agreed_draft(daemon)
+    events = list(author.write(daemon, ScriptedEngine(), draft["id"]))
+    assert [e["type"] for e in events] == ["writing", "author_failed"]
+    assert events[-1]["problems"] == [author.SIMULATED] and "simulated" in author.SIMULATED
+    assert daemon.drafts.get(draft["id"])["step"] == "shape"
+    assert daemon.ledger.page(10)["totals"]["calls"] == 0

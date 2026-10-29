@@ -36,6 +36,7 @@ from athena.drafts.rubric import SLOTS
 from athena.drafts.shape import SLOT_MEANING
 from athena.engine import Engine, EngineError, TextDelta, Usage
 from athena.engine.prices import estimate
+from athena.engine.scripted import ScriptedEngine
 from athena.errors import ApiError
 
 CHORE_ID_MAX = 80
@@ -52,6 +53,10 @@ NO_ANSWER = "the answer is not JSON with playbook and world"
 NO_PHASES = "world.json has no phases"
 NO_ACT_TOOL = "world.json has no act tool"
 WRONG_KIND = "world.json has a value of the wrong kind"
+SIMULATED = (
+    "She is running simulated, with no real engine, and a simulated Athena cannot write a chore. "
+    "Connect Muse (or start her on Claude Code) to write it for real; your sketch is kept."
+)
 
 
 # --- shared by the later steps --------------------------------------------------------------------
@@ -587,6 +592,10 @@ def _write(daemon: Daemon, engine: Engine, draft_id: str, folder: Path) -> Itera
         daemon.drafts.skip_open(draft_id)  # "That's enough, write it": open slots read skipped
         draft = daemon.drafts.put(cast("Draft", {**daemon.drafts.get(draft_id), "step": "author"}))
         yield {"type": "writing"}
+        if isinstance(engine, ScriptedEngine):  # canned lines, no model: it cannot write a chore
+            _back(daemon, draft_id)
+            yield {"type": "author_failed", "problems": [SIMULATED]}
+            return
         messages = _messages(daemon, draft)
         taken = chore_ids(daemon.data_dir)
         chore_id: str | None = None
