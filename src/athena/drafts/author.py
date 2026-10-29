@@ -52,6 +52,7 @@ _FENCE = re.compile(r"```[a-zA-Z]*\s*\n(.*?)```", re.S)
 NO_ANSWER = "the answer is not JSON with playbook and world"
 NO_PHASES = "world.json has no phases"
 NO_ACT_TOOL = "world.json has no act tool"
+LAST_PHASE_CANNOT_ACT = "world.json: the last phase opens an app with no act tool"
 WRONG_KIND = "world.json has a value of the wrong kind"
 SIMULATED = (
     "She is running simulated, with no real engine, and a simulated Athena cannot write a chore. "
@@ -294,6 +295,10 @@ _RULES: tuple[tuple[str, str], ...] = (
     (r"forbidden tool (.*) is a tool no app has", "A never line names {0}, which no practice app has."),
     (re.escape(NO_PHASES), "The test run has no steps: it opens none of her practice apps."),
     (re.escape(NO_ACT_TOOL), "None of her practice apps has an action that waits for your signature."),
+    (
+        re.escape(LAST_PHASE_CANNOT_ACT),
+        "The test run ends in an app where she can only look, so she cannot file anything after reading.",
+    ),
     (re.escape(NO_ANSWER), "Her answer could not be read as a chore."),
     (re.escape(WRONG_KIND) + r": .*", "Her practice apps hold a value of the wrong kind."),
 )
@@ -393,6 +398,7 @@ def _usable(world: dict[str, Any]) -> list[str]:
     if not _items(world.get("phases")):
         problems.append(NO_PHASES)
     acts = 0
+    acting: set[str] = set()  # apps with at least one act tool
     for app in _items(world.get("apps")):
         app_id = str(app.get("app_id", ""))
         for tool in _items(app.get("tools")):
@@ -405,12 +411,19 @@ def _usable(world: dict[str, Any]) -> list[str]:
             if kind == "READ" or not kind:
                 continue
             acts += 1
+            acting.add(app_id)
             if not params:
                 problems.append(f"{where}: an act tool needs a param for the case it is about")
             elif sum(1 for spec in params.values() if isinstance(spec, dict) and spec.get("key") is True) > 1:
                 problems.append(f"{where}: marks more than one param as the key")
     if not acts:
         problems.append(NO_ACT_TOOL)
+    # A test run offers only the open phase's app: if the last phase can only look, whatever she read
+    # there can never become a card (measured: a live run filed 1 of 5 when the invoice app acted and
+    # the attendance app, read last, could not).
+    phases = _items(world.get("phases"))
+    if acts and phases and str(phases[-1].get("app", "")) not in acting:
+        problems.append(LAST_PHASE_CANNOT_ACT)
     return problems
 
 
@@ -492,7 +505,9 @@ def _rules() -> str:
         "she should act on and a few she should leave alone, so the person can tell them apart.",
         '- "phases": [{"app": an app_id, "message": what the person says to open that app, in their own '
         'voice, "nudges": a whole number 0 to 3}], in the order of the sketch. Every phase opens an app '
-        "the world has.",
+        "the world has. A test run offers only the open phase's app, so read first and act last: the "
+        "last phase opens the app whose act tool files the cards, after the phases that read what they "
+        "need.",
         "- No senses: every table is written in world.json.",
     ]
     return "\n".join(lines)

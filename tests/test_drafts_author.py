@@ -243,3 +243,20 @@ def test_a_simulated_athena_says_plainly_that_she_cannot_write_and_calls_nothing
     assert events[-1]["problems"] == [author.SIMULATED] and "simulated" in author.SIMULATED
     assert daemon.drafts.get(draft["id"])["step"] == "shape"
     assert daemon.ledger.page(10)["totals"]["calls"] == 0
+
+
+def test_a_test_run_that_ends_where_she_can_only_look_is_repaired(daemon: Daemon) -> None:
+    # Measured live: the invoice app could act, the attendance app (read last) could not, and the run
+    # filed 1 of the 5 cards she had listed. The last phase must open an app that can act.
+    def read_last(_: dict[str, Any], w: dict[str, Any]) -> None:
+        w["phases"] = list(reversed(w["phases"]))
+
+    draft = agreed_draft(daemon)
+    fake = Fake([chore_answer(read_last), chore_answer()])
+    events = write(daemon, fake, draft["id"])
+    assert [e["type"] for e in events] == ["writing", "repair", "written"]
+    assert events[1]["problems"] == [
+        "The test run ends in an app where she can only look, so she cannot file anything after reading."
+    ]
+    assert "the last phase opens an app with no act tool" in str(fake.asked[1][-1]["content"])
+    assert "read first and act last" in str(fake.asked[0][0]["content"])
