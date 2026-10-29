@@ -27,9 +27,11 @@ from starlette.routing import BaseRoute, Route
 from athena import routes_state, routes_turn
 from athena.app import Daemon
 from athena.chores import routes_chores
+from athena.connectors import routes as routes_connectors
 from athena.contracts import VERSION
 from athena.drafts import routes as routes_drafts
 from athena.errors import ApiError
+from athena.twins import routes as routes_twins
 
 # The desktop's origins: Tauri on Windows/Linux and macOS, and the Vite dev server.
 APP_ORIGINS = ("http://tauri.localhost", "tauri://localhost", "http://localhost:1420")
@@ -48,6 +50,8 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_turn.routes(daemon),
         *routes_chores.routes(daemon),
         *routes_drafts.routes(daemon),
+        *routes_twins.routes(daemon),
+        *routes_connectors.routes(daemon),
     ]
 
     async def guard(request: Request, call_next: RequestResponseEndpoint) -> Response:

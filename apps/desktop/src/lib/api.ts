@@ -8,11 +8,19 @@ import {
   ROUTES,
   type ActiveSpace,
   type AuthorEvent,
+  type AutonomyBody,
   type Card,
   type CardList,
+  type ChannelKind,
   type ChoreDetail,
   type ChoreList,
+  type ChoresBody,
   type ConfirmBody,
+  type ConnectBody,
+  type ConnectFlow,
+  type Connection,
+  type ConnectionList,
+  type DialsBody,
   type Draft,
   type DraftAbandoned,
   type DropBody,
@@ -21,18 +29,32 @@ import {
   type Health,
   type KeyBody,
   type LedgerPage,
+  type MarkBody,
+  type MemoryBody,
   type MemoryKind,
   type MemoryPage,
   type MemoryRow,
+  type Mission,
   type NewDraftBody,
+  type NewMissionBody,
+  type NewTwinBody,
+  type PagesBody,
+  type PiecesBody,
   type Probe,
   type RehearsalEvent,
+  type RehearseBody,
+  type SamplesBody,
   type SayBody,
   type SpaceErased,
   type SpaceList,
   type SpaceSummary,
   type TurnEvent,
   type TurnList,
+  type TwinDetail,
+  type TwinPage,
+  type TwinRehearsalEvent,
+  type TwinSayBody,
+  type TwinSetupEvent,
   type Verdict,
   type VerdictBody,
 } from "./contract";
@@ -116,3 +138,52 @@ export const draftRehearse = (id: string, onEvent: (e: RehearsalEvent) => void, 
   streamNdjson<RehearsalEvent>("POST", path(ROUTES.draft_rehearse, { id }), undefined, onEvent, signal);
 export const draftVerdict = (id: string, body: VerdictBody) =>
   request<Draft>("POST", path(ROUTES.draft_verdict, { id }), body);
+
+// Twins (ADR 0008-0010): every setup change answers the whole twin. `say` and `rehearse` stream NDJSON.
+export const twins = () => request<TwinPage>("GET", ROUTES.twins);
+export const createTwin = (spaceId: string) =>
+  request<TwinDetail>("POST", ROUTES.twins, { space_id: spaceId } satisfies NewTwinBody);
+export const twin = (id: string) => request<TwinDetail>("GET", path(ROUTES.twin, { id }));
+export const twinSay = (id: string, body: TwinSayBody, onEvent: (e: TwinSetupEvent) => void, signal?: AbortSignal) =>
+  streamNdjson<TwinSetupEvent>("POST", path(ROUTES.twin_say, { id }), body, onEvent, signal);
+export const twinConfirm = (id: string, pieces: string[]) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_confirm, { id }), { pieces } satisfies PiecesBody);
+export const twinDrop = (id: string, pieces: string[]) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_drop, { id }), { pieces } satisfies PiecesBody);
+export const twinSamples = (id: string, ids: string[]) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_samples, { id }), { ids } satisfies SamplesBody);
+export const twinDials = (id: string, body: DialsBody) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_dials, { id }), body);
+export const twinPages = (id: string, ids: string[]) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_pages, { id }), { ids } satisfies PagesBody);
+export const twinChores = (id: string, ids: string[]) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_chores, { id }), { ids } satisfies ChoresBody);
+export const twinAutonomy = (id: string, body: AutonomyBody) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_autonomy, { id }), body);
+export const twinMemory = (id: string, body: MemoryBody) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_memory, { id }), body);
+export const twinRehearse = (id: string, goal: string, onEvent: (e: TwinRehearsalEvent) => void, signal?: AbortSignal) =>
+  streamNdjson<TwinRehearsalEvent>(
+    "POST",
+    path(ROUTES.twin_rehearse, { id }),
+    { goal } satisfies RehearseBody,
+    onEvent,
+    signal,
+  );
+export const twinMark = (id: string, body: MarkBody) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_mark, { id }), body);
+export const twinGoLive = (id: string) => request<TwinDetail>("POST", path(ROUTES.twin_golive, { id }));
+export const twinPause = (id: string) => request<TwinDetail>("POST", path(ROUTES.twin_pause, { id }));
+export const startMission = (id: string, body: NewMissionBody) =>
+  request<Mission>("POST", path(ROUTES.twin_missions, { id }), body);
+export const mission = (id: string, mid: string) => request<Mission>("GET", path(ROUTES.twin_mission, { id, mid }));
+
+// Connected accounts (ADR 0008): Google sign-in runs in the browser, so `connect` starts a flow to watch.
+export const connections = async () => (await request<ConnectionList>("GET", ROUTES.connectors)).connections;
+export const connect = (kind: ChannelKind, body: ConnectBody) =>
+  request<ConnectFlow>("POST", path(ROUTES.connector_connect, { kind }), body);
+export const connectFlow = (kind: ChannelKind) => request<ConnectFlow>("GET", path(ROUTES.connector_flow, { kind }));
+export const disconnect = (kind: ChannelKind) =>
+  request<Connection>("POST", path(ROUTES.connector_disconnect, { kind }));
+export const probeConnection = (kind: ChannelKind) =>
+  request<Connection>("POST", path(ROUTES.connector_probe, { kind }));

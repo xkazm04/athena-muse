@@ -34,7 +34,9 @@ def test_catalog_matches() -> None:
 def test_caps_match() -> None:
     drafts = ("FOLLOW_UPS_MAX", "REPAIRS_MAX", "SKETCH_NODES_MAX", "LABEL_MAX", "NEED_MAX", "DETAIL_MAX")
     drafts += ("ASK_TEXT_MAX", "SUGGESTIONS_MIN", "SUGGESTIONS_MAX")
-    for cap in ("NAME_MAX", "BRIEF_MAX", "APPS_MAX", "SPACES_MAX", "HUE_MAX", "TEXT_MAX", *drafts):
+    twins = ("TWINS_MAX", "SAMPLES_MAX", "BAR_MIN", "BAR_MAX", "BAR_DEFAULT", "RISKS_MAX")
+    twins += ("POLL_SECONDS_DEFAULT", "DIAL_MIN", "DIAL_MAX")
+    for cap in ("NAME_MAX", "BRIEF_MAX", "APPS_MAX", "SPACES_MAX", "HUE_MAX", "TEXT_MAX", *drafts, *twins):
         m = re.search(rf"export const {cap} = (\d+);", TS)
         assert m and int(m.group(1)) == getattr(contracts, cap), cap
 
@@ -52,7 +54,18 @@ def test_enums_match() -> None:
         "DraftVerdict",
         "StageView",
     )
-    for name in (*names, "Verdict", "Surface", "ActionName", "AppEventType", *chores, *drafts):
+    twins = ("Place", "ChannelKind", "Autonomy", "TwinState", "ChannelStatus", "ChannelHealth")
+    twins += (
+        "MissionState",
+        "SendDecision",
+        "WaitReason",
+        "TwinMark",
+        "ChoreKind",
+        "DialSource",
+        "TwinTurnSide",
+    )
+    twins += ("TwinMessageKind", "PieceOpName", "SetupPanel", "FactSuggest", "ConnectState")
+    for name in (*names, "Verdict", "Surface", "ActionName", "AppEventType", *chores, *drafts, *twins):
         assert _ts_union(name) == set(typing.get_args(getattr(contracts, name))), name
 
 
@@ -64,7 +77,8 @@ def test_proof_op_matches() -> None:
 
 def test_list_envelopes_match() -> None:
     envelopes = (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards"))
-    for name, key in (*envelopes, ("ChoreList", "chores"), ("ExpectedList", "expected")):
+    twins = (("ConnectionList", "connections"),)
+    for name, key in (*envelopes, ("ChoreList", "chores"), ("ExpectedList", "expected"), *twins):
         assert list(getattr(contracts, name).__annotations__) == [key], name
         assert re.search(rf"export interface {name} \{{\s*{key}: \w+\[\];\s*\}}", TS), name
 
@@ -88,6 +102,10 @@ def test_stream_event_types_match() -> None:
     assert _ts_event_types("AuthorEvent") == _py_event_types(*author)
     rehearsal = (c.RehearsalPhase, c.RehearsalCard, c.RehearsalScored, c.ErrorEvent)
     assert _ts_event_types("RehearsalEvent") == _py_event_types(*rehearsal)
+    setup = (c.TwinSketchEvent, c.TwinAskEvent, c.TwinCoverageEvent)
+    assert _ts_event_types("TwinSetupEvent") == _py_event_types(*turn, *setup)
+    twin_rehearsal = (c.TwinTurnEvent, c.TwinOutcomeEvent, c.ErrorEvent)
+    assert _ts_event_types("TwinRehearsalEvent") == _py_event_types(*twin_rehearsal)
 
 
 def test_draft_shapes_match() -> None:
@@ -100,3 +118,54 @@ def test_draft_shapes_match() -> None:
         assert m, name
         ts_keys = set(re.findall(r"^\s+(\w+)\??:", m.group(1), re.M))
         assert ts_keys == set(getattr(contracts, name).__annotations__), name
+
+
+def _ts_interface_keys(name: str) -> dict[str, bool]:
+    """An interface's keys, its parent's included, each mapped to whether it is optional."""
+    m = re.search(rf"export interface {name}(?: extends (\w+))? \{{(.*?)\n\}}", TS, re.S)
+    assert m, name
+    keys = _ts_interface_keys(m.group(1)) if m.group(1) else {}
+    keys.update({k: bool(q) for k, q in re.findall(r"^\s+(\w+)(\??):", m.group(2), re.M)})
+    return keys
+
+
+def _py_keys(name: str) -> dict[str, bool]:
+    hints = typing.get_type_hints(getattr(contracts, name), include_extras=True)
+    return {k: typing.get_origin(v) is typing.NotRequired for k, v in hints.items()}
+
+
+def test_twin_shapes_match() -> None:
+    # Every key of every twin shape is on both sides, and optional on one side exactly when it is on
+    # the other: an absent value is an omitted key (never null) on both.
+    shapes = ("Piece", "StyleDial", "Sample", "NotionPage", "ChorePreset", "MemoryFact", "AutonomySplit")
+    shapes += ("TwinChannel", "MissionBeat", "MissionTurn", "TwinFiled", "Mission", "TwinDraft", "TwinWeek")
+    shapes += ("TwinSummary", "TwinAsk", "TwinDetail", "TwinStats", "PieceOp", "Connection")
+    shapes += ("ConnectFlow",)
+    bodies = (
+        "NewTwinBody",
+        "TwinSayBody",
+        "PiecesBody",
+        "SamplesBody",
+        "DialsBody",
+        "PagesBody",
+        "ChoresBody",
+    )
+    bodies += ("AutonomyBody", "MemoryBody", "RehearseBody", "MarkBody", "NewMissionBody", "ConnectBody")
+    bodies += ("DecisionEdit", "DecisionBody")
+    for name in (*shapes, "TwinPage", "ConnectionList", *bodies):
+        assert _ts_interface_keys(name) == _py_keys(name), name
+
+
+def test_twin_page_envelope_matches() -> None:
+    assert list(contracts.TwinPage.__annotations__) == ["twins", "stats"]
+    assert re.search(r"export interface TwinPage \{\s*twins: TwinSummary\[\];\s*stats: TwinStats;\s*\}", TS)
+
+
+def test_place_coverage_has_one_key_per_place() -> None:
+    places = list(typing.get_args(contracts.Place))
+    assert list(contracts.PlaceCoverage.__annotations__) == places
+    assert "export type PlaceCoverage = Record<Place, CoverageValue>;" in TS
+
+
+def test_twin_actions_are_gated() -> None:
+    assert contracts.CATALOG["twin_send"] == contracts.CATALOG["twin_note"] == "gated"

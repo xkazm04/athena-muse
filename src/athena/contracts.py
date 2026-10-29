@@ -41,9 +41,19 @@ Role = Literal["person", "athena"]
 ActionClass = Literal["auto", "gated"]
 CardState = Literal["waiting", "approved", "declined"]
 Verdict = Literal["approve", "decline"]
-Surface = Literal["turn", "probe", "design", "rehearsal"]
+Surface = Literal["turn", "probe", "design", "rehearsal", "twin"]
 ActionName = Literal[
-    "recall", "remember", "propose_brief", "add_app", "forget", "portal_read", "portal_act", "sketch", "ask"
+    "recall",
+    "remember",
+    "propose_brief",
+    "add_app",
+    "forget",
+    "portal_read",
+    "portal_act",
+    "sketch",
+    "ask",
+    "twin_send",
+    "twin_note",
 ]
 AppEventType = Literal["card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done"]
 
@@ -61,6 +71,10 @@ CATALOG: dict[ActionName, ActionClass] = {
     # The stage (ADR 0007): offered only on a draft's design turn; they change the sketch, nothing else.
     "sketch": "auto",
     "ask": "auto",
+    # Twins (ADR 0009): one Gmail message (in-thread when replying), one Notion append or create. A
+    # draft the send rule lets go alone runs without a card; every other one waits on this class.
+    "twin_send": "gated",
+    "twin_note": "gated",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -91,6 +105,38 @@ ASK_TEXT_MAX = 240  # one question, shown whole on the stage
 SUGGESTIONS_MIN = 2
 SUGGESTIONS_MAX = 4
 NEED_MAX = 2000
+
+# --- twins: a clone that speaks for you (ADR 0008-0010) -------------------------------------------
+# A name the wire already uses (`Mark`, `Decision` on a card) is prefixed for twins.
+
+Place = Literal["who", "channels", "voice", "knowledge", "chores", "never", "autonomy", "memory", "mission"]
+ChannelKind = Literal["gmail", "notion"]
+Autonomy = Literal["review", "assist", "auto"]
+TwinState = Literal["setting_up", "live", "paused"]
+ChannelStatus = Literal["connected", "needs_sign_in", "disconnected"]
+ChannelHealth = Literal["active", "quiet", "stale"]  # omitted on a channel that has never spoken
+MissionState = Literal["open", "resolved", "handed_back"]
+SendDecision = Literal["sent_alone", "waits"]
+WaitReason = Literal["review", "assist", "first_message", "below_bar", "risk", "paused"]
+TwinMark = Literal["me", "edited", "not_me"]
+ChoreKind = Literal["outcome", "inbox", "test", "channel"]
+DialSource = Literal["learned", "preset", "you"]
+TwinTurnSide = Literal["twin", "other"]
+TwinMessageKind = Literal["first_message", "reply"]
+PieceOpName = Literal["add", "change", "remove", "dial"]
+SetupPanel = Literal["connect", "samples", "style", "pages", "chores", "autonomy", "memory", "rehearsal"]
+FactSuggest = Literal["keep", "drop"]
+ConnectState = Literal["idle", "waiting", "exchanging", "done", "failed"]
+
+TWINS_MAX = 20
+SAMPLES_MAX = 12  # sent mail the voice is learned from
+BAR_MIN = 50  # how sure a draft must be, in whole percent, to send alone on Auto
+BAR_MAX = 99
+BAR_DEFAULT = 80
+RISKS_MAX = 5  # lines on one draft's risk list
+POLL_SECONDS_DEFAULT = 300  # Gmail threads with an open mission, while the daemon runs
+DIAL_MIN = 1  # a style dial's value
+DIAL_MAX = 5
 
 
 # --- shapes ---------------------------------------------------------------------------------------
@@ -566,6 +612,408 @@ class AppEvent(TypedDict):
     turn_id: NotRequired[str]
 
 
+# --- twins (ADR 0008-0010) ------------------------------------------------------------------------
+# Field names follow docs/concepts/twin-module/prototypes/shared/SCHEMA.md. The daemon computes every
+# derived number (`readiness`, `coverage`, `ready`, `open_missions`, `waiting_count`, the stats); an
+# unmeasured figure is an omitted key and reads "-", never 0. Percent values are whole numbers 0-100.
+
+
+class Piece(TypedDict):
+    """One part of a twin, on its place in the document. Origin is computed as a sketch node's is."""
+
+    id: str
+    place: Place
+    label: str  # <= LABEL_MAX
+    origin: NodeOrigin  # "you": the person's words, confirmed when added; "athena": her proposal
+    confirmed: bool
+    detail: NotRequired[str]
+    quote: NotRequired[str]  # on the person's pieces: their own words it was drawn from, verbatim
+    evidence: NotRequired[list[str]]  # the sample ids it was learned from
+
+
+class PlaceCoverage(TypedDict):
+    who: CoverageValue
+    channels: CoverageValue
+    voice: CoverageValue
+    knowledge: CoverageValue
+    chores: CoverageValue
+    never: CoverageValue
+    autonomy: CoverageValue
+    memory: CoverageValue
+    mission: CoverageValue
+
+
+class StyleDial(TypedDict):
+    id: str
+    label: str
+    low: str  # the word at DIAL_MIN
+    high: str  # the word at DIAL_MAX
+    value: int  # DIAL_MIN..DIAL_MAX
+    source: DialSource
+
+
+class Sample(TypedDict):
+    """A sent mail of the person's that the voice may be learned from."""
+
+    id: str
+    to: str
+    subject: str
+    date: str  # ISO 8601 date
+    words: int
+    excerpt: str
+    suggest: bool  # Athena suggests learning from it
+    picked: bool  # the person's choice
+    why_not: NotRequired[str]  # when she does not suggest it
+
+
+class NotionPage(TypedDict):
+    id: str
+    title: str
+    kind: str  # Notion's word: "page" or "database"
+    suggest: bool
+    picked: bool
+    why_not: NotRequired[str]
+
+
+class ChorePreset(TypedDict):
+    """A ready-made chore the twin may run (ADR 0005); the catalogue grows with the tools."""
+
+    id: str
+    tool: str  # the tool it runs on: "notion" today, others listed as `coming`
+    name: str
+    does: str
+    kind: ChoreKind
+    suggest: bool
+    picked: bool
+    later: NotRequired[bool]  # can be picked once the twin is live
+    coming: NotRequired[bool]  # a tool this app cannot reach yet: shown, never picked
+
+
+# `from` is a Python keyword, so this one is spelled the functional way.
+MemoryFact = TypedDict(
+    "MemoryFact",
+    {
+        "id": str,
+        "fact": str,
+        "from": str,  # where she noticed it, in plain words
+        "suggest": FactSuggest,
+        "reason": NotRequired[str],  # why she suggests it
+        "keep": NotRequired[bool],  # the person's call; omitted until they make it
+    },
+)
+
+
+class AutonomySplit(TypedDict):
+    """A channel with two levels: one for first messages, one for replies."""
+
+    first_message: Autonomy
+    reply: Autonomy
+
+
+class TwinChannel(TypedDict):
+    kind: ChannelKind
+    account: str
+    status: ChannelStatus
+    autonomy: Autonomy
+    bar: int  # BAR_MIN..BAR_MAX; kept on every level, it only matters where a level is Auto
+    split: NotRequired[AutonomySplit]  # when set, it decides the level per kind of message
+    scope: NotRequired[str]  # what it may touch there, in plain words ("practice page only")
+    health: NotRequired[ChannelHealth]  # computed from last_at
+    last_at: NotRequired[str]
+
+
+class MissionBeat(TypedDict):
+    label: str
+    done: bool
+
+
+class MissionTurn(TypedDict):
+    """One message of a mission or the dress rehearsal. The twin's turns carry its draft facts."""
+
+    id: str
+    side: TwinTurnSide
+    text: str  # what was sent, or the draft as it waits
+    at: str  # ISO 8601 UTC
+    kind: NotRequired[TwinMessageKind]  # the twin's turns from here down
+    confidence: NotRequired[int]  # how sure it was, whole percent
+    risks: NotRequired[list[str]]  # its risk list, plain words, <= RISKS_MAX
+    decision: NotRequired[SendDecision]
+    reason: NotRequired[WaitReason]  # when it waits
+    bar: NotRequired[int]  # the bar it was held against, when its level was Auto
+    elapsed_s: NotRequired[float]  # how long it took to write
+    draft: NotRequired[str]  # the waiting draft's id
+    mark: NotRequired[TwinMark]  # the person's mark (rehearsal)
+    edited_text: NotRequired[str]  # with mark "edited": the person's words
+    learned: NotRequired[str]  # what an edit taught it, in plain words
+
+
+class TwinFiled(TypedDict):
+    """What a preset chore wrote when a mission ended."""
+
+    chore: str  # the ChorePreset id
+    where: str  # plain words: "Notion: Partnerships"
+    row: dict[str, str]
+
+
+# `with` is a Python keyword, so this one is spelled the functional way.
+Mission = TypedDict(
+    "Mission",
+    {
+        "id": str,
+        "twin_id": str,
+        "title": str,
+        "with": str,  # who the conversation is with
+        "channel": ChannelKind,
+        "goal": str,
+        "state": MissionState,
+        "beats": list[MissionBeat],
+        "turns": list[MissionTurn],
+        "created": str,
+        "last_at": NotRequired[str],
+        "note": NotRequired[str],  # the latest, in plain words ("They said 'by Friday'.")
+        "thread": NotRequired[str],  # the Gmail thread it lives on
+        "practice": NotRequired[bool],  # the dress rehearsal on a Notion practice page
+        "filed": NotRequired[TwinFiled],
+    },
+)
+
+
+class TwinDraft(TypedDict):
+    """A message the twin wrote. A waiting one is a signature card the person may edit."""
+
+    id: str
+    twin_id: str
+    channel: ChannelKind
+    to: str
+    subject: str
+    text: str
+    confidence: int
+    risks: list[str]
+    decision: SendDecision
+    created: str
+    mission: NotRequired[str]
+    reason: NotRequired[WaitReason]  # when it waits
+    bar: NotRequired[int]  # the bar it was held against, when its level was Auto
+    card_id: NotRequired[str]  # when it waits
+    answers: NotRequired[str]  # the message it replies to; omitted on a first message
+
+
+class TwinWeek(TypedDict):
+    """The last seven days; each figure is omitted until measured."""
+
+    sent: NotRequired[int]
+    sent_alone: NotRequired[int]
+    held_by_risk: NotRequired[int]
+    median_reply_min: NotRequired[float]
+    cost_usd: NotRequired[float]  # an estimate; the screen says "est."
+
+
+class TwinSummary(TypedDict):
+    """One twin: a document in the wallet and a row of the ledger."""
+
+    id: str  # tw_ + 12 hex
+    space_id: str
+    name: str
+    purpose: str
+    state: TwinState
+    channels: list[TwinChannel]
+    week: TwinWeek
+    readiness: int  # whole percent: the mean coverage over the places setup requires
+    open_missions: int  # open or handed back
+    waiting_count: int  # drafts waiting for a signature
+    missions: list[Mission]
+    waiting: list[TwinDraft]  # drafts waiting for a signature, oldest first
+    created: str
+    updated: str
+    since: NotRequired[str]  # when it first went live
+    paused_because: NotRequired[str]
+
+
+class TwinAsk(TypedDict):
+    place: Place
+    text: str
+    suggestions: list[str]
+    follow_up: int
+    panel: NotRequired[SetupPanel]  # the working slip this question needs
+    channel: NotRequired[ChannelKind]  # with panel "connect"
+
+
+class TwinDetail(TwinSummary):
+    pieces: list[Piece]
+    coverage: PlaceCoverage
+    ready: bool  # computed: the dress rehearsal may start
+    dials: list[StyleDial]
+    style_presets: list[str]
+    samples: list[Sample]
+    pages: list[NotionPage]
+    chores: list[ChorePreset]
+    memory: list[MemoryFact]
+    ask: NotRequired[TwinAsk]  # while setting up: the question still open
+    rehearsal: NotRequired[Mission]  # the latest dress rehearsal
+
+
+class TwinStats(TypedDict):
+    """The stat strip. The counts are always known; a weekly sum is omitted until a twin measured it."""
+
+    live: int
+    waiting_for_you: int
+    missions_open: int
+    sent_week: NotRequired[int]
+    sent_alone_week: NotRequired[int]
+    held_by_risk_week: NotRequired[int]
+    cost_usd_week: NotRequired[float]  # est.
+
+
+class TwinPage(TypedDict):
+    twins: list[TwinSummary]
+    stats: TwinStats
+
+
+class Connection(TypedDict):
+    """A connected account (ADR 0008). The credential itself never crosses the wire."""
+
+    kind: ChannelKind
+    status: ChannelStatus
+    writes: bool  # whether it may send or write; off until a twin needs it
+    account: NotRequired[str]
+    last_checked: NotRequired[str]
+    problem: NotRequired[str]  # plain words
+
+
+class ConnectionList(TypedDict):
+    connections: list[Connection]
+
+
+class ConnectFlow(TypedDict):
+    """A connect in progress: Google's sign-in in the browser, or a Notion key being checked."""
+
+    state: ConnectState
+    detail: NotRequired[str]  # plain words
+
+
+class NewTwinBody(TypedDict):
+    space_id: str
+
+
+class TwinSayBody(TypedDict):
+    text: str  # "" when the person picked a suggestion; the first say carries the need
+    choice: NotRequired[str]
+
+
+class PiecesBody(TypedDict):
+    pieces: list[str]  # piece ids: inked on confirm, rubbed out (her unconfirmed ones only) on drop
+
+
+class SamplesBody(TypedDict):
+    ids: list[str]
+
+
+class DialsBody(TypedDict):
+    dials: dict[str, int]  # dial id -> DIAL_MIN..DIAL_MAX; the person's values (source "you")
+    preset: NotRequired[str]  # a style preset applied first
+
+
+class PagesBody(TypedDict):
+    ids: list[str]
+
+
+class ChoresBody(TypedDict):
+    ids: list[str]
+
+
+class AutonomyBody(TypedDict):
+    channel: ChannelKind
+    autonomy: Autonomy
+    bar: int
+    split: NotRequired[AutonomySplit]
+
+
+class MemoryBody(TypedDict):
+    id: str
+    keep: bool
+    reason: NotRequired[str]
+
+
+class RehearseBody(TypedDict):
+    goal: str
+
+
+class MarkBody(TypedDict):
+    turn: str
+    mark: TwinMark
+    edited_text: NotRequired[str]
+
+
+class NewMissionBody(TypedDict):
+    thread: str
+    goal: str
+
+
+class ConnectBody(TypedDict):
+    """Gmail: the person's own Google client. Notion: the key."""
+
+    client_id: NotRequired[str]
+    client_secret: NotRequired[str]
+    key: NotRequired[str]
+
+
+class DecisionEdit(TypedDict):
+    text: str
+
+
+class DecisionBody(TypedDict):
+    """POST /decisions/{card_id}. `edited` is taken on a twin draft's card only."""
+
+    verdict: Verdict
+    edited: NotRequired[DecisionEdit]
+
+
+# The setup stream (POST /twins/{id}/say) is a turn stream: start, text, tool, card, done and error as
+# on /run, with the twin's own sketch, ask and coverage lines (the same names as a draft's stage turn,
+# twin payloads).
+
+
+class PieceOp(TypedDict):
+    """One change as applied: add/change carry the whole piece after it, remove the piece, dial the
+    whole dial after it."""
+
+    op: PieceOpName
+    piece: NotRequired[Piece]
+    dial: NotRequired[StyleDial]
+
+
+class TwinSketchEvent(TypedDict):
+    type: Literal["sketch"]
+    ops: list[PieceOp]
+
+
+class TwinAskEvent(TypedDict):
+    type: Literal["ask"]
+    ask: TwinAsk
+
+
+class TwinCoverageEvent(TypedDict):
+    type: Literal["coverage"]
+    coverage: PlaceCoverage
+    ready: bool
+    readiness: int
+
+
+# The rehearsal stream (POST /twins/{id}/rehearse): each turn as it is played, then the outcome; a
+# failed run streams the turn's ErrorEvent.
+
+
+class TwinTurnEvent(TypedDict):
+    type: Literal["turn"]
+    turn: MissionTurn
+
+
+class TwinOutcomeEvent(TypedDict):
+    type: Literal["outcome"]
+    state: MissionState
+    filed: NotRequired[TwinFiled]
+
+
 # --- routes ---------------------------------------------------------------------------------------
 
 ROUTES = {
@@ -596,4 +1044,26 @@ ROUTES = {
     "draft_key": "/drafts/{id}/key",
     "draft_rehearse": "/drafts/{id}/rehearse",
     "draft_verdict": "/drafts/{id}/verdict",
+    "twins": "/twins",
+    "twin": "/twins/{id}",
+    "twin_say": "/twins/{id}/say",
+    "twin_confirm": "/twins/{id}/confirm",
+    "twin_drop": "/twins/{id}/drop",
+    "twin_samples": "/twins/{id}/samples",
+    "twin_dials": "/twins/{id}/dials",
+    "twin_pages": "/twins/{id}/pages",
+    "twin_chores": "/twins/{id}/chores",
+    "twin_autonomy": "/twins/{id}/autonomy",
+    "twin_memory": "/twins/{id}/memory",
+    "twin_rehearse": "/twins/{id}/rehearse",
+    "twin_mark": "/twins/{id}/rehearse/mark",
+    "twin_golive": "/twins/{id}/golive",
+    "twin_pause": "/twins/{id}/pause",
+    "twin_missions": "/twins/{id}/missions",
+    "twin_mission": "/twins/{id}/missions/{mid}",
+    "connectors": "/connectors",
+    "connector_connect": "/connectors/{kind}/connect",
+    "connector_flow": "/connectors/{kind}/flow",
+    "connector_disconnect": "/connectors/{kind}/disconnect",
+    "connector_probe": "/connectors/{kind}/probe",
 }

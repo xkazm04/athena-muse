@@ -204,6 +204,8 @@ Repo law applies throughout: the contract comes first, one commit per feature, a
 
 ### Wire contract (WP0, committed by the Director with compilable stubs)
 
+**WP0 done (2026-10-29):** ADRs [0008](../../adr/0008-twins-speak-through-connected-accounts.md), [0009](../../adr/0009-one-send-rule-for-every-twin-draft.md) and [0010](../../adr/0010-one-shaping-conversation-two-rubrics.md), the contract on both sides with its parity test, and every twin and connector route mounted as a 501 stub naming its package.
+
 `contracts.py` and `contract.ts` change together, and `tests/test_contract_parity.py` gains the new enums, caps and routes.
 
 **Enums.**
@@ -284,6 +286,10 @@ Packages run in order where they share files, and in parallel otherwise.
   - A Playwright script drives the built app against a real daemon: setup on the scripted engine and on Claude Code, then the rehearsal on a Notion practice page.
   - One real Gmail send to the owner's own address, run only with the owner present.
   - The docs and the README status are updated.
+
+## Known limits (v1)
+
+- One account per service per daemon: connector routes are keyed by kind, so twins share one Gmail and one Notion account (ADR 0008). The overview example's second Gmail address (Family admin) is illustrative.
 
 ## Open (owner)
 

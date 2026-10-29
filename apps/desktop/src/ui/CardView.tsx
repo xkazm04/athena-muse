@@ -22,6 +22,8 @@ const ACTION: Record<Card["action"], string> = {
   portal_act: "Act on a page",
   sketch: "Draw the sketch",
   ask: "Ask a question",
+  twin_send: "Send this email",
+  twin_note: "Write this to Notion",
 };
 
 /** A card Athena filed: nothing happens until the person signs it, and it runs once. */
