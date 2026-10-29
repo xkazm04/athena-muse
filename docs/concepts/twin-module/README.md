@@ -230,7 +230,7 @@ Repo law applies throughout: the contract comes first, one commit per feature, a
 - `TwinDraft` (`id`, `mission`, `channel`, `to`, `subject`, `text`, `confidence`, `risks`, `decision`, `reason`, `card_id`).
 - `TwinStats` and `TwinPage {twins, stats}`.
 
-**Absent values.** Every key is always present. An unmeasured value is `null` and renders "-", never 0.
+**Absent values.** These follow the contract's own rule: an absent value is an omitted key, never `null`. An unmeasured figure is omitted and renders "-", never 0. A name that already exists on the wire (`Mark`) is prefixed for twins (`TwinMark`, `SendDecision`).
 
 **Routes.**
 
