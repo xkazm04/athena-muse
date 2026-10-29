@@ -117,8 +117,8 @@ def run_turn(
     """Validates now (so the route can answer a 4xx), streams when iterated. `portal` offers a
     chore's invented app as tools (ADR 0005): its READ tools answer at once, every other files a
     `portal_act` card without ending the round loop, so one reply can file a pile. `design` makes it
-    a stage turn over a draft (ADR 0007): surface `design`, the tools `recall`, `sketch` and `ask`
-    only, and a reply with no words, no sketch change and no question ends in `error`."""
+    a design turn (ADR 0007, 0010): ledgered on the design's surface, offering `recall` and the
+    design's own tools only, and a reply with no words that changed and asked nothing ends in `error`."""
     text = validate(daemon, text, space_id)
     return _stream(daemon, engine, text, space_id, portal, design)
 
@@ -194,7 +194,7 @@ def _stream(
     portal: Portal | None = None,
     design: Design | None = None,
 ) -> Iterator[dict[str, Any]]:
-    surface: Surface = "design" if design is not None else "turn"
+    surface: Surface = design.surface if design is not None else "turn"
     with daemon.busy.turn(space_id):
         turn_id = mint("turn_")
         yield {"type": "start", "turn_id": turn_id, "engine": engine.id, "simulated": engine.simulated}

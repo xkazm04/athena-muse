@@ -206,6 +206,8 @@ Repo law applies throughout: the contract comes first, one commit per feature, a
 
 **WP0 done (2026-10-29):** ADRs [0008](../../adr/0008-twins-speak-through-connected-accounts.md), [0009](../../adr/0009-one-send-rule-for-every-twin-draft.md) and [0010](../../adr/0010-one-shaping-conversation-two-rubrics.md), the contract on both sides with its parity test, and every twin and connector route mounted as a 501 stub naming its package.
 
+**WP1 done (2026-10-29):** the drafts machinery carries a `Rubric` (places, required coverage, meanings, kinds allowed per place) behind a `Design` protocol whose surface lands on the ledger; chore drafts run on `CHORE_RUBRIC` and behave identically (frame, tools and a scripted walk compared byte for byte); a toy second rubric runs a scripted turn end to end; `StillNeeds` and `EnoughButton` take any coverage. Readiness is left to the twin rubric (WP3). The send rule `decide()` moved from WP4 to WP3, because the rehearsal rules every turn with it.
+
 `contracts.py` and `contract.ts` change together, and `tests/test_contract_parity.py` gains the new enums, caps and routes.
 
 **Enums.**

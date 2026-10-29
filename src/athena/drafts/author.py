@@ -31,9 +31,8 @@ from athena.chores.spec import (
     load_chore,
     load_library,
 )
-from athena.contracts import REPAIRS_MAX, Draft, PracticeApp
-from athena.drafts.rubric import SLOTS
-from athena.drafts.shape import SLOT_MEANING
+from athena.contracts import REPAIRS_MAX, Draft, PracticeApp, Surface
+from athena.drafts.rubric import CHORE_RUBRIC
 from athena.engine import Engine, EngineError, TextDelta, Usage
 from athena.engine.prices import estimate
 from athena.engine.scripted import ScriptedEngine
@@ -90,9 +89,15 @@ def not_busy(daemon: Daemon, draft: Draft) -> None:
         raise ApiError("space_busy", "Athena is still working on this; try again when she is done")
 
 
-def call_model(daemon: Daemon, engine: Engine, space_id: str, messages: list[dict[str, Any]]) -> str:
-    """One model call with no tools, ledgered with surface `design`; answers the text. Raises EngineError
-    (after ledgering it) when the call fails."""
+def call_model(
+    daemon: Daemon,
+    engine: Engine,
+    space_id: str,
+    messages: list[dict[str, Any]],
+    surface: Surface = "design",
+) -> str:
+    """One model call with no tools, ledgered on `surface` (a draft's steps: `design`); answers the
+    text. Raises EngineError (after ledgering it) when the call fails."""
     started = time.monotonic()
     parts: list[str] = []
     usage: Usage | None = None
@@ -104,7 +109,7 @@ def call_model(daemon: Daemon, engine: Engine, space_id: str, messages: list[dic
                 usage = chunk
     except EngineError as e:
         daemon.ledger.record(
-            surface="design",
+            surface=surface,
             space_id=space_id,
             engine=engine.id,
             model=engine.model,
@@ -120,7 +125,7 @@ def call_model(daemon: Daemon, engine: Engine, space_id: str, messages: list[dic
         if cost is None and engine.cost_estimated:
             cost = estimate(engine.model, usage.input_tokens, usage.output_tokens)
     daemon.ledger.record(
-        surface="design",
+        surface=surface,
         space_id=space_id,
         engine=engine.id,
         model=engine.model,
@@ -241,9 +246,9 @@ def sketch_text(draft: Draft) -> str:
     nodes = draft["sketch"]["nodes"]
     labels = {n["id"]: n["label"] for n in nodes}
     lines: list[str] = []
-    for slot in SLOTS:
+    for slot in CHORE_RUBRIC.places:
         here = [n for n in nodes if n["slot"] == slot]
-        lines.append(f"- {slot} ({SLOT_MEANING[slot]}):")
+        lines.append(f"- {slot} ({CHORE_RUBRIC.meaning[slot]}):")
         if not here:
             lines.append("  - left open: write a sensible default and say in the brief that it is one")
         for n in here:

@@ -1,16 +1,21 @@
-"""Stage turns: each reply is a frame (her line, sketch ops, at most one ask). Surface `design`.
+"""Design turns (ADR 0007, 0010): each reply is a frame (her line, sketch ops, at most one ask).
 
-A design turn is an ordinary turn in the draft's Project (`turn.run_turn` with `design=`), so her
-small window shows it. It offers `recall`, `sketch` and `ask` only. Every sketch call applies at once
-and streams; nothing is stored until the turn ends with words, an op or an ask. A failed or empty
-reply ends with `error` and the draft is left exactly as it was.
+A design turn is an ordinary turn in a Project (`turn.run_turn` with `design=`), so her small window
+shows it. It offers `recall` and the design's own tools only. Every sketch call applies at once and
+streams; nothing is stored until the turn ends with words, an op or an ask. A failed or empty reply
+ends with `error` and nothing is left changed.
+
+`Design` is what `run_turn` asks of one. `SketchDesign` is the shaping conversation over a sketch and
+a rubric, with no knowledge of what is being shaped. `ChoreDesign` shapes a chore draft on the chore's
+rubric (surface `design`), and the flow at the end (`start`, `say`, `confirm`, `drop`) drives it.
 """
 
 from __future__ import annotations
 
 import re
+from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from typing import Any, cast
+from typing import Any, ClassVar, Protocol, cast
 
 from athena.app import Daemon
 from athena.contracts import (
@@ -28,10 +33,11 @@ from athena.contracts import (
     SketchOp,
     Slot,
     StageView,
+    Surface,
 )
 from athena.drafts import sketch as sketches
-from athena.drafts.rubric import SLOTS, coverage
-from athena.drafts.sketch import SLOT_NAMES, SketchError
+from athena.drafts.rubric import CHORE_RUBRIC, Rubric
+from athena.drafts.sketch import SketchError
 from athena.engine import Engine, ToolCall
 from athena.errors import ApiError
 from athena.settings import ACTIVE_SPACE_KEY
@@ -44,25 +50,6 @@ _AUTO_ID = re.compile(r"n(\d+)")
 _QUOTE_MARKS = " \t\r\n\"'" + "".join(
     map(chr, (0x201C, 0x201D, 0x2018, 0x2019, 0xAB, 0xBB))
 )  # curly, guillemets
-
-SLOT_MEANING: dict[Slot, str] = {
-    "need": "the job, in the person's own words",
-    "apps": "where it happens (the websites or apps)",
-    "inputs": "what she reads (pages, mail, calls, letters)",
-    "steps": "the order she works in",
-    "hand": "what waits for the person's signature",
-    "output": "what the person gets at the end",
-    "never": "what she must never do or touch",
-}
-SLOT_KIND: dict[Slot, str] = {
-    "need": "step",
-    "apps": "app",
-    "inputs": "source",
-    "steps": "step",
-    "hand": "gate",
-    "output": "output",
-    "never": "never",
-}
 
 
 def _tool(name: str, description: str, props: dict[str, str], required: list[str]) -> dict[str, Any]:
@@ -80,46 +67,45 @@ def _tool(name: str, description: str, props: dict[str, str], required: list[str
     }
 
 
-SKETCH_TOOL = _tool(
-    "sketch",
-    "Change the sketch of the person's process at once: add a node, change one, remove a node or a link, "
-    "or link two nodes. Places never move; a new node takes the next place.",
-    {
-        "op": "add, change, remove or link",
-        "id": "The node's id (add: optional, one is given if empty; change and remove: required)",
-        "kind": "source, app, step, gate, output or never (add: required)",
-        "slot": "need, apps, inputs, steps, hand, output or never (add: required)",
-        "label": f"A few plain words, at most {LABEL_MAX} characters (add: required)",
-        "detail": "An optional second line",
-        "link_from": "link, or remove a link: the id the arrow starts at",
-        "link_to": "link, or remove a link: the id the arrow ends at",
-        "quote": "add: the person's exact words this node comes from, if it does (3 words or more)",
-    },
-    ["op"],
-)
-ASK_TOOL = _tool(
-    "ask",
-    "Ask the person one question about one slot, with 2 to 4 short suggested answers. At most one per reply.",
-    {
-        "slot": "need, apps, inputs, steps, hand, output or never",
-        "text": f"The question, at most {ASK_TEXT_MAX} characters",
-        "suggestions": "2 to 4 short answers, separated by ' | '",
-    },
-    ["slot", "text", "suggestions"],
-)
+def _or(items: tuple[str, ...]) -> str:
+    """`a, b or c`."""
+    return items[0] if len(items) < 2 else f"{', '.join(items[:-1])} or {items[-1]}"
 
-RULES = (
-    "## Drawing the chore with the person\n"
-    "The person wants to hand a chore to you. Together you draw a sketch of the process: their "
-    "picture of it, not a program. Use `sketch` to draw what they told you and to propose what is "
-    "missing; use `ask` for the next useful question.\n"
-    "Rules:\n"
-    "- At most one `ask` per reply, with 2 to 4 short suggested answers.\n"
-    "- Never say or imply the sketch is complete, done or ready. The person decides when it is enough.\n"
-    "- Draw the person's own words with `quote` set to their exact words; anything else you add is "
-    "your proposal, and the person confirms it on screen.\n"
-    "- Keep your line to one or two short sentences. Never mention tools, ids or slots by name."
-)
+
+def sketch_tool(rubric: Rubric, subject: str) -> dict[str, Any]:
+    """The `sketch` tool over the rubric's kinds and places; `subject` is what the sketch draws."""
+    return _tool(
+        "sketch",
+        f"Change the sketch of {subject} at once: add a node, change one, remove a node or a link, "
+        "or link two nodes. Places never move; a new node takes the next place.",
+        {
+            "op": "add, change, remove or link",
+            "id": "The node's id (add: optional, one is given if empty; change and remove: required)",
+            "kind": f"{_or(rubric.kinds)} (add: required)",
+            "slot": f"{_or(rubric.places)} (add: required)",
+            "label": f"A few plain words, at most {LABEL_MAX} characters (add: required)",
+            "detail": "An optional second line",
+            "link_from": "link, or remove a link: the id the arrow starts at",
+            "link_to": "link, or remove a link: the id the arrow ends at",
+            "quote": "add: the person's exact words this node comes from, if it does (3 words or more)",
+        },
+        ["op"],
+    )
+
+
+def ask_tool(rubric: Rubric) -> dict[str, Any]:
+    """The `ask` tool over the rubric's places."""
+    return _tool(
+        "ask",
+        "Ask the person one question about one slot, with 2 to 4 short suggested answers. "
+        "At most one per reply.",
+        {
+            "slot": _or(rubric.places),
+            "text": f"The question, at most {ASK_TEXT_MAX} characters",
+            "suggestions": "2 to 4 short answers, separated by ' | '",
+        },
+        ["slot", "text", "suggestions"],
+    )
 
 
 def default_name(need: str) -> str:
@@ -147,24 +133,76 @@ def _arg(call: ToolCall, key: str) -> str:
     return "" if value is None else str(value).strip()
 
 
-class Design:
-    """One design turn over one draft. `run_turn(..., design=...)` offers its tools, adds its frame,
-    hands it the `sketch` and `ask` calls, and asks it to settle when the reply is in."""
+# --- what run_turn asks of a design turn -----------------------------------------------------------
+
+
+class Design(Protocol):
+    """`run_turn(..., design=...)` offers its tools, adds its frame, hands it the calls it owns,
+    ledgers every model call on its surface, and asks it to settle when the reply counts."""
+
+    @property
+    def surface(self) -> Surface: ...
+
+    @property
+    def progressed(self) -> bool:
+        """The reply changed something or asked something."""
+        ...
+
+    def owns(self, name: str) -> bool: ...
+
+    def tools(self) -> list[dict[str, Any]]: ...
+
+    def frame(self) -> str: ...
+
+    def call(self, call: ToolCall) -> tuple[str, list[dict[str, Any]]]:
+        """(the tool result in plain words, the events to stream)."""
+        ...
+
+    def fallback(self) -> str:
+        """Her line when the reply had no words but did progress."""
+        ...
+
+    def record(self, reply: str) -> str:
+        """The reply as kept in the conversation."""
+        ...
+
+    def settle(self) -> list[dict[str, Any]]:
+        """Stores what the reply changed and answers the closing events; only for a reply that counts."""
+        ...
+
+
+# --- the shaping conversation over a sketch and a rubric -------------------------------------------
+
+
+class SketchDesign(ABC):
+    """One shaping turn over a sketch and a rubric: the `sketch` and `ask` tools, the frame (the rules,
+    the places, the person's words, the sketch, coverage, the questions asked), the quote that proves a
+    node is in the person's words, and the cap on questions per place. What is shaped and where it is
+    kept belong to the subclass: `rules`, `subject`, `surface` and `settle`."""
+
+    surface: ClassVar[Surface] = "design"
+    #: Her rules for this conversation, at the top of the frame.
+    rules: ClassVar[str] = ""
+    #: What the sketch draws, in the `sketch` tool's description.
+    subject: ClassVar[str] = "what the person described"
 
     def __init__(
         self,
         daemon: Daemon,
-        draft: Draft,
-        skipped: frozenset[Slot],
-        asked: dict[Slot, int],
-        view: StageView | None = None,
+        rubric: Rubric,
+        sketch: Sketch,
+        need: str,
+        space_id: str,
+        skipped: frozenset[str] = frozenset(),
+        asked: dict[str, int] | None = None,
     ) -> None:
         self.daemon = daemon
-        self.view = view
-        self.draft = draft
+        self.rubric = rubric
+        self.sketch = sketch
+        self.need = need
+        self.space_id = space_id
         self.skipped = skipped
-        self.asked = dict(asked)
-        self.sketch: Sketch = draft["sketch"]
+        self.asked = dict(asked or {})
         self.applied: list[SketchOp] = []
         self.ask: Ask | None = None
 
@@ -174,9 +212,8 @@ class Design:
     def owns(name: str) -> bool:
         return name in ("sketch", "ask")
 
-    @staticmethod
-    def tools() -> list[dict[str, Any]]:
-        return [SKETCH_TOOL, ASK_TOOL]
+    def tools(self) -> list[dict[str, Any]]:
+        return [sketch_tool(self.rubric, self.subject), ask_tool(self.rubric)]
 
     @property
     def progressed(self) -> bool:
@@ -184,10 +221,11 @@ class Design:
         return bool(self.applied) or self.ask is not None
 
     def frame(self) -> str:
-        cov = coverage(self.sketch, self.skipped)
-        parts = [RULES, "### The slots (what the sketch must cover)"]
-        parts += [f"- {s}: {SLOT_MEANING[s]} (usual kind: {SLOT_KIND[s]})" for s in SLOTS]
-        parts.append(f"### The person's need, in their words\n{self.draft['need']}")
+        places = self.rubric.places
+        cov = self.rubric.coverage(self.sketch, self.skipped)
+        parts = [self.rules, "### The slots (what the sketch must cover)"]
+        parts += [f"- {p}: {self.rubric.meaning[p]} (usual kind: {self.rubric.usual(p)})" for p in places]
+        parts.append(f"### The person's need, in their words\n{self.need}")
         parts.append("### The sketch now")
         if self.sketch["nodes"]:
             for n in self.sketch["nodes"]:
@@ -201,9 +239,9 @@ class Design:
             "### Coverage now (1 = the person confirmed a node, 0.5 = only your proposals, 0 = empty, "
             "skipped = the person left it open)"
         )
-        parts += [f"- {s}: {_value(cov[s])}" for s in SLOTS]
+        parts += [f"- {p}: {_value(cov[p])}" for p in places]
         parts.append(f"### Questions asked per slot (at most {FOLLOW_UPS_MAX + 1} each)")
-        parts += [f"- {s} asked {self.asked.get(s, 0)}" for s in SLOTS]
+        parts += [f"- {p} asked {self.asked.get(p, 0)}" for p in places]
         return "\n".join(parts)
 
     def call(self, call: ToolCall) -> tuple[str, list[dict[str, Any]]]:
@@ -222,24 +260,18 @@ class Design:
             return f"{reply}\n\n{self.ask['text']}"
         return reply
 
+    @abstractmethod
     def settle(self) -> list[dict[str, Any]]:
-        """Stores the frame (sketch, the question count, step `shape`) and answers the closing
-        `coverage` event. Called only for a reply that counts."""
+        """Stores the frame and answers the closing events, `coverage` among them."""
+
+    # --- for settle ---------------------------------------------------------------------------------
+
+    def asked_after(self) -> dict[str, int]:
+        """The questions asked per place, this reply's included."""
         asked = dict(self.asked)
         if self.ask is not None:
             asked[self.ask["slot"]] = asked.get(self.ask["slot"], 0) + 1
-        draft = cast("Draft", {**self.draft, "sketch": self.sketch, "step": "shape"})
-        if self.ask is not None:  # the open question is kept, so a reopened stage shows it
-            draft["ask"] = self.ask
-        else:
-            cast("dict[str, Any]", draft).pop("ask", None)
-        if self.view is not None:  # the comparison between the stage's views counts only replies that count
-            views = dict(self.draft.get("views", {}))
-            views[self.view] = views.get(self.view, 0) + 1
-            draft["views"] = views
-        stored = self.daemon.drafts.put(draft, asked=asked)
-        _rename(self.daemon, stored)
-        return [{"type": "coverage", "coverage": stored["coverage"], "agreed": stored["agreed"]}]
+        return asked
 
     # --- the two actions ------------------------------------------------------------------------
 
@@ -247,9 +279,9 @@ class Design:
         if self.ask is not None:
             return "You already asked a question in this reply; ask one at a time.", []
         slot = _arg(call, "slot")
-        if slot not in SLOT_NAMES:
-            return f"The slot must be one of {', '.join(SLOTS)}.", []
-        used = self.asked.get(cast("Slot", slot), 0)
+        if slot not in self.rubric.places:
+            return f"The slot must be one of {', '.join(self.rubric.places)}.", []
+        used = self.asked.get(slot, 0)
         if used > FOLLOW_UPS_MAX:
             return f"You have asked enough about {slot}; move on or let the person write it.", []
         text = _plain(_arg(call, "text"))
@@ -265,6 +297,7 @@ class Design:
             return f"Give {low} to {high} different short answers, separated by ' | '.", []
         if any(len(s) > LABEL_MAX for s in suggestions):
             return f"Each suggested answer is at most {LABEL_MAX} characters.", []
+        # one of the rubric's places; the chore's are Slot
         ask: Ask = {"slot": cast("Slot", slot), "text": text, "suggestions": suggestions, "follow_up": used}
         self.ask = ask
         return "Asked. The person sees your question and suggestions; wait for their answer.", [
@@ -294,7 +327,7 @@ class Design:
                 ops = [cast("SketchOp", {"op": op, "edge": edge})]
             else:
                 raise SketchError("the op must be add, change, remove or link")
-            self.sketch, applied = sketches.apply(self.sketch, ops)
+            self.sketch, applied = sketches.apply(self.sketch, ops, self.rubric)
         except SketchError as e:
             return f"Not drawn: {e}. The sketch is unchanged.", []
         self.applied += applied
@@ -329,14 +362,12 @@ class Design:
 
     def _quoted(self, quote: str) -> bool:
         """Whether `quote` (trimmed, case-insensitive, at least QUOTE_WORDS_MIN words) is verbatim in
-        one of the person's own messages in this draft: the need, a typed line, a picked answer."""
+        one of the person's own messages in this Project: the need, a typed line, a picked answer."""
         q = _plain(quote).strip(_QUOTE_MARKS).casefold()
         if len(q.split()) < QUOTE_WORDS_MIN:
             return False
-        said = [self.draft["need"]] + [
-            t["text"]
-            for t in self.daemon.conversation.list(self.draft["space_id"], 10_000)
-            if t["role"] == "person"
+        said = [self.need] + [
+            t["text"] for t in self.daemon.conversation.list(self.space_id, 10_000) if t["role"] == "person"
         ]
         return any(q in _plain(s).casefold() for s in said)
 
@@ -357,6 +388,69 @@ def _done(applied: list[SketchOp]) -> str:
             verb = "Linked" if op["op"] == "link" else "Removed the link"
             lines.append(f"{verb} {e['from']} -> {e['to']}.")
     return " ".join(lines)
+
+
+# --- the chore's design (ADR 0007) ------------------------------------------------------------------
+
+RULES = (
+    "## Drawing the chore with the person\n"
+    "The person wants to hand a chore to you. Together you draw a sketch of the process: their "
+    "picture of it, not a program. Use `sketch` to draw what they told you and to propose what is "
+    "missing; use `ask` for the next useful question.\n"
+    "Rules:\n"
+    "- At most one `ask` per reply, with 2 to 4 short suggested answers.\n"
+    "- Never say or imply the sketch is complete, done or ready. The person decides when it is enough.\n"
+    "- Draw the person's own words with `quote` set to their exact words; anything else you add is "
+    "your proposal, and the person confirms it on screen.\n"
+    "- Keep your line to one or two short sentences. Never mention tools, ids or slots by name."
+)
+
+
+class ChoreDesign(SketchDesign):
+    """One design turn over one chore draft, on the chore's rubric. Settling stores the draft (the
+    sketch, the questions asked, step `shape`, the open question) and names the Project after its
+    first need node."""
+
+    surface: ClassVar[Surface] = "design"
+    rules: ClassVar[str] = RULES
+    subject: ClassVar[str] = "the person's process"
+
+    def __init__(
+        self,
+        daemon: Daemon,
+        draft: Draft,
+        skipped: frozenset[Slot],
+        asked: dict[Slot, int],
+        view: StageView | None = None,
+    ) -> None:
+        super().__init__(
+            daemon,
+            CHORE_RUBRIC,
+            draft["sketch"],
+            draft["need"],
+            draft["space_id"],
+            frozenset(skipped),
+            cast("dict[str, int]", asked),
+        )
+        self.draft = draft
+        self.view = view
+
+    def settle(self) -> list[dict[str, Any]]:
+        """Stores the frame (sketch, the question count, step `shape`) and answers the closing
+        `coverage` event. Called only for a reply that counts."""
+        asked = cast("dict[Slot, int]", self.asked_after())
+        draft = cast("Draft", {**self.draft, "sketch": self.sketch, "step": "shape"})
+        if self.ask is not None:  # the open question is kept, so a reopened stage shows it
+            draft["ask"] = self.ask
+        else:
+            cast("dict[str, Any]", draft).pop("ask", None)
+        if self.view is not None:  # the comparison between the stage's views counts only replies that count
+            views = dict(self.draft.get("views", {}))
+            views[self.view] = views.get(self.view, 0) + 1
+            draft["views"] = views
+        stored = self.daemon.drafts.put(draft, asked=asked)
+        _rename(self.daemon, stored)
+        return [{"type": "coverage", "coverage": stored["coverage"], "agreed": stored["agreed"]}]
 
 
 def _rename(daemon: Daemon, draft: Draft) -> None:
@@ -426,7 +520,7 @@ def say(
         words = draft["need"]
     _busy(daemon, draft)
     asked, skipped = daemon.drafts.asked(draft_id), daemon.drafts.skipped(draft_id)
-    design = Design(daemon, draft, skipped, asked, view)
+    design = ChoreDesign(daemon, draft, skipped, asked, view)
     return run_turn(daemon, engine, words, draft["space_id"], design=design)
 
 

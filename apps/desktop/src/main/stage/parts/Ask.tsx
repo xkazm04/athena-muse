@@ -3,8 +3,8 @@
 // that brings the person back to the sketch.
 
 import { useState, type FormEvent, type KeyboardEvent } from "react";
-import type { Ask, Coverage } from "../../../lib/contract";
-import { missingFor, openSlots } from "../select";
+import type { Ask, Slot } from "../../../lib/contract";
+import { CHORE_RUBRIC, missingIn, openIn, type PlaceValues, type Rubric } from "../select";
 import type { ReplyPhase } from "../types";
 import type { StageWords } from "../words";
 
@@ -156,9 +156,33 @@ export function ReplyNotice({ phase, problem, onRetry, onSayDifferently, words }
   );
 }
 
-/** "She still needs: ..." from coverage, or "Ready when you are." once agreed. */
-export function StillNeeds({ coverage, words }: { coverage: Coverage; words: StageWords }) {
-  const needs = missingFor(coverage);
+/**
+ * The rubric a coverage part reads: optional for the chore's slots (the chore's rubric is the
+ * default), required for any other places, such as a twin's.
+ */
+type RubricOf<P extends string> = [P] extends [Slot] ? { rubric?: Rubric<P> } : { rubric: Rubric<P> };
+
+function rubricOf<P extends string>(props: { rubric?: Rubric<P> }): Rubric<P> {
+  // Only a chore coverage may leave the rubric out (RubricOf), so the default is the chore's.
+  return props.rubric ?? (CHORE_RUBRIC as unknown as Rubric<P>);
+}
+
+/** What StillNeeds says: per place, the phrase after "She still needs". */
+export interface StillNeedsWords<P extends string> {
+  stillNeeds: string;
+  ready: string;
+  needPhrase: Readonly<Record<P, string>>;
+}
+
+export type StillNeedsProps<P extends string> = {
+  coverage: PlaceValues<P>;
+  words: StillNeedsWords<P>;
+} & RubricOf<P>;
+
+/** "She still needs: ..." from coverage, or "Ready when you are." once every place is covered. */
+export function StillNeeds<P extends string>(props: StillNeedsProps<P>) {
+  const { coverage, words } = props;
+  const needs = missingIn(rubricOf<P>(props), coverage);
   return (
     <p className="sp-still" data-role="still-needs" data-ready={needs.length ? undefined : "true"}>
       {needs.length ? (
@@ -172,17 +196,26 @@ export function StillNeeds({ coverage, words }: { coverage: Coverage; words: Sta
   );
 }
 
-export interface EnoughButtonProps {
-  coverage: Coverage;
+/** What EnoughButton says: the exit, and each place's title for the ones it would leave open. */
+export interface EnoughWords<P extends string> {
+  enough: string;
+  leftOpen: string;
+  slot: Readonly<Record<P, string>>;
+}
+
+export type EnoughButtonProps<P extends string> = {
+  coverage: PlaceValues<P>;
+  /** Every place covered: the exit is the primary action. */
   agreed: boolean;
   onEnough: () => void;
   disabled?: boolean;
-  words: StageWords;
-}
+  words: EnoughWords<P>;
+} & RubricOf<P>;
 
-/** "That's enough, write it", from the first frame; the slots it would leave open are named. */
-export function EnoughButton({ coverage, agreed, onEnough, disabled = false, words }: EnoughButtonProps) {
-  const open = openSlots(coverage);
+/** "That's enough, write it", from the first frame; the places it would leave open are named. */
+export function EnoughButton<P extends string>(props: EnoughButtonProps<P>) {
+  const { coverage, agreed, onEnough, disabled = false, words } = props;
+  const open = openIn(rubricOf<P>(props), coverage);
   return (
     <div className="sp-enough">
       <button

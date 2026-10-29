@@ -23,9 +23,44 @@ import {
 import type { SealState } from "../../theme";
 import type { ReplyPhase, StageFrame, StageState, StageWork } from "./types";
 
+/**
+ * A rubric as the screen reads it (ADR 0010, drafts/rubric.py): its places in order and the coverage
+ * each needs before the conversation is done. 1: a piece the person agreed to; 0.5: at least her
+ * guess, or the person left it open; 0: it may stay empty.
+ */
+export interface Rubric<P extends string = string> {
+  places: readonly P[];
+  required: Readonly<Record<P, 0 | 0.5 | 1>>;
+}
+
+/** Coverage over a rubric's places. */
+export type PlaceValues<P extends string = string> = Readonly<Record<P, CoverageValue>>;
+
 export const SLOTS: readonly Slot[] = ["need", "apps", "inputs", "steps", "hand", "output", "never"];
 /** The slots that must hold a piece the person agreed to (ADR 0007's rubric). */
 export const REQUIRED: readonly Slot[] = ["need", "apps", "hand", "output"];
+/** The chore's rubric: REQUIRED at 1, the rest at least her guess or left open. */
+export const CHORE_RUBRIC: Rubric<Slot> = {
+  places: SLOTS,
+  required: { need: 1, apps: 1, inputs: 0.5, steps: 0.5, hand: 1, output: 1, never: 0.5 },
+};
+
+/** Whether one place's coverage meets what it requires; "skipped" meets 0.5, never 1. */
+export function meets(value: CoverageValue, need: 0 | 0.5 | 1): boolean {
+  if (need === 0) return true;
+  if (value === "skipped") return need < 1;
+  return value >= need;
+}
+
+/** The places that stand between the coverage and done, in rubric order: "she still needs". */
+export function missingIn<P extends string>(rubric: Rubric<P>, cov: PlaceValues<P>): P[] {
+  return rubric.places.filter((p) => !meets(cov[p], rubric.required[p]));
+}
+
+/** Places with nothing agreed and not skipped: what "That's enough" leaves open. */
+export function openIn<P extends string>(rubric: Rubric<P>, cov: PlaceValues<P>): P[] {
+  return rubric.places.filter((p) => cov[p] === 0 || cov[p] === 0.5);
+}
 
 /** A reply heard nothing for this long reads "slow" (the measured 3-8 s, then some). */
 export const SLOW_MS = 8000;
@@ -84,17 +119,17 @@ export function coverageOf(sketch: Sketch, skipped: ReadonlySet<Slot> = new Set(
 
 /** Agreed: the required slots at 1, the rest at 0.5, 1 or skipped. */
 export function isAgreed(cov: Coverage): boolean {
-  return SLOTS.every((slot) => (REQUIRED.includes(slot) ? cov[slot] === 1 : cov[slot] !== 0));
+  return missingIn(CHORE_RUBRIC, cov).length === 0;
 }
 
 /** The slots that stand between the sketch and agreed, in rubric order: "she still needs". */
 export function missingFor(cov: Coverage): Slot[] {
-  return SLOTS.filter((slot) => (REQUIRED.includes(slot) ? cov[slot] !== 1 : cov[slot] === 0));
+  return missingIn(CHORE_RUBRIC, cov);
 }
 
 /** Slots with no agreed piece and not skipped: what "That's enough, write it" leaves open. */
 export function openSlots(cov: Coverage): Slot[] {
-  return SLOTS.filter((slot) => cov[slot] === 0 || cov[slot] === 0.5);
+  return openIn(CHORE_RUBRIC, cov);
 }
 
 /** Her guesses: pieces she wrote that the person has not inked. Only these can be inked or rubbed out. */

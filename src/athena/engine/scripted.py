@@ -28,88 +28,99 @@ def _chunks(text: str) -> Iterator[str]:
         yield " ".join(parts[i : i + 3]) + (" " if i + 3 < len(parts) else "")
 
 
-# --- the stage (ADR 0007) -------------------------------------------------------------------------
-# The simulated frame reads the design frame the way a model would: the coverage lines it lists.
+# --- the stage (ADR 0007, 0010) -------------------------------------------------------------------
+# The simulated frame reads the design frame the way a model would: the places it lists (in order,
+# with each one's meaning and usual kind) and the coverage lines under them. Any rubric plays.
 
-_COVERAGE_LINE = re.compile(r"^- (need|apps|inputs|steps|hand|output|never): (0\.5|0|1|skipped)$", re.M)
-QUOTE_WORDS = 8  # the person's first words, quoted into the need node
+_PLACE_LINE = re.compile(r"^- ([a-z_]+): (.+) \(usual kind: ([a-z_]+)\)$", re.M)
+_COVERAGE_LINE = re.compile(r"^- ([a-z_]+): (0\.5|0|1|skipped)$", re.M)
+QUOTE_WORDS = 8  # the person's first words, quoted into the first place's node
 
-_PROPOSALS: dict[str, tuple[str, str, str, list[str]]] = {
-    # slot: (kind, the proposal's label, the question, its suggested answers)
-    "apps": (
-        "app",
-        "The website where it happens",
-        "Where does this happen?",
-        ["A website", "Email", "Both"],
-    ),
+_PROPOSALS: dict[str, tuple[str, str, list[str]]] = {
+    # the chore's places: (the proposal's label, the question, its suggested answers)
+    "apps": ("The website where it happens", "Where does this happen?", ["A website", "Email", "Both"]),
     "inputs": (
-        "source",
         "The page she reads first",
         "What should she read first?",
         ["A web page", "My email", "A letter"],
     ),
     "steps": (
-        "step",
         "Check, then compare",
         "What order does she work in?",
         ["Check, then compare", "Compare first", "You tell her"],
     ),
     "hand": (
-        "gate",
         "You sign before anything is sent",
         "What should wait for your signature?",
         ["Anything she sends", "Only payments", "Nothing"],
     ),
     "output": (
-        "output",
         "A short summary for you",
         "What do you get at the end?",
         ["A short summary", "A list of problems", "A filled form"],
     ),
     "never": (
-        "never",
         "Never pay anything",
         "What must she never do?",
         ["Never pay", "Never delete", "Never write to anyone"],
     ),
 }
+_ANY_ANSWERS = ["Like that", "Something else", "Not sure yet"]
 
 
-def _coverage(messages: list[dict[str, Any]]) -> dict[str, str]:
+def _cut(text: str, n: int) -> str:
+    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
+
+
+def _proposal(place: str, meaning: str) -> tuple[str, str, list[str]]:
+    """The canned proposal for a place: the chore's own lines, else one made from its meaning."""
+    if place in _PROPOSALS:
+        return _PROPOSALS[place]
+    words = " ".join(meaning.split())
+    return _cut(words[:1].upper() + words[1:], LABEL_MAX), f"What about {words}?", _ANY_ANSWERS
+
+
+def _frame(messages: list[dict[str, Any]]) -> tuple[list[tuple[str, str, str]], dict[str, str]]:
+    """((place, meaning, usual kind) in rubric order, coverage per place) from the design frame."""
     system = str(messages[0].get("content") or "") if messages else ""
-    return dict(_COVERAGE_LINE.findall(system))
+    places = _PLACE_LINE.findall(system)
+    names = {p for p, _, _ in places}
+    return places, {p: v for p, v in _COVERAGE_LINE.findall(system) if p in names}
 
 
 def _stage(messages: list[dict[str, Any]], said: str) -> tuple[str, list[ToolCall]]:
-    """The first time (need empty): draw the need in the person's first words, ask about the first
-    empty slot. Later: propose one node for the next empty slot and ask about it."""
-    cov = _coverage(messages)
-    if cov.get("need", "0") == "0":
-        first = " ".join(said.split()[:QUOTE_WORDS]) or "The job"
-        label = first if len(first) <= LABEL_MAX else first[: LABEL_MAX - 1].rstrip() + "…"
+    """The first time (the first place empty): draw it in the person's first words, ask about the
+    next empty place. Later: propose one node for the next empty place and ask about it."""
+    places, cov = _frame(messages)
+    if not places:
+        return "(Simulated) I have nothing to draw here.", []
+    first, _, first_kind = places[0]
+    if cov.get(first, "0") == "0":
+        words = " ".join(said.split()[:QUOTE_WORDS]) or "The job"
         draw = ToolCall(
             "call_sim1",
             "sketch",
-            {"op": "add", "kind": "step", "slot": "need", "label": label, "quote": first},
+            {"op": "add", "kind": first_kind, "slot": first, "label": _cut(words, LABEL_MAX), "quote": words},
         )
-        cov["need"] = "1"
+        cov[first] = "1"
         line = "(Simulated) I drew what you said."
     else:
         draw = None
         line = "(Simulated) Here is a guess for you to check."
-    slot = next((s for s in _PROPOSALS if cov.get(s, "0") == "0"), None)
-    if slot is None:
+    nxt = next(((p, m, k) for p, m, k in places[1:] if cov.get(p, "0") == "0"), None)
+    if nxt is None:
         return "(Simulated) Every part of the sketch has something in it; confirm what is right.", (
             [draw] if draw else []
         )
-    kind, label, question, answers = _PROPOSALS[slot]
+    place, meaning, kind = nxt
+    label, question, answers = _proposal(place, meaning)
     calls = (
         [draw]
         if draw
-        else [ToolCall("call_sim1", "sketch", {"op": "add", "kind": kind, "slot": slot, "label": label})]
+        else [ToolCall("call_sim1", "sketch", {"op": "add", "kind": kind, "slot": place, "label": label})]
     )
     calls.append(
-        ToolCall("call_sim2", "ask", {"slot": slot, "text": question, "suggestions": " | ".join(answers)})
+        ToolCall("call_sim2", "ask", {"slot": place, "text": question, "suggestions": " | ".join(answers)})
     )
     return line, calls
 
