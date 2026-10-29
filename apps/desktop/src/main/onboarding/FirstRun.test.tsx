@@ -82,6 +82,10 @@ describe("first run", () => {
     expect(windows.toggleAthena).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Go to your projects" }));
     expect(onDone).toHaveBeenCalledWith(true);
+    // the stage's door: describe a need, from right here
+    fireEvent.click(screen.getByRole("button", { name: "Describe a need" }));
+    expect(useMain.getState().route).toEqual({ view: "stage", id: null });
+    expect(onDone).toHaveBeenLastCalledWith(false);
   });
 
   it("invalid: Meta refused the key, with a remedy, try again and remove", async () => {

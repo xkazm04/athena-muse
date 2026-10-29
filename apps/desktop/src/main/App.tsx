@@ -11,6 +11,7 @@ import { FirstRun, readSkipped } from "./onboarding/FirstRun";
 import { Field } from "./projects/Field";
 import { Level } from "./projects/Level";
 import { CoreLevel, Memory } from "./projects/Memory";
+import { Stage } from "./stage/Stage";
 import { reasonOf, useMain } from "./store";
 
 type Boot = { phase: "waking" } | { phase: "down"; reason: string } | { phase: "up"; firstRun: boolean };
@@ -102,6 +103,16 @@ export function Shell() {
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, [syncRoute]);
+
+  if (route.view === "stage") {
+    // The stage owns the window: one frame, its own header, no page scroll (onboarding v2).
+    return (
+      <div className="m-shell">
+        <Backdrop />
+        <Stage id={route.id} />
+      </div>
+    );
+  }
 
   const onAthena = route.view === "athena";
   const onChores = route.view === "chores" || route.view === "chore";

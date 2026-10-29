@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { ChoreSummary } from "../../lib/contract";
 import type { Load } from "../store";
+import { DescribeDoor } from "../stage/door";
 import { useMain } from "../store";
 import { ENGINE_WORD, SENSE_WORD, STATUS, VERDICT, arrange } from "./words";
 
@@ -47,6 +48,7 @@ export function Catalogue({ chores, load, problem = "", onRetry, onOpen }: Catal
     <div className="m-chores">
       <div className="m-field__head">
         <h1 className="m-title">Chores</h1>
+        <DescribeDoor push />
       </div>
       {load === "problem" && (
         <div className="plane m-problem" role="alert">

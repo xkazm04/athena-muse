@@ -69,7 +69,7 @@ Director decisions (convention or judgement, overridable tomorrow):
 2. **Done.** Material staged (`.contest/stage/chore-stage/`, git-ignored): the invented conversation generated from sketch ops, screenshots of the real app, the Loop Tide files.
 3. **Done.** Contest run, UI roster, 3 variants each, owner review. The seats reported $17.41 (32 min) and $24.69 (78 min). Verdict: A/1 and A/3 combined, both kept behind a switch.
 4. **Done.** Port contract written (WP3 and the UX/UI spec below).
-5. **Done for the daemon** (WP0-WP2, built while the contest ran, at the owner's call). **Done 2026-10-29:** WP3-0 (drop, the view switch's contract and counts, the generated fixture, the stage's stubs). **Next:** WP3-1, then WP3-2 and WP3-3 in parallel, then WP3-4.
+5. **Done for the daemon** (WP0-WP2, built while the contest ran, at the owner's call). **Done 2026-10-29:** WP3-0 (drop, the view switch's contract and counts, the generated fixture, the stage's stubs), then WP3-1 (the store over wire events, the routes, the shell and switcher, the shared parts, the keymap, the doors, the preview harness on the fixture; the views are still stubs). **Next:** WP3-2 and WP3-3 in parallel, then WP3-4.
 6. **Next:** rehearse end to end on the built app, in both views, and update this status.
 
 ## The contest

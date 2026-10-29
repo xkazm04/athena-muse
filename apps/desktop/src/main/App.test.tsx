@@ -190,8 +190,21 @@ describe("memory", () => {
 });
 
 describe("routes", () => {
-  it.each(["#projects", "#projects/spc_a", "#projects/core", "#projects/spc_a/memory", "#projects/core/memory", "#athena"])(
-    "%s round-trips",
-    (hash) => expect(toHash(parseHash(hash))).toBe(hash),
-  );
+  it.each([
+    "#projects",
+    "#projects/spc_a",
+    "#projects/core",
+    "#projects/spc_a/memory",
+    "#projects/core/memory",
+    "#athena",
+    "#stage/new",
+    "#stage/drf_00000000c1b0",
+  ])("%s round-trips", (hash) => expect(toHash(parseHash(hash))).toBe(hash));
+
+  it("reads the stage's routes", () => {
+    expect(parseHash("#stage/new")).toEqual({ view: "stage", id: null });
+    expect(parseHash("#stage")).toEqual({ view: "stage", id: null });
+    expect(parseHash("#/stage/drf_1")).toEqual({ view: "stage", id: "drf_1" });
+    expect(toHash({ view: "stage", id: null })).toBe("#stage/new");
+  });
 });

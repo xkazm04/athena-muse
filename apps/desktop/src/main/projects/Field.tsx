@@ -3,6 +3,7 @@ import { NAME_MAX, SPACES_MAX, type SpaceSummary } from "../../lib/contract";
 import { Seal } from "../../theme";
 import { hueColor } from "../../ui";
 import { reasonOf, useMain } from "../store";
+import { DescribeDoor } from "../stage/door";
 import { layoutOrbits } from "./orbits";
 
 const FALLBACK = { width: 960, height: 520 };
@@ -74,6 +75,7 @@ export function Field() {
           </span>
         )}
         <NewProject />
+        <DescribeDoor />
       </div>
       {load === "problem" && (
         <div className="plane m-problem" role="alert">

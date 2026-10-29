@@ -71,6 +71,52 @@ describe("api paths", () => {
   });
 });
 
+describe("draft routes", () => {
+  it("builds every draft route, with its body", async () => {
+    expect(await called(() => api.createDraft("a need"))).toEqual({ method: "POST", url: "/drafts", body: { need: "a need" } });
+    expect(await called(() => api.getDraft("drf_1"))).toMatchObject({ method: "GET", url: "/drafts/drf_1" });
+    expect(await called(() => api.abandonDraft("drf_1"))).toMatchObject({ method: "DELETE", url: "/drafts/drf_1" });
+    expect(await called(() => api.draftConfirm("drf_1", ["n2"]))).toEqual({
+      method: "POST",
+      url: "/drafts/drf_1/confirm",
+      body: { node_ids: ["n2"] },
+    });
+    expect(await called(() => api.draftDrop("drf_1", ["n4"]))).toEqual({
+      method: "POST",
+      url: "/drafts/drf_1/drop",
+      body: { node_ids: ["n4"] },
+    });
+    expect(await called(() => api.draftPreview("drf_1"))).toEqual({ method: "POST", url: "/drafts/drf_1/preview" });
+    const key = { marks: [{ expected_id: "e1", mark: "yes" as const }], missing: [], never: ["pay"] };
+    expect(await called(() => api.draftKey("drf_1", key))).toEqual({ method: "PUT", url: "/drafts/drf_1/key", body: key });
+    expect(await called(() => api.draftVerdict("drf_1", { verdict: "revise", note: "n" }))).toEqual({
+      method: "POST",
+      url: "/drafts/drf_1/verdict",
+      body: { verdict: "revise", note: "n" },
+    });
+  });
+
+  it("streams say, write and rehearse as NDJSON events", async () => {
+    const lines = (...events: unknown[]) =>
+      fetchMock.mockImplementationOnce(() =>
+        Promise.resolve(new Response(events.map((e) => JSON.stringify(e)).join("\n"), { status: 200 })),
+      );
+    const seen: string[] = [];
+    lines({ type: "start", turn_id: "t", engine: "scripted", simulated: true }, { type: "done", turn_id: "t", waiting: false });
+    expect(
+      await called(() => api.draftSay("drf_1", { text: "", choice: "Yes", view: "orbit" }, (e) => seen.push(e.type))),
+    ).toEqual({ method: "POST", url: "/drafts/drf_1/say", body: { text: "", choice: "Yes", view: "orbit" } });
+    lines({ type: "writing" }, { type: "written", chore_id: "c" });
+    expect(await called(() => api.draftWrite("drf_1", (e) => seen.push(e.type)))).toEqual({
+      method: "POST",
+      url: "/drafts/drf_1/write",
+    });
+    lines({ type: "phase", index: 1, app: "mail", message: "m" });
+    expect((await called(() => api.draftRehearse("drf_1", (e) => seen.push(e.type)))).url).toBe("/drafts/drf_1/rehearse");
+    expect(seen).toEqual(["start", "done", "writing", "written", "phase"]);
+  });
+});
+
 describe("api list routes", () => {
   it("unwraps the daemon's {spaces}, {turns} and {cards} answers", async () => {
     const answer = (body: unknown) =>

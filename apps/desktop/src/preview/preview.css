@@ -135,3 +135,64 @@
   gap: var(--sp-4);
   margin-top: var(--sp-5);
 }
+
+/* ---- the stage harness ---- */
+.pv-note {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+.pv-sub {
+  margin: var(--sp-5) 0 var(--sp-3);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.pv-pick .field {
+  min-width: 260px;
+}
+.pv-stage-scroll {
+  overflow: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+}
+.pv-stage {
+  position: relative;
+  isolation: isolate;
+  width: 1280px;
+  height: 800px;
+  background: var(--background);
+}
+.pv-stage[data-size="1024x700"] {
+  width: 1024px;
+  height: 700px;
+}
+.pv-stage .st-stage {
+  height: 100%;
+}
+.pv-parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-3);
+  align-items: start;
+}
+.pv-part {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: var(--sp-3);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--r-md);
+}
+.pv-part figcaption {
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+.pv-line {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.pv-checks {
+  display: grid;
+  gap: var(--sp-2);
+}

@@ -7,24 +7,36 @@ import {
   CORE_ITEM,
   ROUTES,
   type ActiveSpace,
+  type AuthorEvent,
   type Card,
   type CardList,
   type ChoreDetail,
   type ChoreList,
+  type ConfirmBody,
+  type Draft,
+  type DraftAbandoned,
+  type DropBody,
   type EngineStatus,
+  type ExpectedList,
   type Health,
+  type KeyBody,
   type LedgerPage,
   type MemoryKind,
   type MemoryPage,
   type MemoryRow,
+  type NewDraftBody,
   type Probe,
+  type RehearsalEvent,
+  type SayBody,
   type SpaceErased,
   type SpaceList,
   type SpaceSummary,
+  type TurnEvent,
   type TurnList,
   type Verdict,
+  type VerdictBody,
 } from "./contract";
-import { request } from "./daemon";
+import { request, streamNdjson } from "./daemon";
 
 export interface SpaceDraft {
   name: string;
@@ -85,3 +97,22 @@ export const ledger = (limit?: number) => request<LedgerPage>("GET", ROUTES.ledg
 // Chores (ADR 0005): the library is read-only on the wire.
 export const chores = async () => (await request<ChoreList>("GET", ROUTES.chores)).chores;
 export const chore = (id: string) => request<ChoreDetail>("GET", path(ROUTES.chore, { id }));
+
+// Drafts (ADR 0007): a chore written in conversation. `say`, `write` and `rehearse` stream NDJSON.
+export const createDraft = (need: string) => request<Draft>("POST", ROUTES.drafts, { need } satisfies NewDraftBody);
+export const getDraft = (id: string) => request<Draft>("GET", path(ROUTES.draft, { id }));
+export const abandonDraft = (id: string) => request<DraftAbandoned>("DELETE", path(ROUTES.draft, { id }));
+export const draftSay = (id: string, body: SayBody, onEvent: (e: TurnEvent) => void, signal?: AbortSignal) =>
+  streamNdjson<TurnEvent>("POST", path(ROUTES.draft_say, { id }), body, onEvent, signal);
+export const draftConfirm = (id: string, nodeIds: string[]) =>
+  request<Draft>("POST", path(ROUTES.draft_confirm, { id }), { node_ids: nodeIds } satisfies ConfirmBody);
+export const draftDrop = (id: string, nodeIds: string[]) =>
+  request<Draft>("POST", path(ROUTES.draft_drop, { id }), { node_ids: nodeIds } satisfies DropBody);
+export const draftWrite = (id: string, onEvent: (e: AuthorEvent) => void, signal?: AbortSignal) =>
+  streamNdjson<AuthorEvent>("POST", path(ROUTES.draft_write, { id }), undefined, onEvent, signal);
+export const draftPreview = (id: string) => request<ExpectedList>("POST", path(ROUTES.draft_preview, { id }));
+export const draftKey = (id: string, body: KeyBody) => request<Draft>("PUT", path(ROUTES.draft_key, { id }), body);
+export const draftRehearse = (id: string, onEvent: (e: RehearsalEvent) => void, signal?: AbortSignal) =>
+  streamNdjson<RehearsalEvent>("POST", path(ROUTES.draft_rehearse, { id }), undefined, onEvent, signal);
+export const draftVerdict = (id: string, body: VerdictBody) =>
+  request<Draft>("POST", path(ROUTES.draft_verdict, { id }), body);

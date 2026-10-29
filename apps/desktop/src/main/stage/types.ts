@@ -6,8 +6,10 @@ import type {
   AuthorEvent,
   Draft,
   DraftVerdict,
+  ExpectedCard,
   Mark,
   RehearsalEvent,
+  SayBody,
   SketchOp,
   StageView,
   TurnEvent,
@@ -31,6 +33,9 @@ export interface StageFrame {
   lastOps: SketchOp[];
 }
 
+/** What the stage is waiting on from the daemon; one at a time. */
+export type StageWork = "describe" | "say" | "ink" | "drop" | "write" | "preview" | "key" | "rehearse" | "verdict" | "open";
+
 /** A piece's place in one view, kept by node id so a piece never moves, whatever arrives after it. */
 export interface Place {
   /** The view's own coordinates: a lane and row (Drawing) or a zone and cell (Orbit). */
@@ -52,6 +57,21 @@ export interface StageState {
   marks: Record<string, { mark: Mark; note?: string }>;
   missing: string[];
   never: string[];
+  /** What is in flight, or null. A second daemon act waits until it is done. */
+  work: StageWork | null;
+  /** The act that failed last; `retry` sends it again. */
+  failed: StageAction | null;
+  /** The last thing said, for the echo and for retry. */
+  lastSay: SayBody | null;
+  /** When the current work began and when the daemon was last heard (ms); read by hooks, never by timers. */
+  startedAt: number;
+  heardAt: number;
+  /** Her guesses the person inked since the last reply: the views draw them turning to ink. */
+  inked: string[];
+  /** Whether the reply in flight asked a question; a reply with none closes the open question. */
+  replyAsked: boolean;
+  /** The piece whose card is open, or null. Escape closes it. */
+  card: string | null;
 }
 
 export type StageAction =
@@ -70,10 +90,23 @@ export type StageAction =
   | { type: "send_key" }
   | { type: "rehearse" }
   | { type: "verdict"; verdict: DraftVerdict; note?: string }
-  | { type: "switch_view"; view: StageView };
+  | { type: "switch_view"; view: StageView }
+  | { type: "unmark"; expected_id: string }
+  | { type: "remove_missing"; index: number }
+  | { type: "remove_never"; index: number }
+  | { type: "open_card"; node_id: string }
+  | { type: "close_card" }
+  /** Reads the draft again from the daemon (after a failed open, or to recover). */
+  | { type: "reload"; draft_id: string };
 
 /** Everything a stream can hand the store, plus a fresh read of the draft (after any `error`). */
-export type StageEvent = TurnEvent | AuthorEvent | RehearsalEvent | { type: "draft"; draft: Draft };
+export type StageEvent =
+  | TurnEvent
+  | AuthorEvent
+  | RehearsalEvent
+  | { type: "draft"; draft: Draft }
+  /** The preview's answer (`POST /drafts/{id}/preview` returns the list, not the draft). */
+  | { type: "expected"; expected: ExpectedCard[] };
 
 /** What every view receives. A view draws from these and calls `dispatch`; it holds no copy of the model. */
 export interface StageViewProps {
@@ -82,4 +115,6 @@ export interface StageViewProps {
   state: StageState;
   dispatch: (action: StageAction) => void;
   words: StageWords;
+  /** Keeps a piece's place in this view by node id. Only views write places; the store never moves one. */
+  place: (view: StageView, nodeId: string, place: Place) => void;
 }

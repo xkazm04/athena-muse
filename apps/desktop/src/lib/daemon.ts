@@ -119,7 +119,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
  * Splits a byte stream into NDJSON events. Chunk boundaries fall anywhere, so the unfinished tail
  * of one chunk is held until the next one completes the line.
  */
-export function createNdjsonParser(onEvent: (e: TurnEvent) => void): {
+export function createNdjsonParser<E = TurnEvent>(onEvent: (e: E) => void): {
   push: (chunk: string) => void;
   flush: () => void;
 } {
@@ -128,7 +128,7 @@ export function createNdjsonParser(onEvent: (e: TurnEvent) => void): {
     const text = line.trim();
     if (!text) return;
     try {
-      onEvent(JSON.parse(text) as TurnEvent);
+      onEvent(JSON.parse(text) as E);
     } catch {
       // A garbled line is dropped; the stream's own done or error event still ends the turn.
     }
@@ -150,11 +150,20 @@ export function createNdjsonParser(onEvent: (e: TurnEvent) => void): {
   };
 }
 
-/** POST /run and hand each turn event to `onEvent` as it arrives. Resolves when the stream ends. */
-export async function streamRun(body: unknown, onEvent: (e: TurnEvent) => void, signal?: AbortSignal): Promise<void> {
-  const res = await send("POST", "/run", body, signal);
+/**
+ * Any NDJSON route: send the request and hand each event to `onEvent` as it arrives. Resolves when
+ * the stream ends; a refusal before the stream starts throws a DaemonError like `request` does.
+ */
+export async function streamNdjson<E>(
+  method: string,
+  path: string,
+  body: unknown,
+  onEvent: (e: E) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await send(method, path, body, signal);
   if (!res.body) throw new DaemonError(0, "bad_request", UNREACHABLE);
-  const parser = createNdjsonParser(onEvent);
+  const parser = createNdjsonParser<E>(onEvent);
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   try {
@@ -169,6 +178,11 @@ export async function streamRun(body: unknown, onEvent: (e: TurnEvent) => void, 
     if (signal?.aborted) throw e;
     throw new DaemonError(0, "bad_request", UNREACHABLE);
   }
+}
+
+/** POST /run and hand each turn event to `onEvent` as it arrives. Resolves when the stream ends. */
+export function streamRun(body: unknown, onEvent: (e: TurnEvent) => void, signal?: AbortSignal): Promise<void> {
+  return streamNdjson<TurnEvent>("POST", "/run", body, onEvent, signal);
 }
 
 export const RECONNECT_MIN_MS = 1000;

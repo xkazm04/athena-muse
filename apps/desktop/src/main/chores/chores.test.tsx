@@ -37,6 +37,12 @@ describe("chore routes", () => {
     expect(toHash(parseHash(hash))).toBe(hash),
   );
 
+  it("opens the stage from the catalogue's door", async () => {
+    vi.mocked(api.chores).mockResolvedValue([]);
+    await start({ view: "chores" });
+    expect(screen.getByRole("link", { name: "Describe a need" }).getAttribute("href")).toBe("#stage/new");
+  });
+
   it("reads the slash form the brief writes", () => {
     expect(parseHash("#/chores")).toEqual({ view: "chores" });
     expect(parseHash("#/chores/care-circle")).toEqual({ view: "chore", id: "care-circle" });

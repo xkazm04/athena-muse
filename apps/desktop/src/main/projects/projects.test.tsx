@@ -50,6 +50,7 @@ describe("projects field", () => {
     expect(screen.getByRole("button", { name: /what Athena knows everywhere/ })).toBeTruthy();
     expect(screen.getByText(/Projects keep Athena's memory for one piece of your work apart/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "New project" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Describe a need" }).getAttribute("href")).toBe("#stage/new");
   });
 
   it("every project is a button; focus fills the marquee, click enters and makes it active", async () => {

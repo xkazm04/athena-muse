@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Backdrop, Seal } from "../../theme";
 import { openExternal, toggleAthena } from "../../lib/windows";
 import { useMain } from "../store";
+import { DESCRIBE_A_NEED } from "../stage/door";
 import { ProbeLine, sealFor, useProbe } from "./probe";
 
 export const SKIP_KEY = "athena.firstRun.skipped";
@@ -183,15 +184,26 @@ function Connect({ onConnected, onSkip }: { onConnected: () => void; onSkip: () 
 }
 
 function Ready({ onDone }: { onDone: (toProjects: boolean) => void }) {
+  const navigate = useMain((s) => s.navigate);
+  const describe = () => {
+    navigate({ view: "stage", id: null });
+    onDone(false);
+  };
   return (
     <section className="plane m-step" aria-labelledby="fr-ready">
       <Seal state="signed" size={96} label="Athena, connected" />
       <h1 id="fr-ready" className="m-step__title">
         Athena is connected
       </h1>
-      <p className="m-step__lead">Talk to her in her own window. Your projects keep what she learns apart.</p>
+      <p className="m-step__lead">
+        Tell her a chore you want handed off and watch her sketch it, or talk to her in her own window. Your projects
+        keep what she learns apart.
+      </p>
       <div className="m-step__actions">
-        <button type="button" className="btn btn-primary" onClick={() => void toggleAthena()}>
+        <button type="button" className="btn btn-primary" onClick={describe}>
+          {DESCRIBE_A_NEED}
+        </button>
+        <button type="button" className="btn" onClick={() => void toggleAthena()}>
           Open her window
         </button>
         <button type="button" className="btn" onClick={() => onDone(true)}>

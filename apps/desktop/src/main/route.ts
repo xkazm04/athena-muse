@@ -10,13 +10,16 @@ export type Route =
   | { view: "memory"; id: string }
   | { view: "athena" }
   | { view: "chores" }
-  | { view: "chore"; id: string };
+  | { view: "chore"; id: string }
+  /** The stage (onboarding v2): a draft by id, or `null` for `#stage/new`, the describe step. */
+  | { view: "stage"; id: string | null };
 
 /** `id` is a space id or CORE (""). */
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
   if (parts[0] === "athena") return { view: "athena" };
   if (parts[0] === "chores") return parts[1] ? { view: "chore", id: parts[1] } : { view: "chores" };
+  if (parts[0] === "stage") return { view: "stage", id: parts[1] && parts[1] !== STAGE_NEW ? parts[1] : null };
   if (parts[0] !== "projects" || parts.length === 1) return { view: "projects" };
   const ref = parts[1] ?? "";
   const id = ref === CORE_ITEM ? CORE : ref;
@@ -24,6 +27,9 @@ export function parseHash(hash: string): Route {
   if (id === CORE) return { view: "core" };
   return { view: "project", id };
 }
+
+/** `#stage/new`: the describe step, before there is a draft. */
+export const STAGE_NEW = "new";
 
 const ref = (id: string) => (id === CORE ? CORE_ITEM : encodeURIComponent(id));
 
@@ -35,6 +41,8 @@ export function toHash(route: Route): string {
       return "#chores";
     case "chore":
       return `#chores/${encodeURIComponent(route.id)}`;
+    case "stage":
+      return `#stage/${route.id === null ? STAGE_NEW : encodeURIComponent(route.id)}`;
     case "core":
       return "#projects/core";
     case "project":

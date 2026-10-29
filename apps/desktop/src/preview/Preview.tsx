@@ -3,6 +3,7 @@ import { ChoreDetailView } from "../main/chores/ChoreScene";
 import { Catalogue } from "../main/chores/Chores";
 import { FIXTURE_CHORES, fixtureDetail } from "../main/chores/fixtures";
 import type { Load } from "../main/store";
+import { StageSection } from "./StageSection";
 import { Backdrop, Seal, SPEED_REST, SPEED_WORKING, applyTheme, type SealState, type ThemeChoice } from "../theme";
 
 const STATES: SealState[] = ["rest", "working", "waiting", "signed"];
@@ -132,6 +133,8 @@ export function Preview() {
       </section>
 
       <ChoresSection />
+
+      <StageSection />
 
       <section className="pv-section">
         <h2>Primitives</h2>

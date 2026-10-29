@@ -1,0 +1,117 @@
+/* The stage's frame: one window, no page scroll at 1280x800 or 1024x700. The header is one row; the
+ * mounted view fills the rest and owns its own layout under [data-stage-view="..."]. */
+
+.st-stage {
+  --st-head-h: 56px;
+  --st-z-head: 2;
+  --st-z-toast: 30;
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--st-head-h) minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.st-head {
+  container-type: inline-size;
+  position: relative;
+  z-index: var(--st-z-head);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--glass);
+}
+.st-head__name {
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+.st-head .sp-rail {
+  flex: 1;
+  flex-wrap: nowrap;
+  justify-content: safe center;
+  overflow: hidden;
+}
+.st-head__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+.st-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  background: var(--recessed);
+}
+.st-switch__tab {
+  min-height: 30px;
+  padding: 0 var(--sp-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-settle), color var(--dur-fast) var(--ease-settle);
+}
+.st-switch__tab[aria-selected="true"] {
+  color: var(--foreground);
+  background: var(--card-raised);
+}
+.st-switch__tab:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.st-body {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+.st-body > [data-stage-view] {
+  height: 100%;
+}
+
+.st-describe {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--sp-3);
+  height: 100%;
+  padding: var(--sp-5);
+}
+.st-problem {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--status-error);
+}
+
+.st-toast {
+  position: absolute;
+  bottom: var(--sp-5);
+  left: 50%;
+  z-index: var(--st-z-toast);
+  transform: translateX(-50%);
+}
+
+/* a narrow frame (1024 wide): the rail keeps its numbers and only the current step's name */
+@container (max-width: 1180px) {
+  .st-head .sp-rail__label {
+    display: none;
+  }
+  .st-head .sp-rail__step[aria-current="step"] .sp-rail__label {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-switch__tab {
+    transition: none;
+  }
+}
