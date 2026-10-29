@@ -1,0 +1,1065 @@
+/* Passport - the twins page: stat strip, wallet of closed documents, what waits for you, ledger. */
+[data-twins-view="passport"] .ov {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--sp-3);
+}
+/* ---------- title and stats ---------- */
+[data-twins-view="passport"] .ov__top {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-areas: "title stats" "new stats";
+  grid-template-rows: auto 1fr;
+  column-gap: var(--sp-4);
+  row-gap: var(--sp-2);
+}
+[data-twins-view="passport"] .ov__title {
+  grid-area: title;
+}
+[data-twins-view="passport"] .ov__title h1 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.1;
+}
+[data-twins-view="passport"] .ov__title p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+[data-twins-view="passport"] .ov__new {
+  grid-area: new;
+  justify-self: start;
+  align-self: end;
+  min-height: 32px;
+}
+[data-twins-view="passport"] .ui-stats {
+  grid-area: stats;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+[data-twins-view="passport"] .ui-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--card-bg) 84%, transparent);
+}
+[data-twins-view="passport"] .ui-stat__l {
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .ui-stat__v {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+[data-twins-view="passport"] .ui-stat__v b {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+[data-twins-view="passport"] .ui-stat__u {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .ui-stat[data-tone="human"] .ui-stat__v b {
+  color: var(--role-human);
+}
+[data-twins-view="passport"] .ui-stat[data-tone="moved"] {
+  border-color: color-mix(in srgb, var(--status-success) 45%, transparent);
+}
+[data-twins-view="passport"] .moved {
+  margin-left: 6px;
+  color: var(--muted);
+}
+[data-twins-view="passport"] .ui-stat .dots-row {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+[data-twins-view="passport"] .ui-stat .split {
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: 5px;
+}
+[data-twins-view="passport"] .split {
+  display: flex;
+  gap: 2px;
+  height: 3px;
+}
+[data-twins-view="passport"] .split i {
+  border-radius: 2px;
+  background: var(--border-emphasis);
+}
+[data-twins-view="passport"] .split i:first-child {
+  background: var(--accent);
+}
+[data-twins-view="passport"] .dots-row {
+  display: flex;
+  gap: 4px;
+}
+[data-twins-view="passport"] .dots-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--border-emphasis);
+}
+[data-twins-view="passport"] .dots-row i[data-on="true"] {
+  background: var(--status-success);
+  box-shadow: none;
+}
+[data-twins-view="passport"] .ui-stat--wait {
+  gap: var(--sp-2);
+  justify-content: center;
+}
+[data-twins-view="passport"] .sk--l {
+  width: 60%;
+}
+[data-twins-view="passport"] .sk--v {
+  width: 36%;
+  height: 22px;
+}
+/* ---------- the shelf: wallet + waiting for you ---------- */
+[data-twins-view="passport"] .shelf {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--sp-3);
+}
+[data-twins-view="passport"] .wallet {
+  min-height: 0;
+  display: flex;
+  gap: var(--sp-3);
+}
+/* a closed document */
+[data-twins-view="passport"] .booklet {
+  position: relative;
+  isolation: isolate;
+  flex: 1 1 0;
+  max-width: 300px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-4) + 6px);
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: 6px var(--r-lg) var(--r-lg) 6px;
+  background: var(--glass);
+  box-shadow: var(--shadow-1), inset 0 1px 0 var(--lt-rim);
+  text-align: center;
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-base) ease;
+}
+[data-twins-view="passport"] .booklet::before {
+  content: "";
+  position: absolute;
+  z-index: var(--tw-z-under);
+  inset: 0 auto 0 0;
+  width: 10px;
+  border-right: 1px solid var(--border-default);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--seal-dome-b) 55%, transparent), color-mix(in srgb, var(--seal-dome-a) 12%, transparent));
+}
+[data-twins-view="passport"] .booklet::after {
+  content: "";
+  position: absolute;
+  z-index: var(--tw-z-under);
+  inset: 0;
+  background: repeating-radial-gradient(circle at 50% 28%, transparent 0 10px, color-mix(in srgb, var(--accent) 7%, transparent) 10px 11px);
+  mask-image: radial-gradient(circle at 50% 28%, black 0, transparent 62%);
+  pointer-events: none;
+}
+[data-twins-view="passport"] .booklet:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--glow);
+}
+[data-twins-view="passport"] .booklet__open {
+  position: absolute;
+  z-index: var(--tw-z-1);
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+[data-twins-view="passport"] .booklet > :not(.booklet__open) {
+  position: relative;
+  z-index: var(--tw-z-2);
+  pointer-events: none;
+}
+[data-twins-view="passport"] .booklet .booklet__act,
+[data-twins-view="passport"] .booklet .booklet__foot .btn {
+  pointer-events: auto;
+}
+[data-twins-view="passport"] .booklet__top {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+[data-twins-view="passport"] .booklet__top .badge {
+  flex: none;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .booklet__kind {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .booklet__pic {
+  position: relative;
+  margin-top: var(--sp-2);
+  filter: drop-shadow(0 6px 14px var(--seal-glow));
+}
+[data-twins-view="passport"] .booklet__issued {
+  position: absolute;
+  left: calc(100% + 4px);
+  bottom: 4px;
+}
+[data-twins-view="passport"] .booklet__name {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: 1.2;
+}
+[data-twins-view="passport"] .booklet__purpose {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+[data-twins-view="passport"] .booklet__visas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: auto;
+}
+[data-twins-view="passport"] .vmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 6px;
+  border: 1.5px solid color-mix(in srgb, var(--status-success) 70%, transparent);
+  border-radius: 5px;
+  color: var(--status-success);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  transform: rotate(-3deg);
+}
+[data-twins-view="passport"] .vmark .ic {
+  width: 13px;
+  height: 13px;
+}
+[data-twins-view="passport"] .vmark[data-ok="false"] {
+  border-style: dashed;
+  border-color: var(--status-warning);
+  color: var(--status-warning);
+}
+[data-twins-view="passport"] .vmark em {
+  font-style: normal;
+  font-weight: 500;
+}
+[data-twins-view="passport"] .vmark--none {
+  border: 1.5px dashed var(--border-emphasis);
+  color: var(--muted);
+  transform: none;
+}
+[data-twins-view="passport"] .booklet__clr {
+  display: flex;
+  flex-direction: column;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+[data-twins-view="passport"] .booklet__clr b {
+  color: var(--foreground);
+  font-weight: 500;
+}
+[data-twins-view="passport"] .booklet__ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .booklet__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  justify-content: center;
+}
+[data-twins-view="passport"] .booklet__why {
+  color: var(--status-warning);
+  font-size: var(--fs-xs);
+  line-height: 1.35;
+}
+[data-twins-view="passport"] .booklet__quiet {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .booklet__act {
+  min-height: 30px;
+  padding: 0 var(--sp-3);
+}
+[data-twins-view="passport"] .booklet[data-state="setting_up"] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--role-agent) 55%, transparent);
+}
+[data-twins-view="passport"] .booklet[data-state="paused"] {
+  border-color: color-mix(in srgb, var(--status-warning) 45%, transparent);
+}
+[data-twins-view="passport"] .booklet--sk {
+  justify-content: center;
+  gap: var(--sp-3);
+}
+[data-twins-view="passport"] .booklet--sk .sk {
+  width: 70%;
+}
+[data-twins-view="passport"] .booklet--sk .sk--short {
+  width: 45%;
+}
+[data-twins-view="passport"] .booklet--sk .sk--pic {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+/* ---------- an opened document on the shelf ---------- */
+[data-twins-view="passport"] .ovspread {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  box-shadow: var(--coat-shadow);
+  transform-origin: 0 50%;
+  animation: twins-open-doc 0.45s var(--ease-settle) both;
+}
+@keyframes twins-open-doc {
+  from {
+    opacity: 0;
+    transform: scaleX(0.94);
+  }
+}
+[data-twins-view="passport"] .ovspread__h {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+[data-twins-view="passport"] .ovspread__t {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+[data-twins-view="passport"] .ovspread__t b {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .ovspread__t span {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .ovspread__clr {
+  display: flex;
+  flex-direction: column;
+  margin-left: auto;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  text-align: right;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .ovspread__clr b {
+  color: var(--foreground);
+  font-weight: 500;
+}
+[data-twins-view="passport"] .ovspread__pages {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+[data-twins-view="passport"] .ovspread__pages::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 24px;
+  margin-left: -12px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--recessed) 70%, transparent) 50%, transparent);
+  pointer-events: none;
+}
+[data-twins-view="passport"] .ovpage {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--sp-3) var(--sp-4);
+}
+[data-twins-view="passport"] .ovpage h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .ovpage h3 span {
+  color: var(--muted);
+}
+[data-twins-view="passport"] .mss,
+[data-twins-view="passport"] .drs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-twins-view="passport"] .ms {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--card-bg) 60%, transparent);
+}
+[data-twins-view="passport"] .ms[data-state="handed_back"] {
+  border-color: color-mix(in srgb, var(--role-human) 45%, transparent);
+}
+[data-twins-view="passport"] .ms[data-focus="true"] {
+  border-color: var(--role-human);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--role-human) 18%, transparent);
+}
+[data-twins-view="passport"] .ms__h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .ms__h b {
+  font-weight: 500;
+}
+[data-twins-view="passport"] .ms__h .badge {
+  flex: none;
+}
+[data-twins-view="passport"] .ms__m {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .ms__note {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+[data-twins-view="passport"] .ms__note--stop {
+  display: flex;
+  gap: 6px;
+  color: var(--foreground);
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .ms__note--stop .ic {
+  margin-top: 2px;
+  color: var(--role-human);
+}
+[data-twins-view="passport"] .ms__act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-2);
+}
+[data-twins-view="passport"] .ms__later {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .dr {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--card-bg) 60%, transparent);
+}
+[data-twins-view="passport"] .dr__btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+[data-twins-view="passport"] .dr__btn:hover {
+  background: var(--hover-wash);
+}
+[data-twins-view="passport"] .dr__h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .dr__h b {
+  font-weight: 500;
+}
+[data-twins-view="passport"] .dr__to {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .dr__x {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .dr.is-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border-color: var(--role-human);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--role-human) 16%, transparent);
+}
+[data-twins-view="passport"] .dr.is-open .dr__to {
+  margin-top: -6px;
+}
+[data-twins-view="passport"] .dr__x-btn {
+  min-height: 26px;
+  margin-left: auto;
+  padding: 0 6px;
+}
+[data-twins-view="passport"] .dr__full {
+  margin: 0;
+  padding: 6px var(--sp-3);
+  border-left: 2px solid var(--border-emphasis);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--recessed);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+[data-twins-view="passport"] .dr__grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.9fr) 1fr;
+  align-items: start;
+  gap: var(--sp-3);
+}
+[data-twins-view="passport"] .dr__grid .risks {
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .dr__why {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .dr__act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+[data-twins-view="passport"] .editbox {
+  font-size: var(--fs-sm);
+  resize: none;
+}
+[data-twins-view="passport"] .paused {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 45%, transparent);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--status-warning) 6%, transparent);
+}
+[data-twins-view="passport"] .paused[data-state="done"] {
+  border-color: color-mix(in srgb, var(--status-success) 45%, transparent);
+  background: color-mix(in srgb, var(--status-success) 6%, transparent);
+}
+[data-twins-view="passport"] .paused[data-tone="info"] {
+  border-color: color-mix(in srgb, var(--role-agent) 45%, transparent);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--role-agent) 6%, transparent);
+}
+[data-twins-view="passport"] .paused__k {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--status-warning);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .paused[data-state="done"] .paused__k {
+  color: var(--status-success);
+}
+[data-twins-view="passport"] .paused[data-tone="info"] .paused__k {
+  color: var(--role-agent);
+}
+[data-twins-view="passport"] .paused p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .paused p b {
+  color: var(--foreground);
+  font-weight: 500;
+}
+[data-twins-view="passport"] .paused .muted {
+  font-size: var(--fs-xs);
+}
+/* ---------- waiting for you ---------- */
+[data-twins-view="passport"] .queue {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow: auto;
+  padding: var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+}
+[data-twins-view="passport"] .queue h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 2px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .count {
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--role-human);
+  color: var(--on-human);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+[data-twins-view="passport"] .q__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-twins-view="passport"] .q {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--role-human);
+  border-radius: var(--r-sm) var(--r-md) var(--r-md) var(--r-sm);
+  background: var(--card-raised);
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+}
+[data-twins-view="passport"] .q:hover,
+[data-twins-view="passport"] .q[aria-pressed="true"] {
+  border-color: var(--role-human);
+  background: color-mix(in srgb, var(--role-human) 8%, var(--card-raised));
+}
+[data-twins-view="passport"] .q__k {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .q__k .ic {
+  width: 13px;
+  height: 13px;
+}
+[data-twins-view="passport"] .q b {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+[data-twins-view="passport"] .q__s {
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .q--also {
+  border-left-color: var(--border-emphasis);
+}
+[data-twins-view="passport"] .q--also:hover,
+[data-twins-view="passport"] .q--also[aria-pressed="true"] {
+  border-color: var(--border-emphasis);
+  background: var(--hover-wash);
+}
+[data-twins-view="passport"] .q__also {
+  margin-top: var(--sp-1);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .queue--sk {
+  gap: var(--sp-3);
+}
+[data-twins-view="passport"] .queue--sk .sk {
+  height: 44px;
+}
+[data-twins-view="passport"] .flash {
+  position: fixed;
+  z-index: var(--tw-z-flash);
+  left: 50%;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 4px 4px 4px var(--sp-3);
+  border: 1px solid color-mix(in srgb, var(--status-success) 45%, transparent);
+  border-radius: var(--r-pill);
+  background: var(--card-raised);
+  box-shadow: var(--coat-shadow);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: twins-drop var(--dur-base) var(--ease-settle) both;
+}
+[data-twins-view="passport"] .flash > .ic {
+  color: var(--status-success);
+}
+[data-twins-view="passport"] .flash .btn {
+  min-height: 26px;
+  padding: 0 6px;
+}
+/* first run, could not load */
+[data-twins-view="passport"] .invite,
+[data-twins-view="passport"] .problem {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-6);
+  border: 1px dashed var(--border-emphasis);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--card-bg) 55%, transparent);
+}
+[data-twins-view="passport"] .invite .booklet--blank {
+  flex: none;
+  width: 190px;
+  height: 250px;
+  justify-content: center;
+  gap: var(--sp-2);
+  border-style: dashed;
+  border-color: var(--border-emphasis);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .invite__t {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  max-width: 460px;
+}
+[data-twins-view="passport"] .invite__t h2,
+[data-twins-view="passport"] .problem h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .invite__t p,
+[data-twins-view="passport"] .problem p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+}
+[data-twins-view="passport"] .invite__t .muted {
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .problem {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--status-error) 45%, transparent);
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-6);
+}
+[data-twins-view="passport"] .problem > .ic {
+  width: 28px;
+  height: 28px;
+  color: var(--status-error);
+}
+[data-twins-view="passport"] .problem div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  max-width: 560px;
+}
+/* ---------- the ledger ---------- */
+[data-twins-view="passport"] .ledger {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+}
+[data-twins-view="passport"] .lg__row {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.6fr) 104px minmax(130px, 1fr) minmax(160px, 1.4fr)
+    100px 112px 70px 84px 80px;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 6px var(--sp-4);
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--foreground);
+  font: 400 var(--fs-sm) / 1.35 var(--font-sans);
+  text-align: left;
+}
+[data-twins-view="passport"] .lg__row[data-new="true"] {
+  animation: twins-row-new 2.4s ease-out both;
+}
+@keyframes twins-row-new {
+  from {
+    background: color-mix(in srgb, var(--status-success) 16%, transparent);
+  }
+}
+[data-twins-view="passport"] .lg__head {
+  padding-block: 7px;
+  border-top: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .lg__twin {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+[data-twins-view="passport"] .lg__twin b {
+  font-weight: 500;
+}
+[data-twins-view="passport"] .lg__twin span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .lg__ch,
+[data-twins-view="passport"] .lg__clr {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .lg__clr span {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .lg__c {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+[data-twins-view="passport"] .lg__c .ic {
+  width: 13px;
+  height: 13px;
+  color: var(--muted-foreground);
+}
+[data-twins-view="passport"] .lg__c i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+}
+[data-twins-view="passport"] .lg__c i[data-health="quiet"] {
+  background: var(--muted);
+}
+[data-twins-view="passport"] .lg__c i[data-health="stale"] {
+  background: var(--status-warning);
+}
+[data-twins-view="passport"] .lg__c em {
+  color: var(--status-warning);
+  font-style: normal;
+}
+[data-twins-view="passport"] .lg__ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+[data-twins-view="passport"] .lg__ready .meter {
+  width: 40px;
+}
+[data-twins-view="passport"] .lg__n {
+  font-variant-numeric: tabular-nums;
+}
+[data-twins-view="passport"] .lg__wait {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+[data-twins-view="passport"] .lg__wait b {
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .lg__n.is-human b {
+  color: var(--role-human);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .lg__wk {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+}
+[data-twins-view="passport"] .lg__wk span {
+  color: var(--muted);
+}
+[data-twins-view="passport"] .lg__last {
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .lg__total {
+  padding-block: 7px;
+  background: color-mix(in srgb, var(--recessed) 50%, transparent);
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .lg__total b {
+  color: var(--foreground);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .lg__wide {
+  grid-column: 3 / -1;
+}
+[data-twins-view="passport"] .lg__empty {
+  display: block;
+  padding-block: var(--sp-3);
+  color: var(--muted-foreground);
+}
+[data-twins-view="passport"] .lg__sk .sk {
+  width: 70%;
+}
+/* ---------- 1024 wide, 700 tall ---------- */
+@media (max-width: 1180px) {
+  [data-twins-view="passport"] .ov__top {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+  [data-twins-view="passport"] .ov__title p {
+    display: none;
+  }
+  [data-twins-view="passport"] .shelf {
+    grid-template-columns: minmax(0, 1fr) 272px;
+  }
+  [data-twins-view="passport"] .lg__row {
+    grid-template-columns:
+      minmax(110px, 1.3fr) 92px minmax(96px, 1fr) minmax(112px, 1.2fr)
+      78px 100px 58px 64px 62px;
+    gap: var(--sp-2);
+    padding-inline: var(--sp-3);
+  }
+  [data-twins-view="passport"] .booklet {
+    padding-inline: var(--sp-3) var(--sp-3);
+    padding-left: calc(var(--sp-3) + 8px);
+  }
+  [data-twins-view="passport"] .ovspread__clr {
+    display: none;
+  }
+}
+@media (max-height: 760px) {
+  [data-twins-view="passport"] .booklet {
+    gap: 4px;
+    padding-block: var(--sp-2);
+  }
+  [data-twins-view="passport"] .booklet__pic {
+    margin-top: 0;
+  }
+  [data-twins-view="passport"] .booklet__pic .portrait {
+    width: 52px;
+    height: 52px;
+  }
+  [data-twins-view="passport"] .booklet__purpose {
+    -webkit-line-clamp: 1;
+  }
+  [data-twins-view="passport"] .lg__row {
+    padding-block: 4px;
+  }
+  [data-twins-view="passport"] .q {
+    padding-block: 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-twins-view="passport"] .ovspread,
+  [data-twins-view="passport"] .flash,
+  [data-twins-view="passport"] .lg__row[data-new="true"],
+  [data-twins-view="passport"] .booklet {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+[data-twins-view="passport"] .lg__head th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 1180px) {
+  [data-twins-view="passport"] .lg__head {
+    letter-spacing: 0.02em;
+  }
+}
+@media (max-height: 760px) {
+  [data-twins-view="passport"] .dr__full {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+}

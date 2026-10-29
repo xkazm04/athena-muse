@@ -42,3 +42,11 @@
 .card-label { margin: 0; font-size: var(--fs-md); line-height: 1.45; overflow-wrap: anywhere; }
 .card-actions { display: flex; gap: var(--sp-2); }
 .card-problem { margin: 0; color: var(--status-error); font-size: var(--fs-sm); }
+
+/* The stat strip: tiles of one value each; a skin sizes and colours them. */
+.ui-stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.ui-stat { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+.ui-stat__l { color: var(--muted-foreground); font-size: var(--fs-xs); }
+.ui-stat__v { display: flex; flex-direction: column; min-width: 0; }
+.ui-stat__v b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ui-stat__u { color: var(--muted); font-size: var(--fs-xs); }

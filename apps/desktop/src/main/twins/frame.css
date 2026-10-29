@@ -1,0 +1,582 @@
+/* Passport in the app: the frame that fills the window, the setup's own header, the stage parts and
+ * the shared Ledger and StatStrip skinned to the prototype, and the nested pages. Loop Tide tokens only. */
+
+[data-twins-view="passport"] {
+  --tw-z-under: -1;
+  --tw-z-1: 1;
+  --tw-z-2: 2;
+  --tw-z-seal: 5;
+  --tw-z-25: 25;
+  --tw-z-30: 30;
+  --tw-z-flash: 40;
+}
+
+/* ---------- the frame: header, then the view; the page never scrolls ---------- */
+[data-twins-view="passport"].tw-frame {
+  position: relative;
+  z-index: var(--tw-z-1);
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+[data-twins-view="passport"] button {
+  font-family: inherit;
+}
+[data-twins-view="passport"] .tw-top {
+  position: relative;
+  z-index: var(--tw-z-30);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  backdrop-filter: blur(12px);
+}
+[data-twins-view="passport"] .tw-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--foreground);
+  font-size: var(--fs-lg);
+  text-decoration: none;
+}
+[data-twins-view="passport"] .tw-brand b {
+  font-weight: 600;
+}
+[data-twins-view="passport"] .tw-top__where {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .tw-top__gap {
+  flex: 1;
+}
+[data-twins-view="passport"] .tw-top .btn {
+  min-height: 34px;
+}
+[data-twins-view="passport"] .invented {
+  color: var(--status-warning);
+  border-color: color-mix(in srgb, var(--status-warning) 45%, transparent);
+  background: color-mix(in srgb, var(--status-warning) 8%, transparent);
+}
+[data-twins-view="passport"] .view--overview,
+[data-twins-view="passport"] .view--nested {
+  min-height: 0;
+}
+@keyframes twins-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (max-height: 760px) {
+  [data-twins-view="passport"] .tw-top {
+    height: 50px;
+  }
+}
+
+/* the portrait's letter and the seal's ring of words, in the SVG's own units (the type tokens) */
+[data-twins-view="passport"] .portrait__l {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .issued__t {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 2.6px;
+}
+
+/* ---------- the stat strip (ui/StatStrip) ---------- */
+[data-twins-view="passport"] .ui-stats {
+  grid-auto-flow: row;
+}
+[data-twins-view="passport"] .ui-stat__sk {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  animation: twins-pulse 1.6s ease-in-out infinite;
+}
+[data-twins-view="passport"] .ui-stat__sk--l {
+  width: 60%;
+}
+[data-twins-view="passport"] .ui-stat__sk--v {
+  width: 36%;
+  height: 22px;
+}
+
+/* ---------- the ledger (ui/Ledger): a table whose rows are the prototype's grid rows ---------- */
+[data-twins-view="passport"] table.ledger {
+  display: block;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+[data-twins-view="passport"] .ledger thead,
+[data-twins-view="passport"] .ledger tbody,
+[data-twins-view="passport"] .ledger tfoot {
+  display: block;
+}
+[data-twins-view="passport"] .ledger th,
+[data-twins-view="passport"] .ledger td {
+  min-width: 0;
+  padding: 0;
+  font-weight: inherit;
+  text-align: left;
+}
+[data-twins-view="passport"] .ledger tbody .lg__row {
+  cursor: pointer;
+}
+[data-twins-view="passport"] .ledger tbody .lg__row:hover,
+[data-twins-view="passport"] .ledger tbody .lg__row:focus-visible {
+  background: var(--hover-wash);
+  outline: none;
+}
+[data-twins-view="passport"] .ledger tbody .lg__row[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+[data-twins-view="passport"] .ledger .lg__empty {
+  cursor: default;
+}
+[data-twins-view="passport"] .ledger .lg__empty td {
+  grid-column: 1 / -1;
+}
+[data-twins-view="passport"] .lg__row[data-human="true"] .lg__wait b {
+  color: var(--role-human);
+  font-weight: 600;
+}
+
+/* ---------- the stage's parts, in Athena's panel ---------- */
+[data-twins-view="passport"] .ath__answers .sp-suggestions {
+  display: contents;
+}
+[data-twins-view="passport"] [data-role="suggestion"] {
+  max-width: none;
+  font-weight: 400;
+}
+[data-twins-view="passport"] [data-role="suggestion"] .sp-suggestion__key {
+  min-width: 0;
+}
+[data-twins-view="passport"] [data-role="suggestion"] .sp-suggestion__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+}
+[data-twins-view="passport"] .sp-composer .btn {
+  flex: none;
+  padding: 0 12px;
+}
+[data-twins-view="passport"] .ath__side .sp-enough {
+  justify-items: stretch;
+}
+[data-twins-view="passport"] .ath__side .sp-enough__open {
+  line-height: 1.4;
+}
+[data-twins-view="passport"] .ath__say {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .ath__say .you {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .ath__say .sp-notice {
+  flex-wrap: nowrap;
+  min-width: 0;
+  color: var(--muted-foreground);
+}
+[data-twins-view="passport"] .ath__say .sp-notice[data-phase="failed"] {
+  padding: 2px var(--sp-2);
+  color: var(--foreground);
+}
+[data-twins-view="passport"] .ath__say .sp-notice__text {
+  display: block;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .ath__say .sp-notice .btn {
+  min-height: 30px;
+}
+
+/* the waiting card: two lines, whose and why, then what */
+[data-twins-view="passport"] .q .q__k {
+  display: flex;
+  min-width: 0;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .q .q__k .q__s {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- small parts the port adds ---------- */
+[data-twins-view="passport"] .problem__acts {
+  display: flex;
+  gap: var(--sp-2);
+}
+[data-twins-view="passport"] .beats {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: inherit;
+  font-size: var(--fs-xs);
+  vertical-align: middle;
+  cursor: pointer;
+}
+[data-twins-view="passport"] .beats:hover,
+[data-twins-view="passport"] .beats:focus-visible {
+  background: var(--hover-wash);
+  color: var(--foreground);
+}
+[data-twins-view="passport"] .beats i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.2px var(--border-emphasis);
+}
+[data-twins-view="passport"] .beats i[data-done="true"] {
+  background: var(--accent);
+  box-shadow: none;
+}
+[data-twins-view="passport"] .beats i[data-now="true"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+[data-twins-view="passport"] .ms[data-state="handed_back"] .beats i[data-now="true"] {
+  background: var(--role-human);
+  box-shadow: none;
+}
+[data-twins-view="passport"] .beats__w {
+  margin-left: 2px;
+}
+[data-twins-view="passport"] .sounds {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 58%;
+  margin-left: auto;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+[data-twins-view="passport"] .sounds:hover,
+[data-twins-view="passport"] .sounds:focus-visible {
+  border-color: var(--accent);
+  color: var(--foreground);
+}
+[data-twins-view="passport"] .sounds__k {
+  flex: none;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .sounds__t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .sounds .ic {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+[data-twins-view="passport"] .client {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .client summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-text);
+  font-weight: 500;
+  cursor: pointer;
+}
+[data-twins-view="passport"] .client__hint {
+  margin: var(--sp-2) 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+[data-twins-view="passport"] .client__f {
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+[data-twins-view="passport"] .client__f label {
+  display: grid;
+  gap: 2px;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+
+/* ---------- the nested pages: the twin's header, then two facing pages ---------- */
+[data-twins-view="passport"] .npage {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  box-shadow: var(--coat-shadow);
+  animation: twins-open-doc 0.45s var(--ease-settle) both;
+}
+[data-twins-view="passport"] .npage__h {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+[data-twins-view="passport"] .npage__t {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+[data-twins-view="passport"] .npage__t b {
+  overflow: hidden;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .npage__k {
+  margin: 0;
+  color: var(--faint);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .npage__s {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-twins-view="passport"] .npage__back {
+  margin-left: auto;
+}
+[data-twins-view="passport"] .npage__h .badge,
+[data-twins-view="passport"] .npage__h .stamp {
+  flex: none;
+}
+[data-twins-view="passport"] .npage__pages {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+[data-twins-view="passport"] .npage__pages::before {
+  content: "";
+  position: absolute;
+  top: var(--sp-3);
+  bottom: var(--sp-3);
+  left: 50%;
+  width: 1px;
+  background: var(--border-subtle);
+}
+[data-twins-view="passport"] .npage__page {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  overflow: auto;
+  padding: var(--sp-4) var(--sp-5);
+}
+[data-twins-view="passport"] .npage__page h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .npage__page h3 span {
+  color: var(--faint);
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+[data-twins-view="passport"] .npage__own {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+[data-twins-view="passport"] .nturns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-twins-view="passport"] .nturn {
+  display: grid;
+  gap: 4px;
+  max-width: 92%;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+}
+[data-twins-view="passport"] .nturn--twin {
+  align-self: flex-end;
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--card-bg));
+}
+[data-twins-view="passport"] .nturn__who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .nturn__who b {
+  color: var(--foreground);
+  font-weight: 500;
+}
+[data-twins-view="passport"] .nturn__who .stamp {
+  margin-left: auto;
+}
+[data-twins-view="passport"] .nturn__text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  white-space: pre-line;
+}
+[data-twins-view="passport"] .script {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-twins-view="passport"] .beat {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--sp-2);
+  padding: 6px 0;
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .beat:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: calc(50% + 13px);
+  bottom: calc(-50% + 13px);
+  width: 2px;
+  background: var(--border-subtle);
+}
+[data-twins-view="passport"] .beat__n {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px dashed var(--border-emphasis);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .beat[data-done="true"] .beat__n {
+  border: 0;
+  background: var(--accent);
+  color: var(--on-primary);
+}
+[data-twins-view="passport"] .beat[data-now="true"] .beat__n {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 0 0 4px var(--glow);
+}
+[data-twins-view="passport"] .beat[data-done="false"] .beat__l {
+  color: var(--muted-foreground);
+}
+[data-twins-view="passport"] .beat[data-now="true"] .beat__l {
+  color: var(--foreground);
+  font-weight: 500;
+}
+[data-twins-view="passport"] .beat__w {
+  grid-column: 2;
+  color: var(--role-human);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .theirs {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 3px solid var(--border-emphasis);
+  border-radius: 2px var(--r-md) var(--r-md) 2px;
+  background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+}
+[data-twins-view="passport"] .theirs__who {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .theirs p {
+  margin: 4px 0 0;
+  font-size: var(--fs-md);
+  line-height: 1.45;
+}
+[data-twins-view="passport"] .npage .dr__full {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.45;
+}
+[data-twins-view="passport"] .npage .dr__act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+[data-twins-view="passport"] .npage__go {
+  align-self: flex-start;
+}
+
+@media (max-width: 1180px) {
+  [data-twins-view="passport"] .sounds {
+    max-width: 46%;
+  }
+  [data-twins-view="passport"] .npage__page {
+    padding-inline: var(--sp-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-twins-view="passport"] .ui-stat__sk,
+  [data-twins-view="passport"] .npage {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,3 @@
+{ "roles": {
+  "seal":         { "winner": ".spread .issued",                      "port": "[data-twins-view=\"passport\"] [data-role=\"seal\"]" }
+} }

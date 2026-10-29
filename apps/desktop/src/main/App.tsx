@@ -11,7 +11,9 @@ import { FirstRun, readSkipped } from "./onboarding/FirstRun";
 import { Field } from "./projects/Field";
 import { Level } from "./projects/Level";
 import { CoreLevel, Memory } from "./projects/Memory";
+import { isTwinRoute } from "./route";
 import { Stage } from "./stage/Stage";
+import { TwinsView } from "./twins/Twins";
 import { reasonOf, useMain } from "./store";
 
 type Boot = { phase: "waking" } | { phase: "down"; reason: string } | { phase: "up"; firstRun: boolean };
@@ -85,16 +87,12 @@ function Centered({ children }: { children: ReactNode }) {
 }
 
 export function Shell() {
-  const engine = useMain((s) => s.engine);
-  const spaces = useMain((s) => s.spaces);
-  const active = useMain((s) => s.active);
-  const waiting = useMain((s) => s.waiting.length);
   const route = useMain((s) => s.route);
   const notice = useMain((s) => s.notice);
-  const setActive = useMain((s) => s.setActive);
   const syncRoute = useMain((s) => s.syncRoute);
   const handleEvent = useMain((s) => s.handleEvent);
   const clearNotice = useMain((s) => s.clearNotice);
+  const navigate = useMain((s) => s.navigate);
 
   useAppEvents(handleEvent);
 
@@ -114,47 +112,20 @@ export function Shell() {
     );
   }
 
-  const onAthena = route.view === "athena";
-  const onChores = route.view === "chores" || route.view === "chore";
-  const here = (on: boolean) => (on ? "page" : undefined);
+  if (isTwinRoute(route)) {
+    // The twins page fills the window under the header; a twin's setup owns it, like the stage.
+    return (
+      <div className="m-shell">
+        <Backdrop />
+        <TwinsView route={route} top={(extra) => <MainTop extra={extra} />} navigate={navigate} />
+      </div>
+    );
+  }
 
   return (
     <div className="m-shell">
       <Backdrop />
-      <header className="m-top">
-        <Seal
-          state={waiting > 0 ? "waiting" : "rest"}
-          size={36}
-          count={waiting}
-          label={waiting > 0 ? `${waiting} waiting on you` : "Athena"}
-        />
-        <span className="m-wordmark">Athena</span>
-        <ProjectPill spaces={spaces} activeId={active} onSelect={(id) => void setActive(id)} />
-        {engine &&
-          (engine.simulated ? (
-            <span className="badge m-lamp" data-tone="warning" title="No Muse key; replies are simulated">
-              Simulated
-            </span>
-          ) : (
-            <span className="badge m-lamp" data-tone="success" title={engine.model}>
-              Muse
-            </span>
-          ))}
-        <nav className="m-nav" aria-label="Main">
-          <a href="#projects" className="m-nav__link" aria-current={here(!onAthena && !onChores)}>
-            Projects
-          </a>
-          <a href="#chores" className="m-nav__link" aria-current={here(onChores)}>
-            Chores
-          </a>
-          <a href="#athena" className="m-nav__link" aria-current={here(onAthena)}>
-            Athena
-          </a>
-        </nav>
-        <button type="button" className="btn btn-primary m-talk" onClick={() => void toggleAthena()}>
-          Talk to Athena
-        </button>
-      </header>
+      <MainTop />
       {notice && (
         <div className="plane m-notice" role="alert">
           <span>{notice}</span>
@@ -173,5 +144,60 @@ export function Shell() {
         {route.view === "chore" && <ChoreScene id={route.id} />}
       </main>
     </div>
+  );
+}
+
+/** The main window's header: her seal, the project pill, the engine lamp, the places, her window. */
+export function MainTop({ extra }: { extra?: ReactNode }) {
+  const engine = useMain((s) => s.engine);
+  const spaces = useMain((s) => s.spaces);
+  const active = useMain((s) => s.active);
+  const waiting = useMain((s) => s.waiting.length);
+  const route = useMain((s) => s.route);
+  const setActive = useMain((s) => s.setActive);
+  const onAthena = route.view === "athena";
+  const onChores = route.view === "chores" || route.view === "chore";
+  const onTwins = isTwinRoute(route);
+  const here = (on: boolean) => (on ? "page" : undefined);
+
+  return (
+    <header className="m-top">
+      <Seal
+        state={waiting > 0 ? "waiting" : "rest"}
+        size={36}
+        count={waiting}
+        label={waiting > 0 ? `${waiting} waiting on you` : "Athena"}
+      />
+      <span className="m-wordmark">Athena</span>
+      <ProjectPill spaces={spaces} activeId={active} onSelect={(id) => void setActive(id)} />
+      {engine &&
+        (engine.simulated ? (
+          <span className="badge m-lamp" data-tone="warning" title="No Muse key; replies are simulated">
+            Simulated
+          </span>
+        ) : (
+          <span className="badge m-lamp" data-tone="success" title={engine.model}>
+            Muse
+          </span>
+        ))}
+      {extra}
+      <nav className="m-nav" aria-label="Main">
+        <a href="#projects" className="m-nav__link" aria-current={here(!onAthena && !onChores && !onTwins)}>
+          Projects
+        </a>
+        <a href="#chores" className="m-nav__link" aria-current={here(onChores)}>
+          Chores
+        </a>
+        <a href="#twins" className="m-nav__link" aria-current={here(onTwins)}>
+          Twins
+        </a>
+        <a href="#athena" className="m-nav__link" aria-current={here(onAthena)}>
+          Athena
+        </a>
+      </nav>
+      <button type="button" className="btn btn-primary m-talk" onClick={() => void toggleAthena()}>
+        Talk to Athena
+      </button>
+    </header>
   );
 }

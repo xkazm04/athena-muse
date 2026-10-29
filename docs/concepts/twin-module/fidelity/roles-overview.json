@@ -1,0 +1,6 @@
+{ "roles": {
+  "stat-tile":    { "winner": ".stats .tile",                         "port": "[data-twins-view=\"passport\"] [data-role=\"stat-tile\"]" },
+  "wallet-doc":   { "winner": ".wallet .booklet",                     "port": "[data-twins-view=\"passport\"] [data-role=\"wallet-doc\"]" },
+  "waiting-card": { "winner": ".queue .q",                            "port": "[data-twins-view=\"passport\"] [data-role=\"waiting-card\"]" },
+  "ledger-row":   { "winner": ".ledger .lg__row:not(.lg__head)",      "port": "[data-twins-view=\"passport\"] [data-role=\"ledger-row\"]" }
+} }

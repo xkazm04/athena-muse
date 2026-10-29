@@ -1,0 +1,26 @@
+{
+  "exit": {
+    "width": 219,
+    "selector": ".ath__side .ath__exit",
+    "vpos": 0,
+    "fontSize": "15px",
+    "fontWeight": "500",
+    "lineHeight": "15px",
+    "letterSpacing": "normal",
+    "textTransform": "none",
+    "fontFamily": "Outfit, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+    "color": "rgb(255, 255, 255)",
+    "backgroundColor": "rgb(0, 100, 224)",
+    "backgroundImage": "none",
+    "borderTopWidth": "1px",
+    "borderLeftWidth": "1px",
+    "borderLeftColor": "rgba(0, 0, 0, 0)",
+    "borderTopLeftRadius": "10px",
+    "borderTopRightRadius": "10px",
+    "boxShadow": "none",
+    "paddingTop": "0px",
+    "paddingLeft": "12px",
+    "paddingRight": "12px",
+    "maxWidth": "none"
+  }
+}

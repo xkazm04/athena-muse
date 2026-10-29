@@ -1,0 +1,11 @@
+{ "roles": {
+  "doc-section":  { "winner": ".doc .sec",                            "port": "[data-twins-view=\"passport\"] .doc [data-role=\"doc-section\"]" },
+  "section-lit":  { "winner": ".doc .sec[data-lit=\"true\"]",         "port": "[data-twins-view=\"passport\"] [data-role=\"section-lit\"]" },
+  "piece-pencil": { "winner": ".doc .pc[data-state=\"pencil\"]",      "port": "[data-twins-view=\"passport\"] .doc [data-role=\"piece-pencil\"]" },
+  "piece-ink":    { "winner": ".doc .pc[data-state=\"ink\"]",         "port": "[data-twins-view=\"passport\"] .doc [data-role=\"piece-ink\"]" },
+  "visa":         { "winner": ".visas .visa",                         "port": "[data-twins-view=\"passport\"] [data-role=\"visa\"]" },
+  "visa-stamp":   { "winner": ".visa .visa__stamp",                   "port": "[data-twins-view=\"passport\"] [data-role=\"visa-stamp\"]" },
+  "slip":         { "winner": ".slip",                                "port": "[data-twins-view=\"passport\"] [data-role=\"slip\"]" },
+  "ask-text":     { "winner": ".ath__ask h2",                         "port": "[data-twins-view=\"passport\"] [data-role=\"ask-text\"]" },
+  "suggestion":   { "winner": ".ath__answers .sugg",                  "port": "[data-twins-view=\"passport\"] [data-role=\"suggestion\"]" }
+} }

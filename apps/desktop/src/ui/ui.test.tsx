@@ -1,8 +1,11 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Card, SpaceSummary } from "../lib/contract";
+import type { Card, LedgerRow, SpaceSummary } from "../lib/contract";
+import { COST_COLUMNS } from "../main/athena/AthenaView";
 import { CardView } from "./CardView";
+import { Ledger } from "./Ledger";
 import { ProjectPill } from "./ProjectPill";
+import { StatStrip } from "./StatStrip";
 
 afterEach(cleanup);
 
@@ -53,3 +56,127 @@ describe("ProjectPill", () => {
     expect(screen.getByText("switches after this reply")).toBeTruthy();
   });
 });
+
+describe("StatStrip", () => {
+  it("shows an unmeasured value as a dash, never 0", () => {
+    render(
+      <StatStrip
+        label="At a glance"
+        tiles={[
+          { key: "a", label: "Sent this week", value: 23, unit: "14 on their own" },
+          { key: "b", label: "Held back" },
+          { key: "c", label: "Live", value: 0 },
+        ]}
+      />,
+    );
+    const tiles = screen.getAllByText(/Sent this week|Held back|Live/).map((l) => l.parentElement!);
+    expect(tiles.map((t) => t.querySelector("b")!.textContent)).toEqual(["23", "-", "0"]);
+    expect(tiles[0]!.getAttribute("data-role")).toBe("stat-tile");
+  });
+
+  it("reads as quiet placeholders while busy, with no numbers", () => {
+    const { container } = render(<StatStrip label="At a glance" tiles={[]} busy={3} />);
+    expect(container.querySelectorAll(".ui-stat--wait")).toHaveLength(3);
+    expect(container.textContent).toBe("");
+  });
+});
+
+const ledgerRow = (id: number, ok = true): LedgerRow => ({
+  id,
+  ts: "2026-10-26T12:00:00Z",
+  surface: "turn",
+  space_id: "",
+  engine: "scripted",
+  model: "muse-1",
+  input_tokens: 1200,
+  output_tokens: 300,
+  cost_usd: id === 2 ? undefined : 0.0123,
+  cost_estimated: true,
+  latency_ms: 840,
+  ok,
+  error: ok ? undefined : "engine_unavailable",
+});
+
+describe("Ledger", () => {
+  it("draws the Athena page's Costs table exactly as before it moved", () => {
+    const rows = [ledgerRow(1), ledgerRow(2, false)];
+    const where = () => "Core";
+    const before = render(<CostsBefore rows={rows} where={where} />).container.innerHTML;
+    cleanup();
+    const after = render(<Ledger className="m-table" wrapClassName="m-table-wrap" columns={COST_COLUMNS(where)} rows={rows} rowKey={(r) => r.id} />)
+      .container.innerHTML;
+    expect(after).toBe(before);
+  });
+
+  it("puts the totals line in the foot and a full-width line when empty", () => {
+    const cols = [
+      { key: "n", head: "Name", cell: (r: { n: string }) => r.n },
+      { key: "m", head: "More", cell: () => "x" },
+    ];
+    const { container, rerender } = render(<Ledger label="Things" columns={cols} rows={[{ n: "a" }]} rowKey={(r) => r.n} totals={["1 thing", "est. $0.10"]} totalsCellClassNames={[undefined, "wide"]} />);
+    expect(container.querySelector("tfoot td.wide")!.textContent).toBe("est. $0.10");
+    rerender(<Ledger label="Things" columns={cols} rows={[]} rowKey={(r) => r.n} empty="Nothing yet" emptyClassName="none" />);
+    const td = container.querySelector("tbody tr.none td")!;
+    expect(td.getAttribute("colspan")).toBe("2");
+    expect(td.textContent).toBe("Nothing yet");
+  });
+});
+
+/** The Costs table's markup before Ledger, verbatim, to hold the refactor to "no visual change". */
+function CostsBefore({ rows, where }: { rows: LedgerRow[]; where: (r: LedgerRow) => string }) {
+  const money = (usd: number) => (usd < 1 ? `$${usd.toFixed(4)}` : `$${usd.toFixed(2)}`);
+  const latency = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
+  const time = (iso: string) => new Date(iso).toLocaleString();
+  const tokens = (n?: number) => (n === undefined ? "-" : n.toLocaleString());
+  return (
+    <div className="m-table-wrap">
+      <table className="m-table">
+        <thead>
+          <tr>
+            <th scope="col">Time</th>
+            <th scope="col">Where</th>
+            <th scope="col">Model</th>
+            <th scope="col" className="m-num">
+              Tokens in / out
+            </th>
+            <th scope="col" className="m-num">
+              est. $
+            </th>
+            <th scope="col" className="m-num">
+              Latency
+            </th>
+            <th scope="col">Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>{time(r.ts)}</td>
+              <td>{where(r)}</td>
+              <td className="m-mono">
+                {r.model}
+                {r.engine === "scripted" && " (simulated)"}
+              </td>
+              <td className="m-num">
+                {tokens(r.input_tokens)} / {tokens(r.output_tokens)}
+              </td>
+              <td className="m-num">{r.cost_usd === undefined ? "unpriced" : `est. ${money(r.cost_usd)}`}</td>
+              <td className="m-num">{latency(r.latency_ms)}</td>
+              <td>
+                {r.ok ? (
+                  <span className="badge" data-tone="success">
+                    ok
+                  </span>
+                ) : (
+                  <span className="badge" data-tone="error" title={r.error}>
+                    {r.error ?? "failed"}
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

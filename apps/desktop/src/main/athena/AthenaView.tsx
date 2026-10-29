@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../lib/api";
 import type { EngineStatus, LedgerRow } from "../../lib/contract";
-import { CardView } from "../../ui";
+import { CardView, Ledger, type LedgerColumn } from "../../ui";
 import { ProbeLine, useProbe } from "../onboarding/probe";
 import { useMain, whereName } from "../store";
 
@@ -217,6 +217,54 @@ function Connection() {
   );
 }
 
+/** The Costs table's columns: one row per Muse call (Ledger's first caller; the twins page is its second). */
+export const COST_COLUMNS = (where: (r: LedgerRow) => string): LedgerColumn<LedgerRow>[] => [
+  { key: "time", head: "Time", cell: (r) => time(r.ts) },
+  { key: "where", head: "Where", cell: where },
+  {
+    key: "model",
+    head: "Model",
+    cellClassName: "m-mono",
+    cell: (r) => (
+      <>
+        {r.model}
+        {r.engine === "scripted" && " (simulated)"}
+      </>
+    ),
+  },
+  {
+    key: "tokens",
+    head: "Tokens in / out",
+    className: "m-num",
+    cell: (r) => (
+      <>
+        {tokens(r.input_tokens)} / {tokens(r.output_tokens)}
+      </>
+    ),
+  },
+  {
+    key: "cost",
+    head: "est. $",
+    className: "m-num",
+    cell: (r) => (r.cost_usd === undefined ? "unpriced" : `est. ${money(r.cost_usd)}`),
+  },
+  { key: "latency", head: "Latency", className: "m-num", cell: (r) => latency(r.latency_ms) },
+  {
+    key: "result",
+    head: "Result",
+    cell: (r) =>
+      r.ok ? (
+        <span className="badge" data-tone="success">
+          ok
+        </span>
+      ) : (
+        <span className="badge" data-tone="error" title={r.error}>
+          {r.error ?? "failed"}
+        </span>
+      ),
+  },
+];
+
 function Costs() {
   const ledger = useMain((s) => s.ledger);
   const problem = useMain((s) => s.ledgerProblem);
@@ -252,55 +300,13 @@ function Costs() {
           {ledger.rows.length === 0 ? (
             <p className="m-muted">No Muse calls yet.</p>
           ) : (
-            <div className="m-table-wrap">
-              <table className="m-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Time</th>
-                    <th scope="col">Where</th>
-                    <th scope="col">Model</th>
-                    <th scope="col" className="m-num">
-                      Tokens in / out
-                    </th>
-                    <th scope="col" className="m-num">
-                      est. $
-                    </th>
-                    <th scope="col" className="m-num">
-                      Latency
-                    </th>
-                    <th scope="col">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ledger.rows.map((r) => (
-                    <tr key={r.id}>
-                      <td>{time(r.ts)}</td>
-                      <td>{where(r)}</td>
-                      <td className="m-mono">
-                        {r.model}
-                        {r.engine === "scripted" && " (simulated)"}
-                      </td>
-                      <td className="m-num">
-                        {tokens(r.input_tokens)} / {tokens(r.output_tokens)}
-                      </td>
-                      <td className="m-num">{r.cost_usd === undefined ? "unpriced" : `est. ${money(r.cost_usd)}`}</td>
-                      <td className="m-num">{latency(r.latency_ms)}</td>
-                      <td>
-                        {r.ok ? (
-                          <span className="badge" data-tone="success">
-                            ok
-                          </span>
-                        ) : (
-                          <span className="badge" data-tone="error" title={r.error}>
-                            {r.error ?? "failed"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Ledger
+              className="m-table"
+              wrapClassName="m-table-wrap"
+              columns={COST_COLUMNS(where)}
+              rows={ledger.rows}
+              rowKey={(r) => r.id}
+            />
           )}
         </>
       )}
