@@ -16,7 +16,7 @@ builder: the `always` set for the side it touched (Python or desktop); when a ga
 none
 
 ## Repo law
-Read AGENTS.md first. Built core: ADRs 0002-0004; the onboarding plan of record (not yet built past key + probe): docs/concepts/blue-hour-onboarding/README.md. The wire contract types every response envelope, not just items (parity test). The Director commits the wire contract and compilable stubs before any parallel package. No secrets, no machine paths. Meta API facts are tagged measured / press / unverified.
+Read AGENTS.md first. Built core: ADRs 0002-0007; the plan of record (built): docs/concepts/chore-onboarding-v2/README.md; the stage's two views share one store and parts under apps/desktop/src/main/stage/, and each view's CSS is scoped under its own `[data-stage-view]` root. The wire contract types every response envelope, not just items (parity test). The Director commits the wire contract and compilable stubs before any parallel package. No secrets, no machine paths. Meta API facts are tagged measured / press / unverified.
 
 ## Wave defaults
 default

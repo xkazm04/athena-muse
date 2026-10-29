@@ -2,8 +2,10 @@
 
 ## What this is
 
-Athena on Muse: the Blue Hour onboarding for the Meta hackathon. The plan of record is
-`docs/concepts/blue-hour-onboarding/README.md` (flow, four work packages, wire contract, risks).
+Athena on Muse, for the Meta hackathon. The plan of record is
+`docs/concepts/chore-onboarding-v2/README.md` (built 2026-10-29: describe a need, watch it sketched in
+two views, test it against your own expectations; ADR 0007). Blue Hour's key paste and probe stand;
+the rest of `docs/concepts/blue-hour-onboarding/` is superseded. Next designed: `docs/concepts/business-channel/`.
 Chores are data under `playbooks/<id>/`, rehearsed on a headless bench (ADR 0005).
 
 ## Commands
