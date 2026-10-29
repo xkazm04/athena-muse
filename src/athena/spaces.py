@@ -25,7 +25,7 @@ from athena.contracts import (
 from athena.drafts.store import remove_folder
 from athena.errors import ApiError
 from athena.settings import ACTIVE_SPACE_KEY
-from athena.store import Store
+from athena.store import TWIN_TABLES, Store
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 
@@ -183,7 +183,7 @@ class Spaces:
 
     def erase(self, space_id: str) -> SpaceErased:
         """Under `busy.closing`: deletes stamped memory, the conversation, cards, drafts (rows, then
-        their folders once the rows are gone), then the space."""
+        their folders once the rows are gone), every twin and its parts, then the space."""
         if space_id == "" or not self.exists(space_id):
             raise ApiError("unknown_ref", "no such project")
         with self._busy.closing(space_id), self._store.tx() as db:
@@ -195,7 +195,7 @@ class Spaces:
             }
             turns = db.execute("SELECT COUNT(*) FROM turns WHERE space_id = ?", (space_id,)).fetchone()[0]
             drafts = [r[0] for r in db.execute("SELECT id FROM drafts WHERE space_id = ?", (space_id,))]
-            for table in ("memory", "turns", "cards", "page_reads", "drafts"):
+            for table in ("memory", "turns", "cards", "page_reads", "drafts", *TWIN_TABLES):
                 db.execute(f"DELETE FROM {table} WHERE space_id = ?", (space_id,))
             db.execute("DELETE FROM spaces WHERE id = ?", (space_id,))
             db.execute(

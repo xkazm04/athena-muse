@@ -4,8 +4,11 @@ A twin is set up in one shaping conversation on the drafts machinery with its ow
 then rehearsed on a Notion practice page with Athena playing the other side, then goes live. Live, it
 works missions (a goal on one conversation) and every draft passes the one send rule (ADR 0009).
 
-Modules: `decide` (the send rule) and `routes`. The store, the rubric, setup, the rehearsal (WP3)
-and missions with the poller (WP4) land with their packages; until then each route answers 501.
+Modules: `store` (the tables), `rubric` (places, coverage, readiness, pieces), `style` (the dials),
+`catalogue` and `presets/` (the ready-made chores, as data), `reach` (Gmail and Notion through the
+vault), `setup` (the setup turn), `panels` (the working slips), `voice` (the voice compiler),
+`decide` (the send rule), `rehearse` (the dress rehearsal, marks, going live), `view` (the wire
+shapes and the stat strip) and `routes`. Missions and the poller (WP4) answer 501 until they land.
 """
 
 from __future__ import annotations

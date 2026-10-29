@@ -16,6 +16,7 @@ from athena.memory import Memory
 from athena.settings import Settings
 from athena.spaces import Spaces
 from athena.store import Store
+from athena.twins.store import Twins
 
 
 @dataclass
@@ -32,6 +33,7 @@ class Daemon:
     gate: Gate
     drafts: Drafts
     connectors: Connectors  # connected accounts (ADR 0008); nothing on disk or on the wire without a data dir
+    twins: Twins  # the twins' tables (ADR 0008-0010)
 
     @classmethod
     def open(cls, data_dir: Path | None) -> Daemon:
@@ -53,6 +55,7 @@ class Daemon:
             gate=Gate(store, events),
             drafts=Drafts(store, data_dir),
             connectors=Connectors.open(data_dir),
+            twins=Twins(store),
         )
 
     def active_space(self) -> str:

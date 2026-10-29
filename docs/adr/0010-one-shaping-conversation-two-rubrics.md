@@ -34,7 +34,7 @@ Copying the machinery for twins would fork those rules.
    - `readiness` is the mean coverage over the places with a requirement, as a whole percent.
 3. **Pieces are the twin's nodes.** A `Piece` carries a `place` where a node carries a `slot`. A piece has no links and keeps its `evidence`: the ids of the samples it was learned from. A style dial changes through the same op stream (`dial`, carrying the whole dial after the change).
 4. **The twin's lines on the wire.** The setup stream (`POST /twins/{id}/say`) is a turn stream. It carries the twin's own `sketch{ops}`, `ask{ask}` and `coverage{coverage, ready, readiness}` lines, with the same names as a draft's stage turn and twin payloads. They form a separate union, `TwinSetupEvent`, so the chore's types stay as they are. A twin's question also names the working slip it needs (`panel`).
-5. **Ledger surfaces.** Setup turns are design turns (surface `design`). A twin's own calls (drafts on missions, the dress rehearsal) write surface `twin`.
+5. **Ledger surfaces.** Chore drafts' turns are design turns (surface `design`). Every call a twin causes writes surface `twin`: its setup turns, its panels' calls, its drafts on missions and the dress rehearsal (amended 2026-10-30 when WP3 built it, so a twin's whole cost is one surface).
 6. **The screen shares its parts.** Athena's bottom panel for a twin is built from `stage/parts`. `StillNeeds` and `EnoughButton` work on a generic coverage.
 
 ## Consequences

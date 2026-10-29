@@ -1,0 +1,9 @@
+{
+  "order": 5,
+  "id": "calendar-hold",
+  "tool": "calendar",
+  "name": "Hold a time",
+  "does": "Pencils a call into your calendar when someone agrees to talk.",
+  "kind": "outcome",
+  "suggest": false
+}

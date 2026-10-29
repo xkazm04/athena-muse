@@ -210,6 +210,8 @@ Repo law applies throughout: the contract comes first, one commit per feature, a
 
 **WP2 done (2026-10-29):** athena-portable's vault, seal, Google sign-in, Gmail and Notion are ported under `src/athena/connectors/` (MCP dropped; its manifest and fence kept as private modules). The vault lives under the data dir, and with no data dir it keeps nothing on disk and dials nothing. Gmail gains `read_thread` and in-thread replies (`threadId`, `In-Reply-To`, `References`). `send_for_twin` is the one any-recipient path (ADR 0008); every other write keeps the writes switch and the allow-list. `Connection` gains `guide` (how to connect, until connected) and `ConnectFlow` gains `url` (the sign-in page, for when the browser did not open). The twins package must switch writes on when a twin goes live.
 
+**WP3 done (2026-10-30):** the twin store (one twin per Project; tables erased with it), the twin rubric with readiness, the setup conversation on WP1's `SketchDesign`, the six slips, the voice compiler, `decide()` (ADR 0009, table-tested), and the dress rehearsal on a Notion practice page with marks, go live and pause. Played as staged on the scripted engine, readiness runs 14, 21, 29, 36, 43, 43, 64, 79, 86, 100, 100, 100 and is ready at frame 9, as in the prototype. In the rehearsal, t3 is held (77 against 80, plus one risk the code found that the model cannot clear) and t5 is sent alone (91).
+
 `contracts.py` and `contract.ts` change together, and `tests/test_contract_parity.py` gains the new enums, caps and routes.
 
 **Enums.**

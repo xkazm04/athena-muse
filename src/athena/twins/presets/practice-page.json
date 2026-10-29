@@ -1,0 +1,9 @@
+{
+  "order": 3,
+  "id": "practice-page",
+  "tool": "notion",
+  "name": "Practice page",
+  "does": "Rehearses a conversation on a Notion page before it ever writes to a real person.",
+  "kind": "test",
+  "suggest": true
+}

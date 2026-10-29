@@ -1,0 +1,9 @@
+{
+  "order": 6,
+  "id": "slack-thread",
+  "tool": "slack",
+  "name": "Answer in Slack",
+  "does": "Replies in a Slack thread as you.",
+  "kind": "channel",
+  "suggest": false
+}

@@ -1,0 +1,9 @@
+{
+  "order": 2,
+  "id": "task-inbox",
+  "tool": "notion",
+  "name": "Task inbox",
+  "does": "Picks up new missions you write on your 'Twin inbox' page.",
+  "kind": "inbox",
+  "suggest": false
+}

@@ -1,4 +1,5 @@
-"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards, settings, drafts."""
+"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards, settings, drafts
+and twins."""
 
 from __future__ import annotations
 
@@ -42,7 +43,44 @@ CREATE TABLE IF NOT EXISTS drafts (
   key TEXT, bench TEXT, verdict TEXT, note TEXT, created TEXT NOT NULL, updated TEXT NOT NULL, expected TEXT,
   views TEXT, ask TEXT, practice TEXT);
 CREATE INDEX IF NOT EXISTS drafts_space ON drafts (space_id);
+CREATE TABLE IF NOT EXISTS twins (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, state TEXT NOT NULL, need TEXT NOT NULL,
+  sketch TEXT NOT NULL, asked TEXT NOT NULL, ask TEXT, since TEXT, paused_because TEXT,
+  created TEXT NOT NULL, updated TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS twins_space ON twins (space_id);
+""" + "".join(
+    # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON.
+    f"""CREATE TABLE IF NOT EXISTS {t} (
+  owner TEXT NOT NULL, space_id TEXT NOT NULL, id TEXT NOT NULL, position INTEGER NOT NULL,
+  body TEXT NOT NULL, PRIMARY KEY (owner, id));
+CREATE INDEX IF NOT EXISTS {t}_space ON {t} (space_id);
 """
+    for t in (
+        "twin_channels",
+        "twin_dials",
+        "twin_samples",
+        "twin_pages",
+        "twin_chores",
+        "twin_memory",
+        "twin_examples",
+        "twin_missions",
+        "twin_turns",
+    )
+)
+
+#: Every table a twin keeps, each with `space_id`: erasing a space empties them (spaces.erase).
+TWIN_TABLES = (
+    "twins",
+    "twin_channels",
+    "twin_dials",
+    "twin_samples",
+    "twin_pages",
+    "twin_chores",
+    "twin_memory",
+    "twin_examples",
+    "twin_missions",
+    "twin_turns",
+)
 
 # Columns added after a table first shipped: (table, column, type). `CREATE TABLE IF NOT EXISTS` leaves
 # an older table as it was, so migrate() adds each one that is missing.

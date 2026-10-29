@@ -1,7 +1,6 @@
 """The send rule (ADR 0009): one pure function decides whether a twin's draft goes out alone.
 
 The interactive path, the poller and the dress rehearsal all call `decide`; nothing else sends.
-WP4 builds it; until then it raises.
 """
 
 from __future__ import annotations
@@ -9,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from athena.contracts import SendDecision, TwinChannel, TwinMessageKind, WaitReason
+from athena.contracts import Autonomy, SendDecision, TwinChannel, TwinMessageKind, WaitReason
 
 
 @dataclass(frozen=True)
@@ -26,6 +25,13 @@ class Ruling(NamedTuple):
 
     decision: SendDecision
     reason: WaitReason | None
+
+
+def level(channel: TwinChannel, kind: TwinMessageKind) -> Autonomy:
+    """The level that holds for this kind of message: the channel's `split` level when it has one,
+    else its `autonomy`."""
+    split = channel.get("split")
+    return split[kind] if split is not None else channel["autonomy"]
 
 
 def decide(channel: TwinChannel, draft: DraftFacts, *, twin_live: bool) -> Ruling:
@@ -47,4 +53,15 @@ def decide(channel: TwinChannel, draft: DraftFacts, *, twin_live: bool) -> Rulin
 
     Pure: no clock, no store, no I/O, so the same facts always get the same ruling.
     """
-    raise NotImplementedError("the send rule is built in WP4")
+    if not twin_live or channel["status"] != "connected":
+        return Ruling("waits", "paused")
+    held = level(channel, draft.kind)
+    if held != "auto":
+        if "split" in channel and draft.kind == "first_message":
+            return Ruling("waits", "first_message")
+        return Ruling("waits", held)
+    if draft.risks:
+        return Ruling("waits", "risk")
+    if draft.confidence < channel["bar"]:
+        return Ruling("waits", "below_bar")
+    return Ruling("sent_alone", None)

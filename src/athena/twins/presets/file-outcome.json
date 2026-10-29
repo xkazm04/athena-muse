@@ -1,0 +1,9 @@
+{
+  "order": 1,
+  "id": "file-outcome",
+  "tool": "notion",
+  "name": "File the outcome",
+  "does": "When a conversation ends in a yes, it adds a row to your 'Partnerships' database: track, link, terms and date.",
+  "kind": "outcome",
+  "suggest": true
+}
