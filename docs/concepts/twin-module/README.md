@@ -1,8 +1,8 @@
 # Twin module - a clone that speaks for you, set up with Athena
 
-Status: **designed, three prototypes** (2026-10-29). Nothing in the app is built yet. The design
-below is agreed; the three prototypes (Mirror, Passport, Rehearsal) wait for the owner to pick one,
-or to combine them, before any code. The build plan is at the end.
+Status: **designed; Passport picked** (2026-10-29). Nothing in the app is built yet. Of the three
+prototypes (Mirror, Passport, Rehearsal) the owner picked [Passport](#passport---open--notes); the
+other two stay as reference. The build plan is at the end.
 
 ## Spark
 
@@ -197,4 +197,9 @@ Contracts first, one commit per feature, ADRs in the same commit.
 
 ## Open (owner)
 
-- Which prototype, or which parts of each, become the Twins page.
+- Picked 2026-10-29: **Passport** ("Passport is the winner").
+- Wave 3, after the pick:
+  - The working slip stays beside the spread.
+  - The rehearsal keeps its trip page.
+  - Three ideas are borrowed from the other prototypes: Mirror's live draft preview, Rehearsal's mission beats and Mirror's waiting cards. The owner's rule for them: "as nested content, in main content represented by stat or smaller component to fit, on click to have standalone page design".
+  - Build order: the contract and stubs come first, then the Passport page on a generated fixture is built in parallel with the backend.
