@@ -1,6 +1,14 @@
 # Chore onboarding v2 - describe a need, watch it drawn, test it, keep it
 
-Status: **daemon built, stage designed** (2026-10-28). WP0-WP2 are on main ([ADR 0007](../../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md)); a live Claude Code run took the staged need from writing to a scored test run (n=1: written with no repair, 4 expected cards, test run `exceeds` with 4 of 4 found, 1.2 min, about $0.33 est.). The contest chose two winners, ported as two views behind one switch (WP3 below); the port is next.
+Status: **built** (2026-10-29). The daemon (WP0-WP2) and the stage in two views (WP3-0 to WP3-4) are on main; [ADR 0007](../../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md) records the decisions. Measured on the built app against a real daemon, Claude Code (Sonnet), the staged need from describe to keep (`scripts/stage_seam.py`, one run each, est. cost from the ledger):
+
+| view | turns to agreed | expected cards | test run | cost |
+|---|---|---|---|---|
+| Drawing (before the phase fix) | 6 | 5 | `short`, 1 of 5 | $0.80 |
+| Orbit | 5 | 5 | `exceeds`, 5 of 5 | $0.48 |
+| Drawing (after the phase fix) | 6 | 5 | `exceeds`, 5 of 5 | $0.51 |
+
+Every run: no page scroll, no console error, her window showed the draft's history, the kept chore listed as `yours`. Fidelity against both winners' captured contracts: 0 deviations (Drawing 11 roles, Orbit 9) on the merged main.
 
 Engine: v1 runs on Athena's engine wrapper with Claude Code (`ATHENA_ENGINE=claude_code`, [ADR 0006](../../adr/0006-one-engine-interface-over-four-engines.md)). Muse Code is used for pre-submission checks. The Muse API is the submission's engine and adds the multimedia path ([Later, on the Muse API](#later-on-the-muse-api)).
 
@@ -69,8 +77,17 @@ Director decisions (convention or judgement, overridable tomorrow):
 2. **Done.** Material staged (`.contest/stage/chore-stage/`, git-ignored): the invented conversation generated from sketch ops, screenshots of the real app, the Loop Tide files.
 3. **Done.** Contest run, UI roster, 3 variants each, owner review. The seats reported $17.41 (32 min) and $24.69 (78 min). Verdict: A/1 and A/3 combined, both kept behind a switch.
 4. **Done.** Port contract written (WP3 and the UX/UI spec below).
-5. **Done for the daemon** (WP0-WP2, built while the contest ran, at the owner's call). **Done 2026-10-29:** WP3-0 (drop, the view switch's contract and counts, the generated fixture, the stage's stubs), then WP3-1 (the store over wire events, the routes, the shell and switcher, the shared parts, the keymap, the doors, the preview harness on the fixture; the views are still stubs). **Next:** WP3-2 and WP3-3 in parallel, then WP3-4.
-6. **Next:** rehearse end to end on the built app, in both views, and update this status.
+5. **Done for the daemon** (WP0-WP2, built while the contest ran, at the owner's call). **Done 2026-10-29:** WP3-0 (drop, the view switch's contract and counts, the generated fixture, the stage's stubs), then WP3-1 (the store over wire events, the routes, the shell and switcher, the shared parts, the keymap, the doors, the preview harness on the fixture; the views are still stubs). Then WP3-2 and WP3-3 in parallel, and WP3-4.
+6. **Done 2026-10-29.** Rehearsed end to end on the built app in both views (the table at the top). The first Drawing run found a real defect in authoring, not in the stage: the written world read the invoice in the app that could act and then the attendance in a read-only app, so after reading what mattered she could file nothing. Authoring now requires "read first, act last" (a world whose last phase cannot act goes back for repair); the rerun scored 5 of 5. On the scripted engine the stage walks to agreed and then says plainly that a simulated Athena cannot write a chore.
+
+**Known gaps after the build** (none blocks use; each is small and named here so it is not rediscovered):
+- Orbit at 1024x700: in the verdict list, a long "she must never" line wraps into a narrow column beside its badge.
+- The verdict's reason line repeats the bench's wording ("found 1 of 5 items, expected 80%") beside a green dot that reads as success.
+- The undo toast is drawn by the shell, so neither view can skin it.
+- Two `data-role="note"` meanings (Drawing's pinned question, the check card's why-not field): rename the check card's to `mark-note`.
+- The preview harness's `.pv h2` style leaks into stage headings there (harness only); the stage CSS test splits `:is(a, b)` on its comma.
+- Not ported from the winners: the typewriter on her line, the echo flying to its piece, the fade of a rubbed-out piece (no timers), and "Stop" on a slow reply (the daemon has no cancel route). Arrivals replay when switching views and back.
+- The comparison between the views has its counts (`Draft.views`) but no screen yet that reads them across kept chores.
 
 ## The contest
 
