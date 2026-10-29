@@ -3,8 +3,8 @@
 `compile_voice` reads the twin as it stands: who it speaks as, the voice the person agreed to (learned
 only from mail they wrote), the style dials, the memory they kept, every never line (hers too: a
 restriction holds before it is inked), the titles of the pages it may answer from, and the messages
-the person rewrote in their own words during a rehearsal. The dress rehearsal drafts under it now;
-missions draft under it in WP4. Text that came from outside (page titles) stays fenced.
+the person rewrote in their own words, in a rehearsal or when they signed a mission's draft. The
+dress rehearsal and missions draft under it. Text that came from outside (page titles) stays fenced.
 """
 
 from __future__ import annotations

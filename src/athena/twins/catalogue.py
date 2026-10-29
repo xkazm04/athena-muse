@@ -2,7 +2,7 @@
 
 Each file is `{order, id, tool, name, does, kind, suggest, later?}`. The catalogue grows with the
 tools: a preset whose tool this app cannot reach, or whose account is not connected, is listed as
-`coming` and cannot be picked. Running a preset is the missions' work (WP4).
+`coming` and cannot be picked. A resolved mission runs the picked outcome presets (`missions`).
 """
 
 from __future__ import annotations

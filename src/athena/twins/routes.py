@@ -1,8 +1,9 @@
-"""Routes over twins: the overview, setup and its slips, the dress rehearsal, going live and pausing.
+"""Routes over twins: the overview, setup and its slips, the dress rehearsal, going live and pausing,
+and missions.
 
 Every setup change answers the whole `TwinDetail`. The two streams (`say`, `rehearse`) and every call
-that waits on a model or a connected account run off the event loop. Missions (WP4) still answer 501
-naming their package; it replaces those stubs and deletes their rows from `tests/test_twin_stubs.py`.
+that waits on a model or a connected account run off the event loop. A new mission is worked once at
+once (its first message, or its answer to the thread), then by the poller.
 """
 
 from __future__ import annotations
@@ -23,22 +24,7 @@ from athena.contracts import ROUTES
 from athena.engine import Engine, EngineError
 from athena.errors import ApiError
 from athena.keys import KeyStore
-from athena.twins import panels, rehearse, setup, view
-
-# (route key, methods, the package that builds it)
-STUBS: tuple[tuple[str, tuple[str, ...], str], ...] = (
-    ("twin_missions", ("POST",), "WP4"),
-    ("twin_mission", ("GET",), "WP4"),
-)
-
-
-def not_built(package: str) -> Callable[[Request], Awaitable[Response]]:
-    """A handler that answers 501 `{error: "bad_request", reason: "not built yet: <package>"}`."""
-
-    async def stub(_: Request) -> Response:
-        return ApiError("bad_request", f"not built yet: {package}", status=501).response()
-
-    return stub
+from athena.twins import missions, panels, rehearse, setup, view
 
 
 async def _body(request: Request) -> dict[str, Any]:
@@ -90,7 +76,7 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     async def twins(request: Request) -> Response:
         if request.method == "GET":
             return JSONResponse(await run_in_threadpool(view.page, daemon))
-        twin_id = setup.create(daemon, (await _body(request)).get("space_id"))
+        twin_id = await run_in_threadpool(setup.create, daemon, (await _body(request)).get("space_id"))
         return JSONResponse(await run_in_threadpool(view.detail, daemon, twin_id), status_code=201)
 
     async def twin(request: Request) -> Response:
@@ -137,6 +123,23 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     async def pause(request: Request) -> Response:
         return await plain(request, rehearse.pause)
 
+    async def new_mission(request: Request) -> Response:
+        body = await _body(request)
+        twin_id = request.path_params["id"]
+        daemon.twins.row(twin_id)
+        built = engine()
+        mission_id = await run_in_threadpool(missions.create, daemon, twin_id, body)
+        await run_in_threadpool(missions.run, daemon, built, twin_id, mission_id)
+        return JSONResponse(
+            await run_in_threadpool(missions.one, daemon, twin_id, mission_id), status_code=201
+        )
+
+    async def mission(request: Request) -> Response:
+        found = await run_in_threadpool(
+            missions.one, daemon, request.path_params["id"], request.path_params["mid"]
+        )
+        return JSONResponse(found)
+
     return [
         Route(ROUTES["twins"], twins, methods=["GET", "POST"]),
         Route(ROUTES["twin"], twin, methods=["GET"]),
@@ -171,5 +174,6 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route(ROUTES["twin_mark"], change(rehearse.mark), methods=["POST"]),
         Route(ROUTES["twin_golive"], golive, methods=["POST"]),
         Route(ROUTES["twin_pause"], pause, methods=["POST"]),
-        *(Route(ROUTES[key], not_built(package), methods=list(methods)) for key, methods, package in STUBS),
+        Route(ROUTES["twin_missions"], new_mission, methods=["POST"]),
+        Route(ROUTES["twin_mission"], mission, methods=["GET"]),
     ]

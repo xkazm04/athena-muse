@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Card, LedgerRow, SpaceSummary } from "../lib/contract";
+import { DaemonError } from "../lib/daemon";
 import { COST_COLUMNS } from "../main/athena/AthenaView";
 import { CardView } from "./CardView";
 import { Ledger } from "./Ledger";
@@ -38,6 +39,70 @@ describe("CardView", () => {
     render(<CardView card={{ ...card, state: "approved" }} onDecide={vi.fn()} />);
     expect(screen.getByText("Signed, ran once")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("gives an ordinary card no text to edit", () => {
+    render(<CardView card={card} onDecide={vi.fn()} />);
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+});
+
+describe("CardView on a twin's draft", () => {
+  const draft: Card = {
+    ...card,
+    action: "twin_send",
+    label: "Send a reply to Lumen Vale as you",
+    args: { text: "You'd get a free visualizer and a credit.", to: "lumen@vale.example" },
+  };
+
+  it("signs the draft as it is without an edit", async () => {
+    const onDecide = vi.fn().mockResolvedValue({ ...draft, state: "approved" });
+    render(<CardView card={draft} onDecide={onDecide} />);
+    const field = screen.getByRole("textbox", { name: /The message/ }) as HTMLTextAreaElement;
+    expect(field.value).toBe("You'd get a free visualizer and a credit.");
+    fireEvent.change(field, { target: { value: "You'd get a free visualizer and a credit.  " } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign" })));
+    expect(onDecide).toHaveBeenCalledWith("approve");
+  });
+
+  it("sends the person's words only when they changed them", async () => {
+    const onDecide = vi.fn().mockResolvedValue({ ...draft, state: "approved" });
+    render(<CardView card={draft} onDecide={onDecide} />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: " A visualizer and a credit. Friday? " } });
+    expect(screen.getByText("Your words: they are sent as the message")).toBeTruthy();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign your words" })));
+    expect(onDecide).toHaveBeenCalledWith("approve", { text: "A visualizer and a credit. Friday?" });
+  });
+
+  it("puts its words back, never signs an empty message, and declines without the edit", async () => {
+    const onDecide = vi.fn().mockResolvedValue({ ...draft, state: "declined" });
+    render(<CardView card={draft} onDecide={onDecide} />);
+    const field = screen.getByRole("textbox") as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: "   " } });
+    expect((screen.getByRole("button", { name: "Sign your words" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Put its words back" }));
+    expect(field.value).toBe(draft.args.text);
+    fireEvent.change(field, { target: { value: "Something else" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Decline" })));
+    expect(onDecide).toHaveBeenCalledWith("decline");
+  });
+
+  it("keeps the words and shows the problem when the send failed", async () => {
+    const onDecide = vi.fn().mockRejectedValue(new DaemonError(400, "bad_request", "Gmail did not send it: it said no"));
+    render(<CardView card={draft} onDecide={onDecide} />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "My words" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign your words" })));
+    expect(screen.getByRole("alert").textContent).toBe("Gmail did not send it: it said no");
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("My words");
+    expect(screen.getByText("Needs your signature")).toBeTruthy();
+  });
+
+  it("shows a sent draft's text without a field, in plain words", () => {
+    render(<CardView card={{ ...draft, state: "approved" }} onDecide={vi.fn()} />);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getByText(draft.args.text as string)).toBeTruthy();
+    expect(screen.getByText("Send this email")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/\b(token|connector|oauth|api|prompt|node|slot)s?\b/i);
   });
 });
 

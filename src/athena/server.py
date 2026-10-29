@@ -13,6 +13,8 @@ import json
 import os
 import secrets
 import socket
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
@@ -24,13 +26,17 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
+from athena import engine as engine_mod
 from athena import routes_state, routes_turn
 from athena.app import Daemon
 from athena.chores import routes_chores
 from athena.connectors import routes as routes_connectors
 from athena.contracts import VERSION
 from athena.drafts import routes as routes_drafts
+from athena.engine import Engine
 from athena.errors import ApiError
+from athena.keys import KeyStore
+from athena.twins import poller
 from athena.twins import routes as routes_twins
 
 # The desktop's origins: Tauri on Windows/Linux and macOS, and the Vite dev server.
@@ -74,7 +80,27 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         assert isinstance(exc, ApiError)
         return exc.response()
 
+    @asynccontextmanager
+    async def lifespan(_: Starlette) -> AsyncIterator[None]:
+        """The twins' poller runs while the app does, unless ATHENA_TWIN_POLL is 0 (the tests)."""
+        seconds = poller.interval()
+        if seconds is None:
+            yield
+            return
+        keys = KeyStore(daemon.data_dir)
+
+        def engine() -> Engine:
+            return engine_mod.build_engine(keys, transport=routes_turn.TRANSPORT)
+
+        running = poller.Poller(daemon, engine, seconds)
+        running.start()
+        try:
+            yield
+        finally:
+            await running.stop()
+
     return Starlette(
+        lifespan=lifespan,
         routes=routes,
         middleware=[
             Middleware(

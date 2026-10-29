@@ -20,6 +20,7 @@ import {
   type ConnectFlow,
   type Connection,
   type ConnectionList,
+  type DecisionEdit,
   type DialsBody,
   type Draft,
   type DraftAbandoned,
@@ -112,8 +113,9 @@ export const conversation = async (spaceId: string) =>
 export type CardFilter = "waiting" | "resolved";
 export const cards = async (state?: CardFilter) =>
   (await request<CardList>("GET", ROUTES.cards + query({ state }))).cards;
-export const decide = (cardId: string, verdict: Verdict) =>
-  request<Card>("POST", path(ROUTES.decision, { card_id: cardId }), { verdict });
+/** `edited` is the person's words for a twin's draft, sent only when they changed it (ADR 0009). */
+export const decide = (cardId: string, verdict: Verdict, edited?: DecisionEdit) =>
+  request<Card>("POST", path(ROUTES.decision, { card_id: cardId }), edited ? { verdict, edited } : { verdict });
 export const ledger = (limit?: number) => request<LedgerPage>("GET", ROUTES.ledger + query({ limit }));
 
 // Chores (ADR 0005): the library is read-only on the wire.

@@ -62,7 +62,7 @@ function Cards() {
                 key={c.id}
                 card={c}
                 where={whereName(spaces, c.space_id)}
-                onDecide={(v) => api.decide(c.id, v)}
+                onDecide={(...answer) => api.decide(c.id, ...answer)}
                 onResolved={() => void loadCards()}
               />
             ))}
@@ -82,7 +82,7 @@ function Cards() {
                 key={c.id}
                 card={c}
                 where={whereName(spaces, c.space_id)}
-                onDecide={(v) => api.decide(c.id, v)}
+                onDecide={(...answer) => api.decide(c.id, ...answer)}
               />
             ))}
           </div>

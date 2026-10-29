@@ -24,11 +24,13 @@ from athena.contracts import (
     ASK_TEXT_MAX,
     BAR_DEFAULT,
     LABEL_MAX,
+    NAME_MAX,
     NEED_MAX,
     TEXT_MAX,
     ChannelKind,
     PieceOp,
     SetupPanel,
+    Sketch,
     SketchNode,
     StyleDial,
     Surface,
@@ -49,6 +51,8 @@ LABELS: dict[ChannelKind, str] = {"gmail": "Gmail", "notion": "Notion"}
 SLIP_PLACES = frozenset({"knowledge", "chores", "autonomy", "memory"})
 #: What a Notion channel may touch, in plain words.
 NOTION_SCOPE = "the pages you picked, and its practice page"
+#: The name of a Project a twin made for itself, until the setup names the twin.
+NEW_TWIN = "New twin"
 
 RULES = (
     "## Setting up a twin with the person\n"
@@ -250,8 +254,10 @@ class TwinDesign(SketchDesign):
         from athena.twins import panels  # panels reads this module's sync and panel
 
         twins = self.daemon.twins
+        named = name_of(twins.sketch(self.twin_id))
         twins.put(self.twin_id, sketch=self.sketch, asked=self.asked_after(), ask=self.twin_ask)
         space_id = self.space_id
+        rename_project(self.daemon, self.twin_id, named)
         for dial_id, value in self.dialled.items():
             twins.save("dials", self.twin_id, space_id, dial_id, {"value": value, "source": "you"})
         inked = sync(self.daemon, self.twin_id)
@@ -358,11 +364,38 @@ def not_busy(daemon: Daemon, space_id: str) -> None:
 
 
 def create(daemon: Daemon, space_id: Any) -> str:
-    """A new twin at `setting_up` in an existing Project of its own (not core)."""
-    if not isinstance(space_id, str) or space_id == "":
-        raise ApiError("bad_request", "a twin needs a project of its own; make one first")
-    daemon.spaces.get(space_id)  # unknown_ref when absent
-    return daemon.twins.create(space_id)
+    """A new twin at `setting_up` in a Project of its own (never core). With `space_id` "" the twin
+    makes its own Project, as a draft does, named "New twin" until the setup names the twin."""
+    if not isinstance(space_id, str):
+        raise ApiError("bad_request", 'send the twin\'s project, or "" for a new one')
+    if space_id != "":
+        daemon.spaces.get(space_id)  # unknown_ref when absent
+        return daemon.twins.create(space_id)
+    made = daemon.spaces.create({"name": NEW_TWIN})["id"]
+    try:
+        twin_id = daemon.twins.create(made)
+    except ApiError:
+        daemon.spaces.erase(made)
+        raise
+    daemon.events.publish({"type": "space_changed", "space_id": made})
+    return twin_id
+
+
+def name_of(sketch: Sketch) -> str:
+    """The twin's name: its latest `name` piece, or ""."""
+    return next((n["label"] for n in reversed(sketch["nodes"]) if str(n["kind"]) == "name"), "")
+
+
+def rename_project(daemon: Daemon, twin_id: str, before: str) -> None:
+    """The setup's name renames the twin's Project while the Project still carries the twin's first
+    name ("New twin") or its name before this change: a Project the person named stays theirs."""
+    row = daemon.twins.row(twin_id)
+    name = cut(name_of(daemon.twins.sketch(twin_id)), NAME_MAX)
+    space = daemon.spaces.get(row["space_id"])
+    if not name or name == space["name"] or space["name"] not in (NEW_TWIN, cut(before, NAME_MAX)):
+        return
+    daemon.spaces.update(row["space_id"], {"name": name})
+    daemon.events.publish({"type": "space_changed", "space_id": row["space_id"]})
 
 
 def say(

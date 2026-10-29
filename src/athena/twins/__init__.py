@@ -8,7 +8,8 @@ Modules: `store` (the tables), `rubric` (places, coverage, readiness, pieces), `
 `catalogue` and `presets/` (the ready-made chores, as data), `reach` (Gmail and Notion through the
 vault), `setup` (the setup turn), `panels` (the working slips), `voice` (the voice compiler),
 `decide` (the send rule), `rehearse` (the dress rehearsal, marks, going live), `view` (the wire
-shapes and the stat strip) and `routes`. Missions and the poller (WP4) answer 501 until they land.
+shapes and the stat strip), `missions` (the runner and the signature cards), `poller` (the Gmail
+threads with an open mission, while the daemon runs) and `routes`.
 """
 
 from __future__ import annotations

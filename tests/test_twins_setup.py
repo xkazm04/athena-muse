@@ -278,7 +278,7 @@ def test_erasing_the_project_erases_the_twin_whole(world: World, daemon: Daemon)
 
 
 def test_a_twin_needs_a_project_of_its_own(world: World) -> None:
-    assert world.client.post(contracts.ROUTES["twins"], json={"space_id": ""}).status_code == 400
+    assert world.client.post(contracts.ROUTES["twins"], json={"space_id": 7}).status_code == 400
     assert (
         world.client.post(contracts.ROUTES["twins"], json={"space_id": "spc_000000000000"}).status_code == 404
     )
@@ -292,6 +292,25 @@ def test_a_twin_needs_a_project_of_its_own(world: World) -> None:
         ).status_code
         == 400
     )
+
+
+def test_a_twin_without_a_project_makes_its_own_and_the_setup_names_it(world: World, daemon: Daemon) -> None:
+    r = world.client.post(contracts.ROUTES["twins"], json={"space_id": ""})
+    assert r.status_code == 201, r.text
+    twin_id, space = r.json()["id"], r.json()["space_id"]
+    assert space != "" and daemon.spaces.get(space)["name"] == setup.NEW_TWIN
+    again = world.client.post(contracts.ROUTES["twins"], json={"space_id": space})
+    assert again.status_code == 400 and "already has a twin" in again.json()["reason"]
+
+    world.say(twin_id, NEED)
+    world.say(twin_id, choice="As Alex from Low Tide Visuals")  # her `name` piece: "Partnerships"
+    assert daemon.spaces.get(space)["name"] == "Partnerships"
+    assert world.get(twin_id)["name"] == "Partnerships"
+
+    # a Project the person named is never renamed by the setup
+    daemon.spaces.update(space, {"name": "My outreach"})
+    setup.rename_project(daemon, twin_id, "Partnerships")
+    assert daemon.spaces.get(space)["name"] == "My outreach"
 
 
 def test_what_the_setup_shows_is_in_plain_words(world: World) -> None:

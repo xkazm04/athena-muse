@@ -17,7 +17,7 @@ function InlineCard({ card }: { card: Card }) {
   const decided = useHer((s) => s.decided);
   return (
     <div className="her-card">
-      <CardView card={card} onDecide={(verdict) => api.decide(card.id, verdict)} onResolved={decided} />
+      <CardView card={card} onDecide={(...answer) => api.decide(card.id, ...answer)} onResolved={decided} />
     </div>
   );
 }

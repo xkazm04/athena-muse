@@ -20,6 +20,7 @@ from athena.contracts import (
     Sample,
     TwinChannel,
     TwinDetail,
+    TwinDraft,
     TwinPage,
     TwinStats,
     TwinSummary,
@@ -32,6 +33,7 @@ from athena.twins.store import Twins
 ACTIVE_HOURS = 24  # a channel that spoke within this long is active
 QUIET_DAYS = 14  # within this long quiet, else stale
 WEEK_DAYS = 7
+TWIN_ACTIONS = ("twin_send", "twin_note")  # the signature cards a twin's drafts wait on
 
 
 def _now() -> datetime:
@@ -95,9 +97,10 @@ def missions(twins: Twins, twin_id: str) -> list[Mission]:
     return [mission(twins, m) for m in twins.rows("missions", twin_id)]
 
 
-def week(daemon: Daemon, space_id: str) -> TwinWeek:
-    """The last seven days. What a twin sent is the missions' (WP4); the cost is its Project's ledger
-    rows on surface `twin`, omitted until one of them was priced."""
+def week(daemon: Daemon, space_id: str, found: list[Mission]) -> TwinWeek:
+    """The last seven days. What it sent is counted from its missions' turns (the rehearsal's are
+    never sent), measured once it ruled a draft this week; the cost is its Project's ledger rows on
+    surface `twin`, omitted until one of them was priced."""
     since = (_now() - timedelta(days=WEEK_DAYS)).isoformat(timespec="seconds").replace("+00:00", "Z")
     row = daemon.store.query(
         "SELECT COUNT(cost_usd) AS n, COALESCE(SUM(cost_usd), 0.0) AS cost FROM ledger"
@@ -105,8 +108,53 @@ def week(daemon: Daemon, space_id: str) -> TwinWeek:
         (space_id, since),
     )[0]
     out: TwinWeek = {}
+    ruled = [
+        t
+        for m in found
+        if not m.get("practice")
+        for t in m["turns"]
+        if t["side"] == "twin" and "decision" in t and t["at"] >= since
+    ]
+    if ruled:
+        sent = [t for t in ruled if "draft" not in t]
+        out["sent"] = len(sent)
+        out["sent_alone"] = sum(t.get("decision") == "sent_alone" for t in sent)
+        out["held_by_risk"] = sum(t.get("reason") == "risk" for t in ruled)
     if row["n"]:
         out["cost_usd"] = round(float(row["cost"]), 4)
+    return out
+
+
+def drafts(daemon: Daemon, twin_id: str) -> list[TwinDraft]:
+    """The twin's drafts waiting for a signature, oldest first: each is a waiting card, whose args
+    carry the draft (`twins.missions` files them)."""
+    out: list[TwinDraft] = []
+    for card in reversed(daemon.gate.list("waiting")):
+        args = card["args"]
+        if card["action"] not in TWIN_ACTIONS or args.get("twin_id") != twin_id:
+            continue
+        draft: TwinDraft = {
+            "id": str(args.get("draft", card["id"])),
+            "twin_id": twin_id,
+            "channel": "gmail" if card["action"] == "twin_send" else "notion",
+            "to": str(args.get("to") or args.get("where") or ""),
+            "subject": str(args.get("subject", "")),
+            "text": str(args.get("text", "")),
+            "confidence": int(args.get("confidence", 0)),
+            "risks": [str(r) for r in args.get("risks", [])],
+            "decision": "waits",
+            "created": card["created"],
+            "card_id": card["id"],
+        }
+        if args.get("mission"):
+            draft["mission"] = str(args["mission"])
+        if args.get("reason"):
+            draft["reason"] = args["reason"]
+        if "bar" in args:
+            draft["bar"] = int(args["bar"])
+        if args.get("answers"):
+            draft["answers"] = str(args["answers"])
+        out.append(draft)
     return out
 
 
@@ -125,6 +173,7 @@ def summary(daemon: Daemon, twin_id: str) -> TwinSummary:
     row = daemon.twins.row(twin_id)
     name, purpose = _name_and_purpose(daemon, twin_id, row["space_id"])
     found = missions(daemon.twins, twin_id)
+    waiting = drafts(daemon, twin_id)
     out: TwinSummary = {
         "id": twin_id,
         "space_id": row["space_id"],
@@ -132,12 +181,12 @@ def summary(daemon: Daemon, twin_id: str) -> TwinSummary:
         "purpose": purpose,
         "state": row["state"],
         "channels": channels(daemon, twin_id),
-        "week": week(daemon, row["space_id"]),
+        "week": week(daemon, row["space_id"], found),
         "readiness": readiness(coverage(daemon.twins.sketch(twin_id))),
         "open_missions": sum(m["state"] in ("open", "handed_back") for m in found),
-        "waiting_count": 0,  # drafts waiting for a signature are the missions' (WP4)
+        "waiting_count": len(waiting),
         "missions": found,
-        "waiting": [],
+        "waiting": waiting,
         "created": row["created"],
         "updated": row["updated"],
     }

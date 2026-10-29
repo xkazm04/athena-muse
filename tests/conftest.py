@@ -28,3 +28,9 @@ def _no_engine_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """A shell that exports an engine choice must not change what the tests run."""
     for name in ("ATHENA_ENGINE", "ATHENA_MODEL", "META_MODEL", "META_BASE_URL"):
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _no_twin_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The twins' poller never runs in a test: a test works a mission by calling it."""
+    monkeypatch.setenv("ATHENA_TWIN_POLL", "0")

@@ -10,6 +10,7 @@ import json
 from collections.abc import AsyncIterator
 from typing import Any, cast
 
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import BaseRoute, Route
@@ -25,6 +26,7 @@ from athena.contracts import (
     Verdict,
 )
 from athena.errors import ApiError
+from athena.twins import missions
 
 LEDGER_LIMIT_MAX = 500
 CONVERSATION_LIMIT = 200
@@ -127,10 +129,21 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         return JSONResponse({"cards": found})
 
     async def decision(request: Request) -> Response:
-        verdict = (await _body(request)).get("verdict")
+        """A signature (ADR 0009): `edited.text` is the person's words for a twin's draft. The executor
+        runs off the event loop; a failed one answers its problem and leaves the card waiting."""
+        body = await _body(request)
+        verdict, edited = body.get("verdict"), body.get("edited")
         if verdict not in ("approve", "decline"):
             raise ApiError("bad_request", "verdict must be approve or decline")
-        return JSONResponse(daemon.gate.resolve(request.path_params["card_id"], cast("Verdict", verdict)))
+        if edited is not None and not (isinstance(edited, dict) and isinstance(edited.get("text"), str)):
+            raise ApiError("bad_request", "edited must be {text}")
+        text = cast("str", edited["text"]) if edited is not None else None
+        card = await run_in_threadpool(
+            daemon.gate.resolve, request.path_params["card_id"], cast("Verdict", verdict), text
+        )
+        if card["state"] == "declined" and card["action"] in missions.TWIN_ACTIONS:
+            await run_in_threadpool(missions.declined, daemon, card)
+        return JSONResponse(card)
 
     async def ledger(request: Request) -> Response:
         return JSONResponse(daemon.ledger.page(_limit(request, LEDGER_LIMIT_DEFAULT, LEDGER_LIMIT_MAX)))

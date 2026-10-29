@@ -433,7 +433,8 @@ def _run_portal(
 
 
 def execute(daemon: Daemon, card: Card) -> str:
-    """Runs one approved card. The gate calls this exactly once, after the decision won."""
+    """Runs one approved card. The gate calls this exactly once, after the decision won; raising
+    returns the card to waiting."""
     space_id = card["space_id"]
     args = card["args"]
     if card["action"] == "propose_brief":
@@ -450,4 +451,10 @@ def execute(daemon: Daemon, card: Card) -> str:
         return "Forgotten."
     if card["action"] == "portal_act":
         return _portal_for(daemon, args).execute(args)
+    if card["action"] in ("twin_send", "twin_note"):
+        # One Gmail message in-thread, or one Notion note (ADR 0009). Imported here: the twins
+        # package runs its setup turn through this module.
+        from athena.twins import missions
+
+        return missions.sign(daemon, card)
     raise ApiError("bad_request", "that action cannot be signed")
