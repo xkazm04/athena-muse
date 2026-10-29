@@ -4,6 +4,7 @@
 
 import type { DraftStep, TurnEvent } from "../lib/contract";
 import { STAGED } from "../main/stage/fixture/staged";
+import { withStress } from "../main/stage/drawing/stress";
 import { EMPTY_FRAME, applyLocal, initialStage, reduce } from "../main/stage/store";
 import type { ReplyPhase, StageEvent, StageState, StageWork } from "../main/stage/types";
 
@@ -133,6 +134,8 @@ export function stageBeats(): Beat[] {
     state: { ...revised, frame: { ...revised.frame, line: "", ask: null, lastOps: [] } },
     wait: 1,
   });
+  // beyond the example: 13 more pieces (36 in all), to see the drawing hold them (harness only)
+  add({ id: "shape-36", group: "shape", label: "Beyond the example: 36 pieces", state: { ...agreed, draft: withStress(agreed.draft!) }, wait: 1 });
   return beats;
 }
 

@@ -59,7 +59,9 @@ describe("preview", () => {
       expect(has('[data-role="invented"]')).toBe(1);
     }
     fireEvent.change(pick, { target: { value: "preview-ready" } });
-    expect(has('[data-role="check-card"]')).toBe(5);
+    // the parts board shows every card, and so does the Drawing view's check drawer
+    expect(has('.pv-parts [data-role="check-card"]')).toBe(5);
+    expect(has('[data-stage-view="drawing"] [data-role="check-card"]')).toBe(5);
     fireEvent.change(pick, { target: { value: "shape-agreed" } });
     expect(has('[data-stage-view="drawing"]')).toBe(1);
     fireEvent.click(scene.getByRole("tab", { name: "Orbit" }));
