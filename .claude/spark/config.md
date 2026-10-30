@@ -18,6 +18,10 @@ none
 ## Repo law
 Read AGENTS.md first. Built core: ADRs 0002-0007; the plan of record (built): docs/concepts/chore-onboarding-v2/README.md; the stage's two views share one store and parts under apps/desktop/src/main/stage/, and each view's CSS is scoped under its own `[data-stage-view]` root. The wire contract types every response envelope, not just items (parity test). The Director commits the wire contract and compilable stubs before any parallel package. No secrets, no machine paths. Meta API facts are tagged measured / press / unverified.
 
+A stream route's contract names its protocol, not just its event types: event order, where the stream ends, and what a follow-up call (a mark, a retry) does to it. A parallel UI built against types alone guessed it wrong (twin-module WP5: rehearsal assumed to pause per draft).
+
+Status lines in a shared design doc belong to the Director: builders put theirs in the final report, and the Director writes the line at commit. Three parallel packages writing "done" lines into one README conflicted at every rebase (twin-module).
+
 ## Wave defaults
 default
 
@@ -29,6 +33,7 @@ default
 
 - Reaching another app (YouTube, mail, Gravitone): the owner wants it reached through the app's own surface (the internal browser, the peer's MCP), not a connector or wrapper, even at higher engineering cost; lead with that option (business-channel, three overrides in one direction).
 - A capability the owner names that lives only in a sibling repo ("the app's connectors" = athena-portable's Gmail/Notion): ask where it lives in wave 1, and include a repo-native mechanism (chores, ADR 0005) as an option for any new tool use; the owner chose "preset chores, catalogue grows" via Other on twin-module.
+- The owner leans toward full scope and real behaviour when a tested rule holds the risk: Auto in v1 over "Auto locked", any recipient over a recipients list, "Everything, in order" over a foundation-only fire (twin-module). Recommend the bolder option when its safety is a tested rule, and name that rule in the option.
 
 ## Skill improvement log
 - 2026-10-26 (athena-core): the brief named list answers as `{spaces: ...}` in prose but the contract typed only the items; a parallel package guessed bare arrays and both sides' tests passed. Put every response envelope in contracts.py + contract.ts with a parity test, not in the brief's prose.
@@ -40,3 +45,4 @@ default
 - 2026-10-29: `uv run <daemon>` starts the daemon as a child; terminating the wrapper leaves it serving its port, and a later run silently talked to the stale one. End the process tree (`taskkill /T`) and assert the engine you asked for answered.
 - 2026-10-29: the live seam on the built app found the one defect no unit test could (an authored world whose last phase could not act: 1 of 5). Measure the fix live before and after; it scored 5 of 5.
 - 2026-10-29 (twin-module): one Director-written verifier (Playwright on the installed Chrome, every state x 2 sizes: page scroll, 12 px floor, banned words, console errors) handed to three parallel UI builders made their "0 failures" comparable and caught a banned word in the Director's own fixture; run the banned-word check over generated fixtures at build time too.
+- 2026-10-30 (twin-module build): the 2026-10-26 lesson (the contract types the shape, prose carries the rest) recurred one level up: WP5 built the rehearsal UI against event types and guessed the stream's protocol wrong; promoted to Repo law. README "done" lines from parallel builders conflicted at three rebases; promoted to Repo law. Re-running a builder's changed rule with the fix reverted (fail) and restored (pass) caught that no existing test covered the first-message rule.
