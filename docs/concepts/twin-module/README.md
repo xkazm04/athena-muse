@@ -1,8 +1,10 @@
 # Twin module - a clone that speaks for you, set up with Athena
 
-Status: **designed; Passport picked** (2026-10-29). Nothing in the app is built yet. Of the three
-prototypes (Mirror, Passport, Rehearsal) the owner picked [Passport](#passport---open--notes); the
-other two stay as reference. The build plan is at the end.
+Status: **built** (2026-10-30), Passport picked. Every work package (WP0-WP5b, WP7) is on main, and
+the seam (`scripts/twin_seam.py`) drives the built page end to end against a real daemon, with the
+scripted engine and Gmail and Notion faked in the daemon's own process (simulated, labelled). The run
+on the owner's real Google and Notion accounts is still to do; it waits for the owner ([Real-account
+run](#real-account-run-owner-present)). Mirror and Rehearsal stay as reference.
 
 ## Spark
 
@@ -301,6 +303,20 @@ Packages run in order where they share files, and in parallel otherwise.
   - A Playwright script drives the built app against a real daemon: setup on the scripted engine and on Claude Code, then the rehearsal on a Notion practice page.
   - One real Gmail send to the owner's own address, run only with the owner present.
   - The docs and the README status are updated.
+
+## Real-account run (owner present)
+
+Not run yet: it needs the owner's own Google client and Notion key, and it sends one real email.
+1. Start the app on Claude Code (`ATHENA_ENGINE=claude_code`) with a fresh `--data` dir.
+2. Twins -> New twin -> say what it is for.
+   - Gmail: make your own Google client (the guide on screen walks through it) and sign in.
+   - Notion: paste a key from an integration that can read one test page and a "Twin inbox" page.
+3. Finish the setup and rehearse on the Notion practice page. Mark one draft "not me" and edit it.
+4. Go live with Gmail first messages on Assist.
+5. Give it a mission to **your own second address**, sign the first message, reply from that
+   address, and watch the poller's next round (5 min) answer under the send rule.
+6. Record in this document what was sent, what waited and why, the est. cost from the ledger, and
+   anything that broke.
 
 ## Known limits (v1)
 
