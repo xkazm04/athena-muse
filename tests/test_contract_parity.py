@@ -35,7 +35,7 @@ def test_caps_match() -> None:
     drafts = ("FOLLOW_UPS_MAX", "REPAIRS_MAX", "SKETCH_NODES_MAX", "LABEL_MAX", "NEED_MAX", "DETAIL_MAX")
     drafts += ("ASK_TEXT_MAX", "SUGGESTIONS_MIN", "SUGGESTIONS_MAX")
     twins = ("TWINS_MAX", "SAMPLES_MAX", "BAR_MIN", "BAR_MAX", "BAR_DEFAULT", "RISKS_MAX")
-    twins += ("POLL_SECONDS_DEFAULT", "DIAL_MIN", "DIAL_MAX")
+    twins += ("POLL_SECONDS_DEFAULT", "DIAL_MIN", "DIAL_MAX", "THREADS_MAX", "SNIPPET_MAX", "GOALS_MAX")
     for cap in ("NAME_MAX", "BRIEF_MAX", "APPS_MAX", "SPACES_MAX", "HUE_MAX", "TEXT_MAX", *drafts, *twins):
         m = re.search(rf"export const {cap} = (\d+);", TS)
         assert m and int(m.group(1)) == getattr(contracts, cap), cap
@@ -64,7 +64,7 @@ def test_enums_match() -> None:
         "DialSource",
         "TwinTurnSide",
     )
-    twins += ("TwinMessageKind", "PieceOpName", "SetupPanel", "FactSuggest", "ConnectState")
+    twins += ("TwinMessageKind", "PieceOpName", "SetupPanel", "FactSuggest", "ConnectState", "MissionSource")
     for name in (*names, "Verdict", "Surface", "ActionName", "AppEventType", *chores, *drafts, *twins):
         assert _ts_union(name) == set(typing.get_args(getattr(contracts, name))), name
 
@@ -77,7 +77,7 @@ def test_proof_op_matches() -> None:
 
 def test_list_envelopes_match() -> None:
     envelopes = (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards"))
-    twins = (("ConnectionList", "connections"),)
+    twins = (("ConnectionList", "connections"), ("ThreadList", "threads"), ("GoalList", "goals"))
     for name, key in (*envelopes, ("ChoreList", "chores"), ("ExpectedList", "expected"), *twins):
         assert list(getattr(contracts, name).__annotations__) == [key], name
         assert re.search(rf"export interface {name} \{{\s*{key}: \w+\[\];\s*\}}", TS), name
@@ -140,7 +140,7 @@ def test_twin_shapes_match() -> None:
     shapes = ("Piece", "StyleDial", "Sample", "NotionPage", "ChorePreset", "MemoryFact", "AutonomySplit")
     shapes += ("TwinChannel", "MissionBeat", "MissionTurn", "TwinFiled", "Mission", "TwinDraft", "TwinWeek")
     shapes += ("TwinSummary", "TwinAsk", "TwinDetail", "TwinStats", "PieceOp", "Connection")
-    shapes += ("ConnectFlow", "TwinPreview")
+    shapes += ("ConnectFlow", "TwinPreview", "TaskInbox", "ThreadSummary")
     bodies = (
         "NewTwinBody",
         "TwinSayBody",
@@ -151,7 +151,7 @@ def test_twin_shapes_match() -> None:
         "ChoresBody",
     )
     bodies += ("AutonomyBody", "MemoryBody", "RehearseBody", "MarkBody", "NewMissionBody", "ConnectBody")
-    bodies += ("DecisionEdit", "DecisionBody")
+    bodies += ("DecisionEdit", "DecisionBody", "GoalsBody")
     for name in (*shapes, "TwinPage", "ConnectionList", *bodies):
         assert _ts_interface_keys(name) == _py_keys(name), name
 

@@ -6,7 +6,7 @@ import type { TwinFixture } from "./types";
 
 export const TWIN_FIXTURE: TwinFixture = {
   "invented": "Every name, address, track, amount and conversation here is invented for a design prototype. None of it is a real person, account or service.",
-  "now": "2026-10-29T16:11:31Z",
+  "now": "2026-10-29T16:11:32Z",
   "page": {
     "twins": [
       {
@@ -139,6 +139,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               }
             ],
             "created": "2026-10-29T09:40:01Z",
+            "source": "page",
             "with": "Harbor Bakery",
             "thread": "thharbor",
             "note": "(Simulated) They wrote back; it answers. Its draft waits for your signature.",
@@ -198,6 +199,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               }
             ],
             "created": "2026-10-29T10:30:08Z",
+            "source": "page",
             "with": "Oren Vale",
             "thread": "thquote",
             "note": "(Simulated) They said yes. Filed to Notion: Partnership offer.",
@@ -265,6 +267,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               }
             ],
             "created": "2026-10-29T11:20:15Z",
+            "source": "page",
             "with": "Pia North",
             "thread": "thrush",
             "note": "Pia North asked for money. It must never promise money, so it handed this back to you.",
@@ -624,6 +627,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               }
             ],
             "created": "2026-10-29T09:40:01Z",
+            "source": "page",
             "with": "Harbor Bakery",
             "thread": "thharbor",
             "note": "(Simulated) They wrote back; it answers. Its draft waits for your signature.",
@@ -683,6 +687,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               }
             ],
             "created": "2026-10-29T10:30:08Z",
+            "source": "page",
             "with": "Oren Vale",
             "thread": "thquote",
             "note": "(Simulated) They said yes. Filed to Notion: Partnership offer.",
@@ -750,6 +755,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               }
             ],
             "created": "2026-10-29T11:20:15Z",
+            "source": "page",
             "with": "Pia North",
             "thread": "thrush",
             "note": "Pia North asked for money. It must never promise money, so it handed this back to you.",
@@ -1182,6 +1188,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             }
           ],
           "created": "2026-10-29T09:40:01Z",
+          "source": "page",
           "with": "Harbor Bakery",
           "thread": "thharbor",
           "note": "(Simulated) They wrote back; it answers. Its draft waits for your signature.",
@@ -1241,6 +1248,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             }
           ],
           "created": "2026-10-29T10:30:08Z",
+          "source": "page",
           "with": "Oren Vale",
           "thread": "thquote",
           "note": "(Simulated) They said yes. Filed to Notion: Partnership offer.",
@@ -1308,6 +1316,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             }
           ],
           "created": "2026-10-29T11:20:15Z",
+          "source": "page",
           "with": "Pia North",
           "thread": "thrush",
           "note": "Pia North asked for money. It must never promise money, so it handed this back to you.",
@@ -1791,6 +1800,13 @@ export const TWIN_FIXTURE: TwinFixture = {
           "picked": false,
           "why_not": "It looks personal",
           "id": "dddddddddddddddddddddddddddddddd"
+        },
+        {
+          "title": "Twin inbox",
+          "kind": "page",
+          "suggest": true,
+          "picked": false,
+          "id": "99999999999999999999999999999999"
         }
       ],
       "chores": [
@@ -2470,6 +2486,13 @@ export const TWIN_FIXTURE: TwinFixture = {
           "picked": false,
           "why_not": "It looks personal",
           "id": "dddddddddddddddddddddddddddddddd"
+        },
+        {
+          "title": "Twin inbox",
+          "kind": "page",
+          "suggest": true,
+          "picked": false,
+          "id": "99999999999999999999999999999999"
         }
       ],
       "chores": [
@@ -6136,6 +6159,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -6677,6 +6707,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -7115,6 +7152,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -7714,6 +7758,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -8182,6 +8233,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -8774,6 +8832,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -9264,6 +9329,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -9862,6 +9934,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -10388,6 +10467,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -11014,6 +11100,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -11563,6 +11656,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -12210,6 +12310,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -12749,6 +12856,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -13471,6 +13585,13 @@ export const TWIN_FIXTURE: TwinFixture = {
             "picked": false,
             "why_not": "It looks personal",
             "id": "dddddddddddddddddddddddddddddddd"
+          },
+          {
+            "title": "Twin inbox",
+            "kind": "page",
+            "suggest": true,
+            "picked": false,
+            "id": "99999999999999999999999999999999"
           }
         ],
         "chores": [
@@ -14163,6 +14284,13 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "picked": false,
                 "why_not": "It looks personal",
                 "id": "dddddddddddddddddddddddddddddddd"
+              },
+              {
+                "title": "Twin inbox",
+                "kind": "page",
+                "suggest": true,
+                "picked": false,
+                "id": "99999999999999999999999999999999"
               }
             ],
             "chores": [
@@ -14859,6 +14987,13 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "picked": false,
                 "why_not": "It looks personal",
                 "id": "dddddddddddddddddddddddddddddddd"
+              },
+              {
+                "title": "Twin inbox",
+                "kind": "page",
+                "suggest": true,
+                "picked": false,
+                "id": "99999999999999999999999999999999"
               }
             ],
             "chores": [
@@ -15552,6 +15687,13 @@ export const TWIN_FIXTURE: TwinFixture = {
             "picked": false,
             "why_not": "It looks personal",
             "id": "dddddddddddddddddddddddddddddddd"
+          },
+          {
+            "title": "Twin inbox",
+            "kind": "page",
+            "suggest": true,
+            "picked": false,
+            "id": "99999999999999999999999999999999"
           }
         ],
         "chores": [
@@ -16284,6 +16426,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               "picked": false,
               "why_not": "It looks personal",
               "id": "dddddddddddddddddddddddddddddddd"
+            },
+            {
+              "title": "Twin inbox",
+              "kind": "page",
+              "suggest": true,
+              "picked": false,
+              "id": "99999999999999999999999999999999"
             }
           ],
           "chores": [
@@ -16957,6 +17106,13 @@ export const TWIN_FIXTURE: TwinFixture = {
           "picked": false,
           "why_not": "It looks personal",
           "id": "dddddddddddddddddddddddddddddddd"
+        },
+        {
+          "title": "Twin inbox",
+          "kind": "page",
+          "suggest": true,
+          "picked": false,
+          "id": "99999999999999999999999999999999"
         }
       ],
       "chores": [
@@ -17139,6 +17295,74 @@ export const TWIN_FIXTURE: TwinFixture = {
       "inbound": "(Simulated) Sounds fair. Go for it, credit me as Brightside Club and link the track please.",
       "text": "(Simulated) Hello, thanks for writing! Happy to: here is what I had in mind.\n\ncheers",
       "changed": []
+    }
+  },
+  "threads": {
+    "tw_000000000002": {
+      "threads": [
+        {
+          "id": "thharbor",
+          "with": "Harbor Bakery",
+          "subject": "Invoice 2026-031",
+          "snippet": "Hi Alex, sorry this slipped. Can you resend the invoice? It goes out by Friday.",
+          "last_at": "2026-10-29T10:00:00Z",
+          "theirs_last": true
+        },
+        {
+          "id": "thquote",
+          "with": "Oren Vale",
+          "subject": "Album artwork quote",
+          "snippet": "(Simulated) Brilliant, thank you Oren! I'll take it from here and let you know. cheers",
+          "last_at": "2026-10-29T10:00:00Z",
+          "theirs_last": false
+        },
+        {
+          "id": "thrush",
+          "with": "Pia North",
+          "subject": "Poster for Saturday",
+          "snippet": "Could you rush the poster for Saturday? What would that cost, is $300 enough?",
+          "last_at": "2026-10-29T10:00:00Z",
+          "theirs_last": true
+        }
+      ]
+    },
+    "tw_000000000034": {
+      "threads": [
+        {
+          "id": "thharbor",
+          "with": "Harbor Bakery",
+          "subject": "Invoice 2026-031",
+          "snippet": "Hi Alex, sorry this slipped. Can you resend the invoice? It goes out by Friday.",
+          "last_at": "2026-10-29T10:00:00Z",
+          "theirs_last": true
+        },
+        {
+          "id": "thquote",
+          "with": "Oren Vale",
+          "subject": "Album artwork quote",
+          "snippet": "(Simulated) Brilliant, thank you Oren! I'll take it from here and let you know. cheers",
+          "last_at": "2026-10-29T10:00:00Z",
+          "theirs_last": false
+        },
+        {
+          "id": "thrush",
+          "with": "Pia North",
+          "subject": "Poster for Saturday",
+          "snippet": "Could you rush the poster for Saturday? What would that cost, is $300 enough?",
+          "last_at": "2026-10-29T10:00:00Z",
+          "theirs_last": true
+        }
+      ]
+    }
+  },
+  "goals": {
+    "tw_000000000034": {
+      "thread": "thquote",
+      "goals": [
+        "Get Oren's yes to 'Album artwork quote'",
+        "Answer Oren's questions and agree on next steps",
+        "Thank Oren and close the conversation kindly"
+      ]
     }
   }
 };

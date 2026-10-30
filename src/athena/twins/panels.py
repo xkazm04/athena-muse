@@ -11,6 +11,8 @@ Each one is the person's own act, so the pieces it makes are ink, and each answe
 - **Dials.** The person's values (source `you`); a style preset changes only the dials they have not set.
 - **Pages.** The Notion pages shared with Athena; the picked ones are what it may answer from.
 - **Chores.** The catalogue (`catalogue.py`); a preset whose tool is not connected cannot be picked.
+  The task inbox reads one Notion page the twin may read (a picked page), chosen here; what it has
+  taken from that page is kept with it.
 - **Autonomy.** Per channel: the level, the bar and an optional split by kind of message.
 - **Memory.** The person keeps or drops each fact. A fact that promises money or names another
   person is suggested drop, whatever the model said.
@@ -372,9 +374,11 @@ def pick_pages(daemon: Daemon, twin_id: str, raw: Any) -> None:
 # --- chores -------------------------------------------------------------------------------------------
 
 
-def pick_chores(daemon: Daemon, twin_id: str, raw: Any) -> None:
+def pick_chores(daemon: Daemon, twin_id: str, raw: Any, inbox: Any = None) -> None:
     space_id = _space(daemon, twin_id)
     ids = _ids(raw, "the chores")
+    if inbox is not None and (not isinstance(inbox, str) or catalogue.INBOX not in ids):
+        raise ApiError("bad_request", "send the inbox page as one page id, with the task inbox picked")
     reached: set[str] = {k for k in LABELS if daemon.connectors.connection(k)["status"] == "connected"}
     chosen: list[catalogue.Preset] = []
     for preset_id in ids:
@@ -386,9 +390,29 @@ def pick_chores(daemon: Daemon, twin_id: str, raw: Any) -> None:
                 "bad_request", f"'{preset.name}' is coming: it needs {preset.tool.title()}, not connected yet"
             )
         chosen.append(preset)
-    daemon.twins.replace("chores", twin_id, space_id, [{"id": p.id} for p in chosen])
+    kept = {r["id"]: r for r in daemon.twins.rows("chores", twin_id)}
+    rows: list[dict[str, Any]] = []
+    for p in chosen:
+        row: dict[str, Any] = {**kept.get(p.id, {}), "id": p.id}
+        if p.id == catalogue.INBOX and inbox is not None:
+            row.update(_inbox_page(daemon, twin_id, inbox, row))
+        rows.append(row)
+    daemon.twins.replace("chores", twin_id, space_id, rows)
     wanted = [{"id": f"c-{p.id}", "label": p.name, "detail": cut(p.does, DETAIL_MAX)} for p in chosen]
     own_pieces(daemon, twin_id, "chores", "c-", wanted)
+
+
+def _inbox_page(daemon: Daemon, twin_id: str, page_id: str, row: dict[str, Any]) -> dict[str, Any]:
+    """The task inbox's page: one the twin may read (a picked Notion page, not a database). A new page
+    starts a fresh report; what it took before stays taken."""
+    page = next(
+        (p for p in daemon.twins.rows("pages", twin_id) if p["id"] == page_id and p.get("picked")), None
+    )
+    if page is None or page["kind"] != "page":
+        raise ApiError("bad_request", "the task inbox reads a page it may read: tick that page first")
+    if row.get("page") == page_id:
+        return {}
+    return {"page": page_id, "title": page["title"], "unplaced": []}
 
 
 # --- autonomy -----------------------------------------------------------------------------------------

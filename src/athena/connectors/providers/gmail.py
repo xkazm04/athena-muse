@@ -3,8 +3,10 @@
 `search_mail` lists ids then reads each one's metadata; `read_mail` reads one message in full and
 takes its `text/plain` part; `read_thread` reads a whole conversation, oldest first, so a twin can
 answer it; `send_mail` posts one RFC 2822 message, into a thread when it is given one (`threadId`,
-with `In-Reply-To` and `References` naming the message it answers). Everything on the wire goes
-through the `Request` callable, which is the vault's and holds the credential.
+with `In-Reply-To` and `References` naming the message it answers). Outside the tools,
+`fetch_threads` lists the newest conversations with each one's headers only, for the slip that gives
+a twin a mission. Everything on the wire goes through the `Request` callable, which is the vault's
+and holds the credential.
 
 Gmail files a reply into the thread only when the subject matches the thread's too; the caller
 keeps the subject ("Re: ..."), this module does not rewrite it.
@@ -33,6 +35,7 @@ __all__ = [
     "execute",
     "extract_text",
     "fetch_thread",
+    "fetch_threads",
     "parse_metadata",
     "parse_thread",
     "render_results",
@@ -181,6 +184,29 @@ def fetch_thread(request: Request, thread_id: str) -> tuple[int, list[ThreadMess
     """Gmail's status and the thread's messages (none unless it answered 2xx)."""
     status, body = request("GET", f"{API}/threads/{_q(gmail_id(thread_id, 'thread'))}?format=full", None)
     return status, parse_thread(body) if status < 300 else []
+
+
+def fetch_threads(request: Request, limit: int) -> tuple[int, list[tuple[str, list[ThreadMessage]]]]:
+    """Gmail's status and the newest `limit` conversations, Gmail's order (newest first), each as its
+    messages with headers only: a message's `text` is Gmail's snippet of it. A conversation whose own
+    read fails is left out; the listing's status is the one answered."""
+    status, body = request("GET", f"{API}/threads?maxResults={int(limit)}", None)
+    if status >= 300:
+        return status, []
+    found = body.get("threads") if isinstance(body, Mapping) else None
+    ids = [str(t["id"]) for t in found or [] if isinstance(t, Mapping) and "id" in t][:limit]
+    headers = "".join(f"&metadataHeaders={h}" for h in (*WANTED_HEADERS, "Message-ID"))
+    out: list[tuple[str, list[ThreadMessage]]] = []
+    for thread_id in ids:
+        try:
+            safe = _q(gmail_id(thread_id, "thread"))
+        except ValueError:
+            continue
+        got, thread = request("GET", f"{API}/threads/{safe}?format=metadata{headers}", None)
+        messages = parse_thread(thread) if got < 300 else []
+        if messages:
+            out.append((thread_id, messages))
+    return status, out
 
 
 class SubjectRefused(ValueError):

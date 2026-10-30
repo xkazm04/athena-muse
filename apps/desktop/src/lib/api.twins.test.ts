@@ -46,6 +46,11 @@ describe("twin routes", () => {
     expect(await called(() => api.twinDials("tw_1", dials))).toEqual({ method: "POST", url: `${t}/dials`, body: dials });
     expect(await called(() => api.twinPages("tw_1", ["pg1"]))).toEqual({ method: "POST", url: `${t}/pages`, body: { ids: ["pg1"] } });
     expect(await called(() => api.twinChores("tw_1", ["c1"]))).toEqual({ method: "POST", url: `${t}/chores`, body: { ids: ["c1"] } });
+    expect(await called(() => api.twinChores("tw_1", ["task-inbox"], "pg9"))).toEqual({
+      method: "POST",
+      url: `${t}/chores`,
+      body: { ids: ["task-inbox"], inbox: "pg9" },
+    });
     const level = {
       channel: "gmail" as const,
       autonomy: "assist" as const,
@@ -66,6 +71,20 @@ describe("twin routes", () => {
     expect(await called(() => api.startMission("tw_1", body))).toEqual({ method: "POST", url: "/twins/tw_1/missions", body });
     expect(await called(() => api.mission("tw_1", "ms_1"))).toEqual({ method: "GET", url: "/twins/tw_1/missions/ms_1" });
     expect(await called(() => api.twinPreview("tw_1"))).toEqual({ method: "GET", url: "/twins/tw_1/preview" });
+  });
+
+  it("builds the new entry slip's routes and unwraps their lists", async () => {
+    const thread = { id: "th1", with: "Lumen Vale", subject: "Feature", snippet: "Yes?", last_at: "2026-10-29T10:00:00Z", theirs_last: true };
+    fetchMock.mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify({ threads: [thread] }), { status: 200 })));
+    expect(await api.twinThreads("tw_1")).toEqual([thread]);
+    expect(fetchMock.mock.calls.at(-1)![0]).toMatch(/\/twins\/tw_1\/threads$/);
+    fetchMock.mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify({ goals: ["Get a yes"] }), { status: 200 })));
+    expect(await api.twinGoals("tw_1", { thread: "th1" })).toEqual(["Get a yes"]);
+    expect(await called(() => api.twinGoals("tw_1", { to: "kai@moss.example" }).catch(() => []))).toEqual({
+      method: "POST",
+      url: "/twins/tw_1/goals",
+      body: { to: "kai@moss.example" },
+    });
   });
 
   it("streams say and rehearse as NDJSON events", async () => {

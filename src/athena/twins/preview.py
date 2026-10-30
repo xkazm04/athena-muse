@@ -6,16 +6,16 @@ the call invents from what the twin is for. The answer is kept until the compile
 keyed on a hash of the compiler's output), so opening the voice page twice costs one call.
 
 What changed since the last preview is counted by the code, never by a model: voice lines agreed or
-dropped, dials moved, and messages the person rewrote. A preview is kept while the daemon runs; after a
-restart the first one is written again, and says nothing changed.
+dropped, dials moved, and messages the person rewrote. The preview is kept in the `twin_previews` table
+(one row per twin, keyed by the voice's hash, with the voice it was written for), so it survives a
+restart and is erased with the twin's Project.
 """
 
 from __future__ import annotations
 
 import hashlib
 import threading
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from athena.app import Daemon
 from athena.connectors.service import THREAD_CAP, fenced
@@ -39,15 +39,6 @@ RULES = (
 NO_VOICE = "It has no voice yet: pick the mail it learns from, then agree to how it writes."
 
 
-@dataclass
-class Kept:
-    key: str
-    preview: TwinPreview
-    voice: dict[str, Any]
-
-
-#: The preview kept per twin, while the daemon runs.
-_KEPT: dict[str, Kept] = {}
 _LOCKS: dict[str, threading.Lock] = {}
 _GUARD = threading.Lock()
 
@@ -68,14 +59,18 @@ def has_voice(daemon: Daemon, twin_id: str) -> bool:
 
 def kept(daemon: Daemon, twin_id: str) -> TwinPreview | None:
     """The preview kept for the twin's voice as it is now, or None (none yet, or the voice changed)."""
-    found = _KEPT.get(twin_id)
-    if found is None or found.key != key(daemon, twin_id):
-        return None
-    return found.preview
+    found = daemon.twins.one("previews", twin_id, key(daemon, twin_id))
+    return cast("TwinPreview", found["preview"]) if found is not None else None
 
 
-def forget(twin_id: str) -> None:
-    _KEPT.pop(twin_id, None)
+def _last(daemon: Daemon, twin_id: str) -> dict[str, Any] | None:
+    """The preview kept last, whatever voice it was written for."""
+    rows = daemon.twins.rows("previews", twin_id)
+    return rows[-1] if rows else None
+
+
+def forget(daemon: Daemon, twin_id: str) -> None:
+    daemon.twins.drop("previews", twin_id)
 
 
 def preview(daemon: Daemon, engine: Engine, twin_id: str) -> TwinPreview:
@@ -85,9 +80,9 @@ def preview(daemon: Daemon, engine: Engine, twin_id: str) -> TwinPreview:
         raise ApiError("bad_request", NO_VOICE)
     with _lock(twin_id):
         now = key(daemon, twin_id)
-        before = _KEPT.get(twin_id)
-        if before is not None and before.key == now:
-            return before.preview
+        before = _last(daemon, twin_id)
+        if before is not None and before["id"] == now:
+            return cast("TwinPreview", before["preview"])
         inbound = their_last(daemon, twin_id)
         purpose = next(
             (n["label"] for n in daemon.twins.sketch(twin_id)["nodes"] if str(n["kind"]) == "purpose"), ""
@@ -117,9 +112,11 @@ def preview(daemon: Daemon, engine: Engine, twin_id: str) -> TwinPreview:
         out: TwinPreview = {
             "inbound": written[:INBOUND_MAX],
             "text": text,
-            "changed": changes(before.voice, voice) if before is not None else [],
+            "changed": changes(before["voice"], voice) if before is not None else [],
         }
-        _KEPT[twin_id] = Kept(now, out, voice)
+        # one row per twin: the new voice's preview replaces the one before it
+        kept_row = {"id": now, "preview": out, "voice": voice}
+        daemon.twins.replace("previews", twin_id, str(row["space_id"]), [kept_row])
         return out
 
 

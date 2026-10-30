@@ -5,7 +5,9 @@
 // what the routes answer. Invented data, labelled on screen.
 
 import type {
+  GoalList,
   MarkBody,
+  ThreadList,
   TwinDetail,
   TwinPage,
   TwinPreview,
@@ -76,4 +78,8 @@ export interface TwinFixture {
   };
   /** `GET /twins/{id}/preview` per twin once Partnerships is live (its second: what changed shows). */
   previews: Record<string, TwinPreview>;
+  /** `GET /twins/{id}/threads` per live twin: the new entry slip's recent conversations. */
+  threads: Record<string, ThreadList>;
+  /** `POST /twins/{id}/goals {thread}` for one conversation: the goals Athena suggests for it. */
+  goals: Record<string, GoalList & { thread: string }>;
 }

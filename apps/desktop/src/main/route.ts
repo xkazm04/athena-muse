@@ -17,8 +17,10 @@ export type Route =
   | { view: "twins" }
   /** One twin: its setup while it is being issued (`null` for `#twin/new`), else its open document. */
   | { view: "twin"; id: string | null }
-  /** The nested pages: its voice, one mission as a script, one draft beside the message it answers. */
+  /** The nested pages: its voice, one mission as a script, one draft beside the message it answers, and
+   * the new entry (giving it a mission). */
   | { view: "twin_voice"; id: string }
+  | { view: "twin_entry"; id: string }
   | { view: "twin_mission"; id: string; mission: string }
   | { view: "twin_draft"; id: string; draft: string };
 
@@ -47,6 +49,7 @@ function twinRoute([id, what, sub]: string[]): Route {
   if (!id) return { view: "twins" };
   if (id === TWIN_NEW) return { view: "twin", id: null };
   if (what === "voice") return { view: "twin_voice", id };
+  if (what === "entry") return { view: "twin_entry", id };
   if (what === "mission" && sub) return { view: "twin_mission", id, mission: sub };
   if (what === "draft" && sub) return { view: "twin_draft", id, draft: sub };
   return { view: "twin", id };
@@ -73,6 +76,8 @@ export function toHash(route: Route): string {
       return `#twin/${route.id === null ? TWIN_NEW : encodeURIComponent(route.id)}`;
     case "twin_voice":
       return `#twin/${encodeURIComponent(route.id)}/voice`;
+    case "twin_entry":
+      return `#twin/${encodeURIComponent(route.id)}/entry`;
     case "twin_mission":
       return `#twin/${encodeURIComponent(route.id)}/mission/${encodeURIComponent(route.mission)}`;
     case "twin_draft":

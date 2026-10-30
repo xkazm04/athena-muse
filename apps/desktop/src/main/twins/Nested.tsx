@@ -28,7 +28,7 @@ interface PageProps {
 }
 
 /** A nested page: the twin's header, then two facing pages, like its document. */
-function NestedPage({ twin, kicker, title, sub, badge, back, backLabel, go, left, right, role }: PageProps) {
+export function NestedPage({ twin, kicker, title, sub, badge, back, backLabel, go, left, right, role }: PageProps) {
   return (
     <article className="npage" data-role={role} aria-label={`${kicker}: ${title}`}>
       <header className="npage__h">

@@ -5,7 +5,7 @@ import { createExampleIo } from "./example";
 import { TWIN_FIXTURE as fx } from "./fixture/twins";
 import { coverageOf, currentTurn, readinessOf, rehearsalStep } from "./select";
 import { setupAt, stateOf, TWIN_STATES } from "./states";
-import { applyLocal, createTwinsStore, dialsShown, initialSetup, reduceSetup } from "./store";
+import { applyLocal, createTwinsStore, dialsShown, goalsKey, inboxPage, initialSetup, reduceSetup } from "./store";
 import type { SetupState } from "./types";
 
 const frames = fx.setup.frames;
@@ -294,6 +294,56 @@ describe("the store over the daemon's own answers", () => {
     await store.getState().refresh();
     expect(twins).toHaveBeenCalledTimes(2);
     expect(twin).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads the new entry slip's conversations, and her goals once per conversation", async () => {
+    const io = createExampleIo(fx, { pace: 0 });
+    const twinGoals = vi.fn(io.twinGoals);
+    const store = createTwinsStore({ ...io, twinGoals }, { pollMs: 0 });
+    const desk = fx.page.twins[0]!.id;
+    await store.getState().loadThreads(desk);
+    expect(store.getState().entries[desk]).toEqual({ load: "ready", threads: fx.threads[desk]!.threads });
+    const pick = { thread: fx.goals[desk]!.thread };
+    await store.getState().suggestGoals(desk, pick);
+    await store.getState().suggestGoals(desk, pick);
+    expect(twinGoals).toHaveBeenCalledTimes(1);
+    expect(store.getState().goals[goalsKey(desk, pick)]).toEqual({ load: "ready", goals: fx.goals[desk]!.goals });
+    // her suggestions are optional: a failure leaves none, quietly, and may be asked again
+    const failing = createTwinsStore({ ...io, twinGoals: () => Promise.reject(new Error("no")) }, { pollMs: 0 });
+    await failing.getState().suggestGoals(desk, { to: "kai@moss.example" });
+    expect(failing.getState().goals[goalsKey(desk, { to: "Kai@Moss.example " })]).toEqual({ load: "problem", goals: [] });
+  });
+
+  it("starts a mission from the slip, then reads the page again; a refusal comes back in plain words", async () => {
+    const io = createExampleIo(fx, { pace: 0 });
+    const desk = fx.page.twins[0]!;
+    const made = { ...desk.missions[0]!, id: "ms_new", source: "page" as const };
+    const twins = vi.fn(io.twins);
+    const startMission = vi.fn(async () => made);
+    const store = createTwinsStore({ ...io, twins, startMission }, { pollMs: 0 });
+    const body = { thread: "thquote", goal: "Get Oren's sign-off" };
+    expect(await store.getState().startMission(desk.id, body)).toEqual({ mission: made, problem: "" });
+    expect(startMission).toHaveBeenCalledWith(desk.id, body);
+    expect(twins).toHaveBeenCalledTimes(1);
+    expect(store.getState().flash).toMatch(/It took the mission with/);
+    // the invented example starts nothing, and says so
+    const example = createTwinsStore(io, { pollMs: 0 });
+    const refused = await example.getState().startMission(desk.id, body);
+    expect(refused.mission).toBeUndefined();
+    expect(refused.problem).toMatch(/invented example starts no missions/);
+  });
+
+  it("sends the page the task inbox reads with the permits, one it may read", () => {
+    const s = setupAt(7);
+    const t = s.twin!;
+    const readable = t.pages.filter((p) => p.picked && p.kind === "page");
+    expect(readable.length).toBeGreaterThan(1);
+    expect(inboxPage(s)).toBe(readable[0]!.id);
+    const chosen = applyLocal(s, { type: "inbox", page: readable[1]!.id });
+    expect(inboxPage(chosen)).toBe(readable[1]!.id);
+    // a page it may not read is never sent: it falls back to one it may
+    const database = t.pages.find((p) => p.kind === "database")!;
+    expect(inboxPage(applyLocal(s, { type: "inbox", page: database.id }))).toBe(readable[0]!.id);
   });
 
   it("asks how a twin sounds once, and keeps the daemon's answer", async () => {

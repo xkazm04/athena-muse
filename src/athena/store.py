@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS twins (
   created TEXT NOT NULL, updated TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS twins_space ON twins (space_id);
 """ + "".join(
-    # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON.
+    # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON;
+    # a preview's id is the hash of the voice it was written for.
     f"""CREATE TABLE IF NOT EXISTS {t} (
   owner TEXT NOT NULL, space_id TEXT NOT NULL, id TEXT NOT NULL, position INTEGER NOT NULL,
   body TEXT NOT NULL, PRIMARY KEY (owner, id));
@@ -65,6 +66,7 @@ CREATE INDEX IF NOT EXISTS {t}_space ON {t} (space_id);
         "twin_examples",
         "twin_missions",
         "twin_turns",
+        "twin_previews",
     )
 )
 
@@ -80,6 +82,7 @@ TWIN_TABLES = (
     "twin_examples",
     "twin_missions",
     "twin_turns",
+    "twin_previews",
 )
 
 # Columns added after a table first shipped: (table, column, type). `CREATE TABLE IF NOT EXISTS` leaves

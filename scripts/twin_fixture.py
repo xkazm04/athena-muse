@@ -11,6 +11,8 @@ Drives a daemon in-process on the scripted engine, over the fake Gmail and Notio
   their own needs and first missions. Client desk is live and works three missions on Gmail threads
   (a question it answers below the bar, a yes it thanks alone and files to Notion, a money ask it hands
   back); Family admin is paused by the person.
+- The new entry slip's material, once Partnerships is live: the recent conversations each live twin
+  is offered, and the goals Athena suggests for Client desk on one of them.
 
 The clock and the ids are pinned, so the output is byte-identical run to run, and writes
 `apps/desktop/src/main/twins/fixture/twins.ts`. Every object is checked against the `contracts.py`
@@ -50,7 +52,6 @@ from athena.app import Daemon  # noqa: E402
 from athena.engine.scripted import ScriptedEngine  # noqa: E402
 from athena.server import create_app  # noqa: E402
 from athena.twins import missions as missions_mod  # noqa: E402
-from athena.twins import preview as preview_mod  # noqa: E402
 from athena.twins import rehearse as rehearse_mod  # noqa: E402
 from athena.twins import view as view_mod  # noqa: E402
 from missions_kit import MissionWorld, mine, theirs  # noqa: E402
@@ -242,7 +243,6 @@ def pinned(clock: Clock) -> Iterator[None]:
         stack.enter_context(mock.patch.object(missions_mod, "time", writing))
         stack.enter_context(mock.patch.object(engine_mod, "build_engine", lambda *a, **k: ScriptedEngine()))
         stack.enter_context(mock.patch.dict(os.environ, {"ATHENA_TWIN_POLL": "0"}))
-        stack.enter_context(mock.patch.dict(preview_mod._KEPT, clear=True))  # pinned ids meet again
         yield
 
 
@@ -526,6 +526,8 @@ def _build(d: Drive) -> dict[str, Any]:
     page_after = d.page()
     clock.wait(30)
     previews = {t: d.call("GET", "twin_preview", id=t) for t in (partners, desk, family)}
+    threads = {t: d.call("GET", "twin_threads", id=t) for t in (partners, desk)}
+    goals = {desk: {"thread": "thquote", **d.call("POST", "twin_goals", {"thread": "thquote"}, id=desk)}}
 
     out = {
         "invented": INVENTED,
@@ -550,6 +552,8 @@ def _build(d: Drive) -> dict[str, Any]:
             "golive": golive,
         },
         "previews": previews,
+        "threads": threads,
+        "goals": goals,
     }
     if setup_done["ready"] is not True:
         raise SystemExit("the staged setup did not end ready")
@@ -579,6 +583,10 @@ def validate(out: dict[str, Any]) -> None:
     check(s["golive"], C.TwinDetail, "setup.golive")
     for k, v in out["previews"].items():
         check(v, C.TwinPreview, f"previews.{k}")
+    for k, v in out["threads"].items():
+        check(v, C.ThreadList, f"threads.{k}")
+    for k, v in out["goals"].items():
+        check({"goals": v["goals"]}, C.GoalList, f"goals.{k}")
     plain_words(out)
 
 

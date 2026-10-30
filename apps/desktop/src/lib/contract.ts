@@ -103,6 +103,8 @@ export type ChoreKind = "outcome" | "inbox" | "test" | "channel";
 export type DialSource = "learned" | "preset" | "you";
 export type TwinTurnSide = "twin" | "other";
 export type TwinMessageKind = "first_message" | "reply";
+/** Given on the twins page, or taken from its task inbox. */
+export type MissionSource = "page" | "notion";
 export type PieceOpName = "add" | "change" | "remove" | "dial";
 export type SetupPanel = "connect" | "samples" | "style" | "pages" | "chores" | "autonomy" | "memory" | "rehearsal";
 export type FactSuggest = "keep" | "drop";
@@ -119,6 +121,12 @@ export const BAR_DEFAULT = 80;
 export const RISKS_MAX = 5;
 /** Gmail threads with an open mission are read this often while the daemon runs. */
 export const POLL_SECONDS_DEFAULT = 300;
+/** Recent Gmail conversations the new entry slip offers. */
+export const THREADS_MAX = 20;
+/** Characters of a conversation's last message the slip shows. */
+export const SNIPPET_MAX = 200;
+/** Goals Athena suggests for a new mission. */
+export const GOALS_MAX = 3;
 /** A style dial's value. */
 export const DIAL_MIN = 1;
 export const DIAL_MAX = 5;
@@ -577,6 +585,8 @@ export interface ChorePreset {
   later?: boolean;
   /** A tool this app cannot reach yet: shown, never picked. */
   coming?: boolean;
+  /** The task inbox: the Notion page it reads, one the twin may read. */
+  page?: string;
 }
 
 export interface MemoryFact {
@@ -676,6 +686,8 @@ export interface Mission {
   /** The dress rehearsal on a Notion practice page. */
   practice?: boolean;
   filed?: TwinFiled;
+  /** Where the person gave it (a real mission only). */
+  source?: MissionSource;
 }
 
 /** A message the twin wrote. A waiting one is a signature card the person may edit. */
@@ -712,6 +724,21 @@ export interface TwinWeek {
 }
 
 /** One twin: a document in the wallet and a row of the ledger. */
+/** The task inbox at work (the `task-inbox` preset): the Notion page it reads for new missions, one
+ * line each ("<who or thread>: <goal>"), and what it made of the page when it last read it. */
+export interface TaskInbox {
+  /** The Notion page id. */
+  page: string;
+  title: string;
+  /** Lines it started a mission for, ever. */
+  taken: number;
+  /** Lines it could not place at its last read, each with why; it left them alone. */
+  unplaced: string[];
+  /** Its last read of the page. */
+  checked_at?: string;
+  /** The page could not be read, plain words. */
+  problem?: string;
+}
 export interface TwinSummary {
   id: string;
   space_id: string;
@@ -734,6 +761,8 @@ export interface TwinSummary {
   /** When it first went live. */
   since?: string;
   paused_because?: string;
+  /** When the task inbox is picked and reads a page. */
+  inbox?: TaskInbox;
 }
 
 export interface TwinAsk {
@@ -796,6 +825,29 @@ export interface TwinPage {
   twins: TwinSummary[];
   stats: TwinStats;
 }
+/** A recent Gmail conversation the new entry slip offers. */
+export interface ThreadSummary {
+  /** The Gmail thread id: what a new mission's `thread` names. */
+  id: string;
+  /** The other side: a name, else an address. */
+  with: string;
+  subject: string;
+  /** An excerpt of its last message (<= SNIPPET_MAX): their words, untrusted. */
+  snippet: string;
+  /** Its last message, ISO 8601 UTC. */
+  last_at: string;
+  /** The other side spoke last: answering it is a reply. */
+  theirs_last: boolean;
+}
+/** GET /twins/{id}/threads: recent Gmail conversations, newest first, at most THREADS_MAX. */
+export interface ThreadList {
+  threads: ThreadSummary[];
+}
+/** POST /twins/{id}/goals: Athena's suggested goals for a new mission (her pencil), at most GOALS_MAX,
+ * each <= LABEL_MAX; [] when she has none. The person's own goal always works. */
+export interface GoalList {
+  goals: string[];
+}
 
 /** A connected account (ADR 0008). The credential itself never crosses the wire. */
 export interface Connection {
@@ -856,6 +908,8 @@ export interface PagesBody {
 
 export interface ChoresBody {
   ids: string[];
+  /** With `task-inbox`: the picked Notion page it reads. */
+  inbox?: string;
 }
 
 export interface AutonomyBody {
@@ -882,8 +936,14 @@ export interface MarkBody {
 }
 
 export interface NewMissionBody {
+  /** A Gmail thread id, or the one address of someone new. */
   thread: string;
   goal: string;
+}
+/** One of the two: the conversation chosen, or the one address of someone new. */
+export interface GoalsBody {
+  thread?: string;
+  to?: string;
 }
 
 /** Gmail: the person's own Google client. Notion: the key. */
@@ -974,6 +1034,8 @@ export const ROUTES = {
   twin_missions: "/twins/{id}/missions",
   twin_mission: "/twins/{id}/missions/{mid}",
   twin_preview: "/twins/{id}/preview",
+  twin_threads: "/twins/{id}/threads",
+  twin_goals: "/twins/{id}/goals",
   connectors: "/connectors",
   connector_connect: "/connectors/{kind}/connect",
   connector_flow: "/connectors/{kind}/flow",

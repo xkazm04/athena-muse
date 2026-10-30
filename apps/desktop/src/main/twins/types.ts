@@ -16,6 +16,7 @@ import type {
   TwinSetupEvent,
   TwinPreview,
   TwinStats,
+  ThreadSummary,
 } from "../../lib/contract";
 import type { ReplyPhase } from "../stage/types";
 
@@ -35,6 +36,8 @@ export interface Choices {
   dials: Record<string, number>;
   preset: string | null;
   autonomy: { first: Autonomy; reply: Autonomy; split: boolean; bar: number; notion: Autonomy; touched: boolean };
+  /** The page the task inbox reads, when the person chose one. */
+  inbox: string | null;
 }
 
 export interface RehearsalState {
@@ -99,6 +102,22 @@ export interface PreviewView {
   problem?: string;
 }
 
+/** The new entry slip's recent conversations, per twin: read from the daemon when the slip opens. */
+export interface EntryView {
+  load: Load;
+  threads: ThreadSummary[];
+  problem?: string;
+}
+
+/** Athena's suggested goals for one conversation (or one address), in her pencil. */
+export interface GoalsView {
+  load: Load;
+  goals: string[];
+}
+
+/** Who a new mission is with: one of the recent conversations, or someone new by their address. */
+export type EntryPick = { thread: string } | { to: string };
+
 export interface TwinsState {
   /** "example" plays the invented example, labelled on screen; "live" talks to the daemon. */
   mode: "live" | "example";
@@ -111,6 +130,9 @@ export interface TwinsState {
   issued: string | null;
   details: Record<string, TwinDetail>;
   previews: Record<string, PreviewView>;
+  /** The new entry slip's conversations per twin, and the goals suggested per conversation. */
+  entries: Record<string, EntryView>;
+  goals: Record<string, GoalsView>;
   done: Record<string, Done>;
   flash: string;
   /** Signing in to Google again for a paused twin, from the overview. */
@@ -127,6 +149,7 @@ export type TwinsAction =
   | { type: "ink"; pieces: string[] }
   | { type: "ink_all" }
   | { type: "choose"; group: ChoiceGroup; id: string; on: boolean }
+  | { type: "inbox"; page: string }
   | { type: "dial"; id: string; value: number }
   | { type: "preset"; name: string }
   | { type: "level"; which: "first" | "reply" | "notion"; value: Autonomy }

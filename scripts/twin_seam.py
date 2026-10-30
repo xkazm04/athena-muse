@@ -2,22 +2,26 @@
 engine, with Gmail and Notion faked inside the daemon's own process. Nothing reaches a network: the
 vault's transport is the fake, and Google's sign-in "browser" plays the redirect on the loopback.
 
-    uv run python scripts/twin_seam.py              # build, serve on 5192, drive, screenshot, check
-    uv run python scripts/twin_seam.py --no-build   # reuse apps/desktop/dist
+    uv run python scripts/twin_seam.py                    # build, serve on 5192, drive, screenshot, check
+    uv run python scripts/twin_seam.py --no-build         # reuse apps/desktop/dist
+    uv run python scripts/twin_seam.py --page-port 5193   # serve the page on another port
 
 It starts a throwaway daemon (`--serve-fake`, a flag only this script passes: the fake services are
-never on by default) with a scratch data folder, serves the built desktop with Vite on port 5192, and
-drives the real page with Playwright through: the overview -> a new twin -> the whole setup (typed
-words, her suggestions, a pencil inked, Google's sign-in on the fake, a Notion key on the fake, every
-slip) -> the rehearsal with the held draft edited -> go live -> a mission on the fake thread -> the
-held card signed with an edit -> the poller resolves it -> the overview's stats moved. At each step
-it checks there is no page scroll and no console error; at the end, what the daemon received (the
-fake's journal), that the engine asked for answered every call, and it ends both process trees.
+never on by default) with a scratch data folder, serves the built desktop with Vite on the page port
+(5192 unless given), and drives the real page with Playwright through: the overview -> a new twin ->
+the whole setup (typed words, her suggestions, a pencil inked, Google's sign-in on the fake, a Notion
+key on the fake, every slip, the task inbox's page chosen on the permits slip) -> the rehearsal with
+the held draft edited -> go live -> the twin's document -> "Give it a mission": the new entry slip,
+a conversation picked from the fake Gmail, her suggested goals, the goal in the person's words ->
+the mission's script opens -> the held card signed with an edit -> the poller resolves it -> the
+overview's stats moved. Meanwhile the poller reads the task inbox on the fake Notion and starts a
+second mission from a line written there (and reports one it cannot place). At each step it checks
+there is no page scroll and no console error; at the end, what the daemon received (the fake's
+journal), that the engine asked for answered every call, and it ends both process trees.
 Screenshots at 1280x800 go to docs/concepts/twin-module/shots/live/.
 
-The page has no way to pick a Gmail conversation for a mission yet, so the mission is started on the
-daemon's own route, as a future picker would; the page must show its held card without a reload.
-Playwright for Python is found beside the system python when the project's environment has none.
+No mission is started on the daemon's route: the page starts it. Playwright for Python is found beside
+the system python when the project's environment has none.
 """
 
 from __future__ import annotations
@@ -41,8 +45,7 @@ from urllib.parse import urlsplit
 
 REPO = Path(__file__).resolve().parents[1]
 SHOTS = REPO / "docs/concepts/twin-module/shots/live"
-VITE_PORT = 5192  # the only port this seam serves the desktop on
-APP = f"http://localhost:{VITE_PORT}"
+VITE_PORT = 5192  # the port this seam serves the desktop on, unless --page-port says another
 TOKEN = "seam"
 ENGINE = "scripted"
 POLL_S = "3"  # the poller's interval in the throwaway daemon
@@ -63,15 +66,22 @@ EDIT_SIGNED = (
 )
 YES = "Yes, go ahead! Credit me as Lumen Vale, please."
 GOAL = "Get Lumen Vale's yes to feature 'Glass Harbor'"
+INBOX_LINE = "kai@moss.example: Ask Kai whether a feature in December would suit them"
+UNPLACED_LINE = "Morgan: Ask about the invoice"
+INBOX_PAGE = "9" * 32  # the fakes' 'Twin inbox' page (tests/twins_kit.py)
+
+
+def app_url(port: int) -> str:
+    return f"http://localhost:{port}"
 
 
 # --- the throwaway daemon, with Gmail and Notion faked in its own process (--serve-fake only) ----------
 
 
-def serve_fake(data: Path, port: int) -> None:
+def serve_fake(data: Path, port: int, page_port: int) -> None:
     """The daemon as `athena-daemon` runs it, except that its connected accounts are the twin tests'
     fakes behind the real vault, Google's sign-in plays its redirect on the loopback, and the page on
-    port 5192 is an allowed origin. Every request the fakes answer is kept in `<data>/received.jsonl`."""
+    `page_port` is an allowed origin. Every request the fakes answer is kept in `<data>/received.jsonl`."""
     sys.path.insert(0, str(REPO / "tests"))
     import uvicorn
 
@@ -81,18 +91,24 @@ def serve_fake(data: Path, port: int) -> None:
     from athena.connectors.vault import Vault
     from athena.server import APP_ORIGINS, create_app, write_handshake
     from connectors_kit import callback, state_of
-    from missions_kit import ASKED, FIRST, THREAD, MissionWorld, mine, theirs
+    from missions_kit import ASKED, FIRST, THREAD, MissionWorld, line, mine, theirs
 
     journal = data / "received.jsonl"
     lock = threading.Lock()
 
     class SeamWorld(MissionWorld):
-        """The tests' Gmail (threads, sends) and Notion (pages, a practice page), plus Google's token
-        endpoint; once the person's signed reply reaches the thread, the other side says yes."""
+        """The tests' Gmail (threads, sends) and Notion (pages, a practice page, the task inbox page
+        with lines on it), plus Google's token endpoint; once the person's signed reply reaches the
+        thread, the other side says yes."""
 
         def __init__(self, daemon: Daemon) -> None:
             super().__init__(daemon, None)
             self.threads[THREAD] = [mine("m1", FIRST), theirs("m2", ASKED)]
+            self.pages[INBOX_PAGE] = [
+                line("b0", "One mission per line, who first and then the goal.", "paragraph"),
+                line("b1", INBOX_LINE),
+                line("b2", UNPLACED_LINE),
+            ]
             self.answered = False
 
         def answer(self, method: str, address: str, headers: Mapping[str, str], body: bytes | None) -> Any:
@@ -146,7 +162,7 @@ def serve_fake(data: Path, port: int) -> None:
     sock.bind(("127.0.0.1", port))
     write_handshake(data, port, token)
     print(f"seam daemon (fake services) on 127.0.0.1:{port}", flush=True)
-    app = create_app(daemon, token, origins=(*APP_ORIGINS, APP))
+    app = create_app(daemon, token, origins=(*APP_ORIGINS, app_url(page_port)))
     uvicorn.Server(uvicorn.Config(app, log_level="warning", access_log=False)).run(sockets=[sock])
 
 
@@ -199,7 +215,7 @@ def end_tree(proc: subprocess.Popen[Any] | None) -> None:
 # --- driving the page -------------------------------------------------------------------------------
 
 
-def drive(base: str) -> dict[str, Any]:
+def drive(base: str, page_port: int) -> dict[str, Any]:
     """Drives the built page through the whole path; answers what it saw."""
     from playwright.sync_api import Page, sync_playwright
 
@@ -272,7 +288,7 @@ def drive(base: str) -> dict[str, Any]:
 
         try:
             q = f"?daemon={base}&token={TOKEN}"
-            pg.goto(f"{APP}/{q}#twins")
+            pg.goto(f"{app_url(page_port)}/{q}#twins")
             pg.wait_for_selector('.ov[data-mode="first"]', timeout=30000)
             before = stats()
             shot("overview-before")
@@ -309,6 +325,11 @@ def drive(base: str) -> dict[str, Any]:
             pg.wait_for_timeout(300)
             idle()
             go_slip("pages")
+            slip("chores")
+            chores = '[data-role="slip"][data-kind="chores"]'
+            pg.click(f'{chores} button.row:has-text("Task inbox")')  # not her suggestion: the person's
+            pg.wait_for_selector("#inbox-page", timeout=10000)
+            pg.select_option("#inbox-page", label="Twin inbox")
             go_slip("chores")
             ink_all()  # the lines it must never cross
             pick(2)  # "Also: never write after 9 pm their time"
@@ -350,10 +371,63 @@ def drive(base: str) -> dict[str, Any]:
             pg.click('[data-role="exit"]')  # back to the twins
             pg.wait_for_selector('.ov[data-mode="today"]', timeout=20000)
 
-            # --- a mission on the fake thread; its held card shows without a reload ---
-            mission = call(base, "POST", f"/twins/{twin_id}/missions", {"thread": "th0123abcd", "goal": GOAL})
+            # --- the document's new entry: a mission given on the page, on the fake thread ---
+            pg.click('[data-role="ledger-row"]')
+            pg.click('[data-role="give-mission"]')
+            pg.wait_for_selector('[data-role="entry-page"]', timeout=20000)
+            row = '[data-role="entry-thread"][data-id="th0123abcd"]'
+            pg.wait_for_selector(row, timeout=20000)
+            pg.click(row)
+            pg.wait_for_selector('[data-role="entry-suggestion"]', timeout=20000)
+            result["suggested"] = pg.locator('[data-role="entry-suggestion"]').all_inner_texts()
+            pg.locator('[data-role="entry-suggestion"]').first.click()  # her pencil, then the person's words
+            pg.fill("#entry-goal", GOAL)
+            result["rule"] = pg.inner_text('[data-role="entry-rule"]')
+            shot("entry")
+            pg.set_viewport_size({"width": 1024, "height": 700})  # the slip holds at the small size too
+            pg.wait_for_timeout(300)
+            no_scroll("the new entry at 1024x700")
+            pg.screenshot(path=str(Path(tempfile.gettempdir()) / "twin-seam-entry-1024x700.png"))
+            pg.set_viewport_size({"width": 1280, "height": 800})
+            pg.click('[data-role="entry-page"] button:has-text("Start the mission")')
+            pg.wait_for_selector('[data-role="mission-page"]', timeout=30000)
+            mission_id = pg.evaluate("location.hash").split("/")[3]
+            mission = call(base, "GET", f"/twins/{twin_id}/missions/{mission_id}")
             held = mission["turns"][-1]
-            note(f"mission {mission['id']}: {mission['state']}, its draft waits: {held.get('reason')}")
+            source, reason = mission.get("source"), held.get("reason")
+            note(f"mission {mission['id']} given on the page ({source}), its draft waits: {reason}")
+            if source != "page" or mission.get("thread") != "th0123abcd":
+                result["problems"].append(f"the slip did not start the mission it showed: {source}")
+            shot("entry-mission")
+
+            # --- the task inbox: the poller took the line written on the fake Notion page ---
+            end = time.time() + 30
+            taken: list[dict[str, Any]] = []
+            twin: dict[str, Any] = {}
+            while time.time() < end and not taken:
+                twin = call(base, "GET", f"/twins/{twin_id}")
+                taken = [m for m in twin["missions"] if m.get("source") == "notion"]
+                if not taken:
+                    time.sleep(1)
+            if not taken:
+                result["problems"].append("no mission arrived through the task inbox")
+            else:
+                first = taken[0]
+                result["inbox"] = {
+                    "mission": {"with": first["with"], "goal": first["goal"], "state": first["state"]},
+                    "report": twin.get("inbox"),
+                }
+                note(f"the task inbox took a line: a mission with {first['with']}")
+            pg.evaluate(f"location.hash = '#twin/{twin_id}'")
+            pg.wait_for_selector('[data-role="inbox"]', timeout=20000)
+            tagged = (
+                "() => [...document.querySelectorAll('.ms .tag')].some((t) => /inbox/.test(t.textContent))"
+            )
+            pg.wait_for_function(tagged, timeout=20000)
+            shot("document-inbox")
+
+            # --- its held card shows without a reload ---
+            pg.evaluate("location.hash = '#twins'")
             card = pg.locator('[data-role="waiting-card"]', has_text="Feature on Friday")
             card.first.wait_for(timeout=20000)
             card.first.click()
@@ -398,7 +472,7 @@ def drive(base: str) -> dict[str, Any]:
     return result
 
 
-def drive_elsewhere(base: str, out: Path) -> dict[str, Any]:
+def drive_elsewhere(base: str, out: Path, page_port: int) -> dict[str, Any]:
     """Playwright lives beside the system python here: drive from there (outside this project's
     environment, which its launchers would otherwise pick), and read what it saw."""
     venv = os.environ.get("VIRTUAL_ENV", "")
@@ -414,6 +488,7 @@ def drive_elsewhere(base: str, out: Path) -> dict[str, Any]:
         probe = subprocess.run([exe, "-c", "import playwright.sync_api"], capture_output=True, env=env)
         if probe.returncode == 0:
             drive_it = [exe, str(Path(__file__)), "--drive", base, "--out", str(out)]
+            drive_it += ["--page-port", str(page_port)]
             subprocess.run(drive_it, env=env, check=False)
             if not out.is_file():
                 raise RuntimeError("the drive wrote no result")
@@ -428,6 +503,7 @@ def check_received(data: Path, result: dict[str, Any]) -> None:
     """What the fakes received: one Google sign-in, the Notion key checked, the practice page written,
     the person's own words sent in-thread, then the thanks sent alone and the outcome filed."""
     lines = [json.loads(x) for x in (data / "received.jsonl").read_text(encoding="utf-8").splitlines()]
+    inbox = [x for x in lines if x["host"] == "api.notion.com" and INBOX_PAGE in x["path"]]
     sent = [x["sent"] for x in lines if "sent" in x]
     token = [x for x in lines if x["path"] == "/token"]
     notion = [x for x in lines if x["host"] == "api.notion.com"]
@@ -439,6 +515,8 @@ def check_received(data: Path, result: dict[str, Any]) -> None:
         "gmail_sends": [{"to": s["to"], "thread": s["thread"], "text": s["text"][:80]} for s in sent],
         # the mission's outcome note names who it was with; the rehearsal's last line does not
         "outcome_filed": any("Outcome: " in x.get("notion", "") and "With " in x["notion"] for x in notion),
+        "inbox_reads": sum(x["method"] == "GET" for x in inbox),
+        "inbox_writes": [x.get("notion", "")[:200] for x in inbox if x["method"] != "GET"],
         "hosts": sorted({str(x["host"]) for x in lines}),
     }
     result["received"] = got
@@ -451,6 +529,11 @@ def check_received(data: Path, result: dict[str, Any]) -> None:
         (bool(sent) and sent[0]["thread"] == "th0123abcd" and bool(sent[0]["in_reply_to"]), "sent in-thread"),
         (len(sent) == 2 and sent[1]["text"].startswith("(Simulated) Brilliant"), "the thanks sent alone"),
         (got["outcome_filed"], "the outcome filed to Notion"),
+        (got["inbox_reads"] >= 1, "the task inbox page read"),
+        (
+            len(got["inbox_writes"]) == 1 and "Taken: " in got["inbox_writes"][0],
+            "one 'Taken:' note on the task inbox page, and nothing else written there",
+        ),
     ]
     for ok, what in want:
         if not ok:
@@ -465,12 +548,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--drive", metavar="DAEMON", help=argparse.SUPPRESS)
     parser.add_argument("--out", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--no-build", action="store_true", help="reuse apps/desktop/dist")
+    parser.add_argument("--page-port", type=int, default=VITE_PORT, help="the port the page is served on")
     args = parser.parse_args(argv)
+    page_port = args.page_port
     if args.serve_fake:
-        serve_fake(args.data, args.port)
+        serve_fake(args.data, args.port, page_port)
         return 0
     if args.drive:
-        args.out.write_text(json.dumps(drive(args.drive)), encoding="utf-8")
+        args.out.write_text(json.dumps(drive(args.drive, page_port)), encoding="utf-8")
         return 0
 
     pnpm = shutil.which("pnpm")
@@ -489,29 +574,39 @@ def main(argv: list[str] | None = None) -> int:
             print("building the desktop", flush=True)
             subprocess.run([pnpm, "-C", "apps/desktop", "build"], cwd=REPO, check=True, capture_output=True)
         vite = subprocess.Popen(
-            [pnpm, "-C", "apps/desktop", "exec", "vite", "preview", "--port", str(VITE_PORT), "--strictPort"],
+            [pnpm, "-C", "apps/desktop", "exec", "vite", "preview", "--port", str(page_port), "--strictPort"],
             cwd=REPO,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         env = {**os.environ, "ATHENA_ENGINE": ENGINE, "ATHENA_TOKEN": TOKEN, "ATHENA_TWIN_POLL": POLL_S}
         daemon = subprocess.Popen(
-            [sys.executable, str(Path(__file__)), "--serve-fake", "--data", str(data), "--port", str(port)],
+            [
+                sys.executable,
+                str(Path(__file__)),
+                "--serve-fake",
+                "--data",
+                str(data),
+                "--port",
+                str(port),
+                "--page-port",
+                str(page_port),
+            ],
             cwd=REPO,
             env=env,
         )
         wait_for(f"{base}/health", 60)
-        wait_for(APP, 60)
+        wait_for(app_url(page_port), 60)
         status = call(base, "GET", "/engine")
-        print(f"daemon on {port}, engine {status['engine']}; the page on {VITE_PORT}", flush=True)
+        print(f"daemon on {port}, engine {status['engine']}; the page on {page_port}", flush=True)
         if status["engine"] != ENGINE or not status["simulated"]:
             raise RuntimeError(f"the daemon runs {status['engine']}, not {ENGINE}")
         try:
             import playwright.sync_api  # noqa: F401
 
-            seen = drive(base)
+            seen = drive(base, page_port)
         except ImportError:
-            seen = drive_elsewhere(base, scratch / "drive.json")
+            seen = drive_elsewhere(base, scratch / "drive.json", page_port)
         result.update({k: v for k, v in seen.items() if k != "problems"})
         result["problems"] += seen.get("problems", [])
         if seen.get("errors"):
@@ -528,7 +623,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         end_tree(daemon)
         end_tree(vite)
-        for p in (port, VITE_PORT):
+        for p in (port, page_port):
             with socket.socket() as s:
                 if s.connect_ex(("127.0.0.1", p)) == 0:
                     result["problems"].append(f"something still listens on {p} after the run")

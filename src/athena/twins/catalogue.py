@@ -16,6 +16,7 @@ from pathlib import Path
 from athena.contracts import ChannelKind, ChoreKind, ChorePreset
 
 PRESETS_DIR = Path(__file__).resolve().parent / "presets"
+INBOX = "task-inbox"  # the preset that reads a Notion page for new missions (`twins.inbox`)
 _KINDS = frozenset(typing.get_args(ChoreKind))
 _TOOLS = frozenset(typing.get_args(ChannelKind))
 
@@ -63,7 +64,7 @@ def reachable(preset: Preset, connected: set[str]) -> bool:
     return preset.tool in _TOOLS and preset.tool in connected
 
 
-def listed(picked: set[str], connected: set[str]) -> list[ChorePreset]:
+def listed(picked: set[str], connected: set[str], inbox_page: str = "") -> list[ChorePreset]:
     out: list[ChorePreset] = []
     for p in presets():
         item: ChorePreset = {
@@ -79,5 +80,7 @@ def listed(picked: set[str], connected: set[str]) -> list[ChorePreset]:
             item["later"] = True
         if not reachable(p, connected):
             item["coming"] = True
+        if p.id == INBOX and inbox_page:
+            item["page"] = inbox_page
         out.append(item)
     return out

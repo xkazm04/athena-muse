@@ -27,6 +27,8 @@ import {
   type DropBody,
   type EngineStatus,
   type ExpectedList,
+  type GoalList,
+  type GoalsBody,
   type Health,
   type KeyBody,
   type LedgerPage,
@@ -49,6 +51,7 @@ import {
   type SpaceErased,
   type SpaceList,
   type SpaceSummary,
+  type ThreadList,
   type TurnEvent,
   type TurnList,
   type TwinDetail,
@@ -159,8 +162,9 @@ export const twinDials = (id: string, body: DialsBody) =>
   request<TwinDetail>("POST", path(ROUTES.twin_dials, { id }), body);
 export const twinPages = (id: string, ids: string[]) =>
   request<TwinDetail>("POST", path(ROUTES.twin_pages, { id }), { ids } satisfies PagesBody);
-export const twinChores = (id: string, ids: string[]) =>
-  request<TwinDetail>("POST", path(ROUTES.twin_chores, { id }), { ids } satisfies ChoresBody);
+/** `inbox`: with the task inbox picked, the Notion page it reads. */
+export const twinChores = (id: string, ids: string[], inbox?: string) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_chores, { id }), (inbox ? { ids, inbox } : { ids }) satisfies ChoresBody);
 export const twinAutonomy = (id: string, body: AutonomyBody) =>
   request<TwinDetail>("POST", path(ROUTES.twin_autonomy, { id }), body);
 export const twinMemory = (id: string, body: MemoryBody) =>
@@ -180,6 +184,11 @@ export const twinPause = (id: string) => request<TwinDetail>("POST", path(ROUTES
 export const startMission = (id: string, body: NewMissionBody) =>
   request<Mission>("POST", path(ROUTES.twin_missions, { id }), body);
 export const mission = (id: string, mid: string) => request<Mission>("GET", path(ROUTES.twin_mission, { id, mid }));
+/** The new entry slip: recent Gmail conversations, newest first, and Athena's suggested goals for one. */
+export const twinThreads = async (id: string) =>
+  (await request<ThreadList>("GET", path(ROUTES.twin_threads, { id }))).threads;
+export const twinGoals = async (id: string, body: GoalsBody) =>
+  (await request<GoalList>("POST", path(ROUTES.twin_goals, { id }), body)).goals;
 /** How it sounds now: one engine call, kept by the daemon until its voice changes. */
 export const twinPreview = (id: string) => request<TwinPreview>("GET", path(ROUTES.twin_preview, { id }));
 

@@ -237,6 +237,23 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
       return clone(found);
     },
 
+    twinThreads: async (id: string) => {
+      const found = fx.threads[id];
+      if (!found) return refuse("conversations for that twin");
+      await sleep(1);
+      return clone(found.threads);
+    },
+
+    twinGoals: async (id, body) => {
+      await sleep(1.5);
+      const found = fx.goals[id];
+      return found && body.thread === found.thread ? [...found.goals] : [];
+    },
+
+    startMission: async () => {
+      throw new DaemonError(400, "bad_request", TWINS_WORDS.exampleNoStart);
+    },
+
     mission: async (id: string, mid: string) => {
       const all: Mission[] = [...pageNow().twins.flatMap((t) => t.missions), ...(twin.rehearsal ? [twin.rehearsal] : [])];
       return clone(all.find((m) => m.twin_id === id && m.id === mid) ?? refuse("such mission"));

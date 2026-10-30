@@ -23,6 +23,7 @@ from connectors_kit import ACCOUNT, NOTION_KEY, FakeProvider, Seen, connectors_o
 __all__ = [
     "ACCOUNT",
     "FRAMES",
+    "INBOX_PAGE",
     "NEED",
     "PAGES",
     "SENT",
@@ -94,7 +95,9 @@ PAGES = (
     ("b" * 32, "page", "Channel stats"),
     ("c" * 32, "database", "Track shortlist"),
     ("d" * 32, "page", "Journal"),
+    ("9" * 32, "page", "Twin inbox"),
 )
+INBOX_PAGE = "9" * 32
 PRACTICE_PAGE = "e" * 32
 
 

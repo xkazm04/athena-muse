@@ -1,5 +1,6 @@
 """The poller (Twin module): while the daemon runs, it works the Gmail threads that have an open mission
-of a live twin, every `POLL_SECONDS_DEFAULT`. Nothing runs while the daemon is closed.
+of a live twin, every `POLL_SECONDS_DEFAULT`, after reading each live twin's task inbox for new
+missions (`inbox.py`), which the same pass then works. Nothing runs while the daemon is closed.
 
 It is started by the app's lifespan (`server.create_app`) unless `ATHENA_TWIN_POLL` is `0`; the tests
 set it so. A whole number of seconds there sets the interval instead. Each check runs off the event
@@ -21,7 +22,7 @@ from athena.app import Daemon
 from athena.contracts import POLL_SECONDS_DEFAULT
 from athena.engine import Engine, EngineError
 from athena.errors import ApiError
-from athena.twins import missions
+from athena.twins import inbox, missions
 
 log = logging.getLogger(__name__)
 
@@ -41,17 +42,18 @@ def interval() -> float | None:
 
 
 def check(daemon: Daemon, engine: Callable[[], Engine]) -> int:
-    """One pass over every open mission of a live twin: answers how many changed. A mission that fails
-    is logged and left as it was; the pass goes on."""
+    """One pass: the task inboxes, then every open mission of a live twin. Answers how many missions
+    started or changed. A mission that fails is logged and left as it was; the pass goes on."""
+    started = inbox.check(daemon)
     found = missions.open_ones(daemon)
     if not found:
-        return 0
+        return started
     try:
         built = engine()
     except (EngineError, ApiError) as e:
         log.warning("the twins' check has no engine: %s", type(e).__name__)
-        return 0
-    changed = 0
+        return started
+    changed = started
     for twin_id, mission_id in found:
         try:
             changed += missions.run(daemon, built, twin_id, mission_id)

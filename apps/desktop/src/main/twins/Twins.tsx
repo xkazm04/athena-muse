@@ -10,6 +10,7 @@ import { Seal } from "../../theme";
 import { useAppEvents } from "../../ui";
 import type { Route } from "../route";
 import { useMain } from "../store";
+import { EntryPage } from "./Entry";
 import { Icon, InventedBadge } from "./marks";
 import { DraftPage, MissionPage, VoicePage } from "./Nested";
 import { Overview } from "./Overview";
@@ -22,7 +23,7 @@ import "./document.css";
 import "./work.css";
 import "./frame.css";
 
-export type TwinRoute = Extract<Route, { view: "twins" | "twin" | "twin_voice" | "twin_mission" | "twin_draft" }>;
+export type TwinRoute = Extract<Route, { view: "twins" | "twin" | "twin_voice" | "twin_entry" | "twin_mission" | "twin_draft" }>;
 
 export interface TwinsViewProps {
   route: TwinRoute;
@@ -33,11 +34,12 @@ export interface TwinsViewProps {
   store?: TwinsStore;
 }
 
-/** Whether a route is a twin's setup: a new twin, or one still being issued. */
+/** Whether a route is a twin's setup: a new twin, one still being issued, or the one just issued while
+ * its seal is still on screen. Once the person leaves it, an issued twin opens as its document. */
 function isSetup(route: TwinRoute, st: TwinsStore): boolean {
   if (route.view !== "twin") return false;
   if (route.id === null) return true;
-  if (st.setup.twin?.id === route.id) return true;
+  if (st.setup.twin?.id === route.id) return st.setup.twin.state === "setting_up" || st.setup.sealed;
   const t = st.page?.twins.find((x) => x.id === route.id);
   return t?.state === "setting_up";
 }
@@ -67,7 +69,7 @@ export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
   const hooked = useTwins();
   const st = store ?? hooked;
   const simulated = useMain((s) => s.engine?.simulated ?? false);
-  const { loadPage, openSetup, loadDetail, loadPreview } = st;
+  const { loadPage, openSetup, closeSetup, loadDetail, loadPreview, loadThreads, suggestGoals } = st;
   const setup = isSetup(route, st);
   const id = "id" in route ? route.id : null;
   const go = useCallback((r: Route) => navigate(r), [navigate]);
@@ -82,6 +84,13 @@ export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
   useEffect(() => {
     if (setup) void openSetup(id);
   }, [setup, id, openSetup]);
+
+  // the person left the issued twin's setup: its document opens in place from now on
+  const sealed = st.setup.sealed ? st.setup.twin?.id : undefined;
+  const away = !!sealed && !(route.view === "twin" && route.id === sealed);
+  useEffect(() => {
+    if (away) closeSetup();
+  }, [away, closeSetup]);
 
   // a new twin gets its own address once the daemon made it, so a reload opens the same setup
   const made = route.view === "twin" && route.id === null ? st.setup.twin?.id : undefined;
@@ -172,6 +181,20 @@ export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
         onPreview={store ? undefined : () => void loadPreview(twin.id)}
         now={now}
         go={go}
+      />
+    );
+  } else if (route.view === "twin_entry" && twin) {
+    body = (
+      <EntryPage
+        twin={twin}
+        entry={st.entries[twin.id]}
+        goals={st.goals}
+        simulated={simulated && !example}
+        now={now}
+        go={go}
+        onThreads={store ? undefined : () => void loadThreads(twin.id)}
+        onGoals={store ? undefined : (pick) => void suggestGoals(twin.id, pick)}
+        onStart={(body) => st.startMission(twin.id, body)}
       />
     );
   } else if (route.view === "twin_mission" && twin) {

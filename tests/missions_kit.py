@@ -1,8 +1,10 @@
-"""Shared by the mission tests: a Gmail with threads that takes sends, a fake engine that judges and
-drafts as a test tells it, and a live twin made through the routes (set up, rehearsed, gone live).
+"""Shared by the mission tests: a Gmail with threads that lists them and takes sends, a Notion whose
+pages hold lines and take notes, a fake engine that judges and drafts as a test tells it, and a live
+twin made through the routes (set up, rehearsed, gone live).
 
 Nothing here reaches a network: `MissionWorld.answer` is the vault's transport, as `twins_kit.World`'s.
-Every send is kept, appended to its thread, and answered as Gmail answers one.
+Every send is kept, appended to its thread, and answered as Gmail answers one; every Notion append is
+kept and added to its page as a paragraph.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ import json
 from collections.abc import Iterator, Mapping
 from email import policy
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -36,15 +38,18 @@ def _b64(text: str) -> str:
     return base64.urlsafe_b64encode(text.encode()).decode().rstrip("=")
 
 
+DATE = "Thu, 29 Oct 2026 10:00:00 +0000"
+
+
 def message(
-    mid: str, sender: str, to: str, text: str, *, subject: str = "Feature on Friday?"
+    mid: str, sender: str, to: str, text: str, *, subject: str = "Feature on Friday?", date: str = DATE
 ) -> dict[str, Any]:
     """One message of a Gmail thread, in Gmail's own shape."""
     headers = [
         {"name": "From", "value": sender},
         {"name": "To", "value": to},
         {"name": "Subject", "value": subject},
-        {"name": "Date", "value": "Thu, 29 Oct 2026 10:00:00 +0000"},
+        {"name": "Date", "value": date},
         {"name": "Message-ID", "value": f"<{mid}@mail.example>"},
     ]
     return {
@@ -53,12 +58,19 @@ def message(
     }
 
 
-def mine(mid: str, text: str) -> dict[str, Any]:
-    return message(mid, f"Alex <{ACCOUNT}>", f"Lumen Vale <{THEM}>", text)
+def mine(mid: str, text: str, *, date: str = DATE) -> dict[str, Any]:
+    return message(mid, f"Alex <{ACCOUNT}>", f"Lumen Vale <{THEM}>", text, date=date)
 
 
-def theirs(mid: str, text: str) -> dict[str, Any]:
-    return message(mid, f"Lumen Vale <{THEM}>", f"Alex <{ACCOUNT}>", text, subject="Re: Feature on Friday?")
+def theirs(mid: str, text: str, *, date: str = DATE) -> dict[str, Any]:
+    return message(
+        mid, f"Lumen Vale <{THEM}>", f"Alex <{ACCOUNT}>", text, subject="Re: Feature on Friday?", date=date
+    )
+
+
+def line(block: str, text: str, kind: str = "bulleted_list_item") -> dict[str, Any]:
+    """One block of a Notion page, in Notion's own shape."""
+    return {"object": "block", "id": block, "type": kind, kind: {"rich_text": [{"plain_text": text}]}}
 
 
 class MissionWorld(World):
@@ -69,10 +81,27 @@ class MissionWorld(World):
         self.threads: dict[str, list[dict[str, Any]]] = {}
         self.sent: list[dict[str, Any]] = []
         self.send_status = 200
+        self.pages: dict[str, list[dict[str, Any]]] = {}  # Notion page id -> its blocks
+        self.notes: list[tuple[str, str]] = []  # every Notion append: (page id, text)
 
     def answer(self, method: str, address: str, headers: Mapping[str, str], body: bytes | None) -> Any:
         path = urlsplit(address).path
+        if urlsplit(address).hostname == "api.notion.com" and path.startswith("/v1/blocks/"):
+            page = path.split("/")[3]
+            if method == "GET" and path.endswith("/children"):
+                if page not in self.pages:
+                    return 404, {"message": "not found"}
+                return 200, {"results": self.pages[page]}
+            if method == "PATCH":
+                for child in json.loads(body or b"{}").get("children", []):
+                    text = "".join(r["text"]["content"] for r in child["paragraph"]["rich_text"])
+                    self.notes.append((page, text))
+                    if page in self.pages:
+                        self.pages[page].append(line(f"note{len(self.notes)}", text, "paragraph"))
         if urlsplit(address).hostname == "gmail.googleapis.com":
+            if method == "GET" and path.endswith("/threads"):
+                limit = int(parse_qs(urlsplit(address).query)["maxResults"][0])
+                return 200, {"threads": [{"id": tid} for tid in list(self.threads)[:limit]]}
             if method == "GET" and "/threads/" in path:
                 tid = path.rsplit("/", 1)[-1]
                 if tid not in self.threads:

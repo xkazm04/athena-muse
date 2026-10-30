@@ -12,6 +12,8 @@ import {
   type ChannelKind,
   type ConnectFlow,
   type DialsBody,
+  type Mission,
+  type NewMissionBody,
   type TwinDetail,
   type TwinDraft,
   type TwinSayBody,
@@ -24,6 +26,7 @@ import { applyPieceOps, currentTurn, pencilOf, rehearsalStep } from "./select";
 import type {
   Choices,
   ConnectView,
+  EntryPick,
   RehearsalState,
   SetupState,
   SetupWork,
@@ -41,6 +44,7 @@ export const emptyChoices = (): Choices => ({
   dials: {},
   preset: null,
   autonomy: { first: "assist", reply: "assist", split: false, bar: BAR_DEFAULT, notion: "auto", touched: false },
+  inbox: null,
 });
 
 export function initialSetup(): SetupState {
@@ -80,6 +84,8 @@ export function initialTwins(mode: TwinsState["mode"] = "live"): TwinsState {
     issued: null,
     details: {},
     previews: {},
+    entries: {},
+    goals: {},
     done: {},
     flash: "",
     signin: null,
@@ -202,6 +208,8 @@ export function applyLocal(s: SetupState, a: TwinsAction): SetupState {
       const au = { ...c.autonomy, split, reply: split ? c.autonomy.reply : c.autonomy.first, touched: true };
       return { ...s, choices: { ...c, autonomy: au } };
     }
+    case "inbox":
+      return { ...s, choices: { ...c, inbox: a.page } };
     case "where":
       return { ...s, where: !s.where };
     case "reh_text":
@@ -211,7 +219,7 @@ export function applyLocal(s: SetupState, a: TwinsAction): SetupState {
   }
 }
 
-const LOCAL: ReadonlySet<TwinsAction["type"]> = new Set(["choose", "dial", "preset", "level", "bar", "split", "where", "reh_text"]);
+const LOCAL: ReadonlySet<TwinsAction["type"]> = new Set(["choose", "dial", "preset", "level", "bar", "split", "where", "reh_text", "inbox"]);
 
 /** A row on a slip: what the daemon keeps of it. */
 interface SlipRow {
@@ -224,6 +232,23 @@ interface SlipRow {
  * slip was picked; else her suggestion (the daemon lists rows unpicked, each with her suggestion). */
 export const chosen = (c: Choices, group: "samples" | "pages" | "chores", x: SlipRow, all: readonly SlipRow[]) =>
   c[group][x.id] ?? (all.some((y) => y.picked) ? x.picked : x.suggest);
+
+/** The preset that reads a Notion page for new missions. */
+export const INBOX = "task-inbox";
+
+/** The task inbox's page as the slip shows it: the person's choice, else the one it reads, else the first
+ * picked page it may read (a page, not a database). "" when there is none. */
+export function inboxPage(s: SetupState): string {
+  const t = s.twin;
+  if (!t) return "";
+  const readable = t.pages.filter((p) => p.picked && p.kind === "page");
+  const own = s.choices.inbox ?? t.chores.find((c) => c.id === INBOX)?.page;
+  if (own && readable.some((p) => p.id === own)) return own;
+  return readable[0]?.id ?? "";
+}
+
+/** The key a suggestion is kept under: the twin and the conversation, or the address. */
+export const goalsKey = (twin: string, pick: EntryPick) => `${twin}|${"thread" in pick ? pick.thread : `to:${pick.to.trim().toLowerCase()}`}`;
 
 /** The style presets' dial values, as the daemon applies them (`twins/style.py` PRESETS). */
 export const PRESET_VALUES: Record<string, Record<string, number>> = {
@@ -261,8 +286,16 @@ export interface TwinsStore extends TwinsState {
   refresh: () => Promise<void>;
   /** How a twin sounds now; the daemon keeps it until its voice changes. */
   loadPreview: (id: string) => Promise<void>;
+  /** The new entry slip: the twin's recent conversations, read when the slip opens. */
+  loadThreads: (id: string) => Promise<void>;
+  /** Athena's suggested goals for one conversation or address: one engine call, kept per conversation. */
+  suggestGoals: (id: string, pick: EntryPick) => Promise<void>;
+  /** Starts a mission from the slip. Answers it, or the problem the daemon gave in plain words. */
+  startMission: (id: string, body: NewMissionBody) => Promise<{ mission?: Mission; problem: string }>;
   /** Opens a twin's setup, or `null` for a new one (the describe step). */
   openSetup: (id: string | null) => Promise<void>;
+  /** Closes an issued twin's setup once the person left it, so it opens as its document. */
+  closeSetup: () => void;
   dispatch: (action: TwinsAction) => void;
   /** Signs a waiting draft, with the person's words when they changed it. Answers the problem the
    * daemon gave, in plain words, or "" when it went. */
@@ -440,7 +473,8 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
         words = `Read from these ${ids.length}`;
       } else if (panel === "chores") {
         const ids = t.chores.filter((x) => !x.coming && chosen(c, "chores", x, t.chores)).map((x) => x.id);
-        runs.push(() => io.twinChores(id, ids));
+        const inbox = ids.includes(INBOX) ? inboxPage(s) : "";
+        runs.push(() => io.twinChores(id, ids, inbox || undefined));
         words = `Issue ${ids.length} permit${ids.length === 1 ? "" : "s"}`;
       } else if (panel === "autonomy") {
         const a = c.autonomy;
@@ -709,6 +743,45 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
         }
       },
 
+      loadThreads: async (id) => {
+        const was = get().entries[id];
+        if (was?.load === "reading") return;
+        set((st) => ({ entries: { ...st.entries, [id]: { threads: was?.threads ?? [], load: "reading" } } }));
+        try {
+          const threads = await io.twinThreads(id);
+          set((st) => ({ entries: { ...st.entries, [id]: { load: "ready", threads } } }));
+        } catch (e) {
+          const problem = reasonOf(e, "Your recent conversations could not be read just now.");
+          set((st) => ({ entries: { ...st.entries, [id]: { load: "problem", threads: [], problem } } }));
+        }
+      },
+
+      suggestGoals: async (id, pick) => {
+        const key = goalsKey(id, pick);
+        const was = get().goals[key];
+        if (was && was.load !== "problem") return;
+        set((st) => ({ goals: { ...st.goals, [key]: { load: "reading", goals: [] } } }));
+        try {
+          const goals = await io.twinGoals(id, pick);
+          set((st) => ({ goals: { ...st.goals, [key]: { load: "ready", goals } } }));
+        } catch {
+          // her suggestions are optional: the person's own goal always works
+          set((st) => ({ goals: { ...st.goals, [key]: { load: "problem", goals: [] } } }));
+        }
+      },
+
+      startMission: async (id, body) => {
+        let mission: Mission;
+        try {
+          mission = await io.startMission(id, body);
+        } catch (e) {
+          return { problem: reasonOf(e, "It could not take the mission. Nothing was sent.") };
+        }
+        set({ flash: TWINS_WORDS.missionStarted(mission.with) });
+        await get().loadPage();
+        return { mission, problem: "" };
+      },
+
       openSetup: async (id) => {
         if (id !== null && get().setup.twin?.id === id) return;
         session++;
@@ -722,6 +795,11 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
           if (from !== session) return;
           setS({ work: null, phase: "failed", problem: reasonOf(e, "Could not open the twin") });
         }
+      },
+
+      closeSetup: () => {
+        session++;
+        set({ setup: initialSetup() });
       },
 
       dispatch: (action) => {

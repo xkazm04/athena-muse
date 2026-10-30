@@ -162,6 +162,29 @@ def pages(connectors: Connectors, limit: int = PAGES_MAX) -> list[Page]:
     return out
 
 
+_LINE_BLOCKS = frozenset({"paragraph", "bulleted_list_item", "numbered_list_item", "to_do"})
+
+
+def page_lines(connectors: Connectors, page_id: str) -> list[tuple[str, str]]:
+    """A Notion page's lines of text, top to bottom, each with its block id: paragraphs, list items and
+    to-dos not yet ticked (headings and everything else are not lines a person writes a task on).
+    Untrusted text. Notion's first page of blocks is read: the newest lines go on top or are few."""
+    safe = quote(notion.normalize_id(page_id), safe="")
+    url = f"{notion.API}/blocks/{safe}/children?page_size={notion.CHILDREN_PAGE}"
+    found = _request(connectors, "notion", "GET", url)
+    out: list[tuple[str, str]] = []
+    for block in found.get("results", []) if isinstance(found, dict) else []:
+        if not isinstance(block, dict) or block.get("type") not in _LINE_BLOCKS:
+            continue
+        payload = block.get(block["type"])
+        if not isinstance(payload, dict) or (block["type"] == "to_do" and payload.get("checked")):
+            continue  # a ticked to-do is done
+        text = notion.rich_text(payload.get("rich_text"))
+        if " ".join(text.split()):
+            out.append((str(block.get("id", "")), " ".join(text.split())))
+    return out
+
+
 # --- the practice page ------------------------------------------------------------------------------
 
 

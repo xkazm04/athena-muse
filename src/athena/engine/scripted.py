@@ -140,6 +140,7 @@ TWIN_DRAFT = "## Drafting the next message"
 TWIN_JUDGE = "## Judging the rehearsal"
 TWIN_MISSION_JUDGE = "## Judging the mission"
 TWIN_PREVIEW = "## Previewing the voice"
+TWIN_GOALS = "## Suggesting goals"
 _FROM = re.compile(r"^from: .*$", re.M)
 _DIAL = re.compile(r"^- (\w+): (\d) of 5", re.M)
 _YES = re.compile(r"\b(go for it|go ahead|sounds (good|fair|great)|yes|deal|agreed)\b", re.I)
@@ -477,6 +478,27 @@ def _preview(system: str, user: str) -> dict[str, Any]:
     return {"inbound": inbound, "text": text}
 
 
+def _goals(user: str) -> dict[str, Any]:
+    """Three goals for a new mission: toward a yes on the conversation's subject, or, to someone new,
+    a first introduction. Plain, so the person may take one as it is."""
+    to = m.group(1).strip() if (m := re.search(r"Who it writes to: (.+)", user)) else "them"
+    first = (to.split("@")[0].split() or ["them"])[0]
+    subject = m.group(1).strip() if (m := re.search(r"^Subject: (.+)$", user, re.M)) else ""
+    if "They have not written yet" in user:
+        goals = [
+            f"Introduce yourself to {first} and ask for a short call",
+            f"Ask {first} whether they would like to work together",
+            f"Get {first}'s yes to a first meeting",
+        ]
+    else:
+        goals = [
+            f"Get {first}'s yes to '{_cut(subject, 40)}'" if subject else f"Get {first}'s yes",
+            f"Answer {first}'s questions and agree on next steps",
+            f"Thank {first} and close the conversation kindly",
+        ]
+    return {"goals": goals}
+
+
 def _twin_json(system: str, user: str) -> str | None:
     """The answer to one of a twin's JSON calls, or None when the call is not a twin's."""
     so_far = int(m.group(1)) if (m := _SO_FAR.search(user)) else 0
@@ -498,6 +520,8 @@ def _twin_json(system: str, user: str) -> str | None:
         answer = _mission_judge(user)
     elif TWIN_PREVIEW in system:
         answer = _preview(system, user)
+    elif TWIN_GOALS in system:
+        answer = _goals(user)
     return json.dumps(answer) if answer is not None else None
 
 

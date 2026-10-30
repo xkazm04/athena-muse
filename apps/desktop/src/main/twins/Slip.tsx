@@ -8,7 +8,7 @@ import { clock, day } from "./format";
 import { Icon, Stamp } from "./marks";
 import { PieceLine } from "./Document";
 import { pencilOf } from "./select";
-import { chosen, dialsShown } from "./store";
+import { chosen, dialsShown, INBOX, inboxPage } from "./store";
 import type { ChoiceGroup, SetupState, TwinsAction } from "./types";
 import { CONNECT_WORDS, LEVEL, RULE, SECTION } from "./words";
 
@@ -483,6 +483,9 @@ function Chores({ s, dispatch }: SlipProps) {
   const on = (x: (typeof all)[number]) => chosen(s.choices, "chores", x, all);
   const n = ready.filter(on).length;
   const toolName = (tool: string) => tool.slice(0, 1).toUpperCase() + tool.slice(1);
+  const inbox = ready.find((c) => c.id === INBOX);
+  const readable = (s.twin?.pages ?? []).filter((p) => p.picked && p.kind === "page");
+  const page = inboxPage(s);
   return (
     <Shell
       kind="chores"
@@ -520,6 +523,25 @@ function Chores({ s, dispatch }: SlipProps) {
             </>
           )}
         />
+        {inbox && on(inbox) && (
+          <div className="inbox-pick" data-role="inbox-page">
+            {readable.length ? (
+              <>
+                <label htmlFor="inbox-page">Its task inbox is the page</label>
+                <select id="inbox-page" className="field" value={page} onChange={(e) => dispatch({ type: "inbox", page: e.target.value })}>
+                  {readable.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+                <span className="row__x row__x--wrap">One mission per line, &lsquo;who: the goal&rsquo;. It only marks the lines it took.</span>
+              </>
+            ) : (
+              <span className="row__x row__x--wrap">Tick a page it may read under Reads from first: the task inbox reads one of those.</span>
+            )}
+          </div>
+        )}
         {coming.length > 0 && <span className="rows__k">Coming</span>}
         {coming.map((c) => (
           <div key={c.id} className="row permit-row permit-row--blank" aria-disabled="true">

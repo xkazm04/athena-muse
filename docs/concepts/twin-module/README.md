@@ -218,6 +218,8 @@ Repo law applies throughout: the contract comes first, one commit per feature, a
 
 **WP5b done (2026-10-30):** the page talks to the daemon; the invented example plays only in the preview and fidelity harnesses and behind a labelled "Show the invented example", and the setup header says "Simulated" on the scripted engine. The daemon plays a rehearsal's whole conversation in one stream, so a mark never plays it again: the page walks each draft that waited, oldest first, then shows the outcome. One decision call (`api.decide` with `edited`); a failed send keeps the draft page open with the route's problem. A card filed or decided and a Project changed (the poller's missions) refresh the page through `useAppEvents`. A paused twin goes live again from its card. New on the contract: `GET /twins/{id}/preview` -> `TwinPreview {inbound, text, changed}` and `TwinDetail.preview`: one engine call on surface `twin`, kept until the compiled voice changes (in memory, so a restart writes it once more); the voice section's line shows its first words and opens the voice page. The scripted engine judges and drafts missions and writes the preview, labelled simulated. `scripts/twin_fixture.py` now drives the daemon in-process on the scripted engine over the tests' fake Gmail and Notion (pinned clock and ids, byte-identical), and `scripts/twin_seam.py` drives the built page against a throwaway daemon with the fakes in its own process, through the whole path; its screenshots are in [`shots/live/`](shots/live/).
 
+**WP7 done (2026-10-30):** a live twin takes a mission from its document. "Give it a mission" on its entries opens the new entry (`#twin/<id>/entry`): who it is with, a recent Gmail conversation (`GET /twins/{id}/threads` -> `ThreadList`: newest first, at most 20, the last message as an excerpt of at most 200 characters; the page lists the ones where they wrote last first) or someone new by their address; the goal in the person's words, with up to three of Athena's suggestions in pencil (`POST /twins/{id}/goals` -> `GoalList`: one engine call on surface `twin`, the conversation fenced; optional, the typed goal always works); and the part of the send rule its first message meets. Start opens the new mission's script. `Mission.source` says where a mission was given (`page`, or `notion` for the task inbox). The task inbox runs: its page is chosen on the permits slip (`ChoresBody.inbox`, `ChorePreset.page`: a page the twin may read), and each poll takes every new "<who or thread>: <goal>" line once, starts its mission, reports the lines it cannot place on the twin (`TwinSummary.inbox`, shown under its missions) and writes nothing on the page but one "Taken:" note per line, ruled by `decide()` on the Notion channel. How it sounds is kept in the `twin_previews` table, so it survives a restart, and is erased with the Project. An issued twin opens as its document once the person leaves its setup. `scripts/twin_seam.py` starts its mission through the slip and takes a second one from the task inbox on the fake Notion (`--page-port` serves the page on another port); its new screenshots are `entry`, `entry-mission` and `document-inbox` in [`shots/live/`](shots/live/).
+
 `contracts.py` and `contract.ts` change together, and `tests/test_contract_parity.py` gains the new enums, caps and routes.
 
 **Enums.**
@@ -234,6 +236,7 @@ Repo law applies throughout: the contract comes first, one commit per feature, a
 | `Decision` | `sent_alone` `waits` |
 | `WaitReason` | `review` `assist` `first_message` `below_bar` `risk` `paused` |
 | `Mark` | `me` `edited` `not_me` |
+| `MissionSource` | `page` `notion` |
 
 `Surface` gains `twin`. `ActionName` gains `twin_send` (gated: one Gmail message, in-thread when replying) and `twin_note` (gated: one Notion append or create, used by preset chores).
 
@@ -257,7 +260,7 @@ Repo law applies throughout: the contract comes first, one commit per feature, a
 | Setup panels | `POST /twins/{id}/samples {ids}`; `/dials {dials}`; `/pages {ids}`; `/chores {ids}`; `/autonomy {channel, autonomy, bar, split?}`; `/memory {id, keep, reason?}` |
 | Rehearsal | `POST /twins/{id}/rehearse {goal}` (NDJSON turns); `POST /twins/{id}/rehearse/mark {turn, mark, edited_text?}` |
 | Going live and pausing | `POST /twins/{id}/golive`; `POST /twins/{id}/pause` |
-| Missions | `POST /twins/{id}/missions {thread, goal}` -> `Mission`; `GET /twins/{id}/missions/{mid}` |
+| Missions | `POST /twins/{id}/missions {thread, goal}` -> `Mission`; `GET /twins/{id}/missions/{mid}`; `GET /twins/{id}/threads` -> `ThreadList`; `POST /twins/{id}/goals {thread?, to?}` -> `GoalList` |
 | Connectors | `GET /connectors`; `POST /connectors/{kind}/connect {client_id, client_secret}` or `{key}`; `GET /connectors/{kind}/flow`; `POST /connectors/{kind}/disconnect`; `POST /connectors/{kind}/probe` |
 | Signature decisions | `POST /decisions/{id} {verdict, edited?: {text}}`. The executor runs off the event loop, and a failed executor returns the card to `waiting` with a problem line. |
 

@@ -1,10 +1,12 @@
 """How a twin sounds now (the voice section's nested preview): one engine call on surface `twin`, kept
 until the compiled voice changes, so opening the voice page twice costs once; what changed since is
 counted by the code; the scripted engine answers it, labelled simulated, and a twin with no voice yet
-is refused in plain words."""
+is refused in plain words. It is kept in the store, so it survives a restart and is erased with the
+Project."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,11 +15,13 @@ from starlette.testclient import TestClient
 from athena import contracts
 from athena.app import Daemon
 from athena.contracts import TwinDetail, TwinPreview
+from athena.server import create_app
 from athena.twins import preview
 from connectors_kit import BANNED, conforms
 from twins_kit import World
 
 ROUTE = contracts.ROUTES["twin_preview"]
+AUTH = {"Authorization": "Bearer t"}
 
 
 @pytest.fixture
@@ -86,3 +90,26 @@ def test_what_changed_is_counted_by_the_code() -> None:
     assert preview.changes(after, after) == [
         "What it knows, remembers or must never do changed; its voice did not"
     ]
+
+
+def test_a_kept_preview_survives_a_restart_and_is_erased_with_the_project(tmp_path: Path) -> None:
+    first_daemon = Daemon.open(tmp_path)
+    world = World(first_daemon, TestClient(create_app(first_daemon, token="t"), headers=AUTH))
+    twin_id = world.create()
+    world.play(twin_id, frames=5)
+    first = sounds(world, twin_id)
+    first_daemon.store.close()
+
+    again = Daemon.open(tmp_path)  # the daemon restarted over the same data folder
+    world = World(again, TestClient(create_app(again, token="t"), headers=AUTH))
+    before = calls(again)
+    assert world.get(twin_id)["preview"] == first
+    assert sounds(world, twin_id) == first and calls(again) == before  # nothing written again
+    world.post(twin_id, "twin_dials", {"dials": {"formality": 1}})
+    assert sounds(world, twin_id)["changed"] == ["Formality from 3 to 1 of 5"]  # against the kept one
+    assert len(again.twins.rows("previews", twin_id)) == 1  # one kept per twin
+
+    space = world.get(twin_id)["space_id"]
+    assert world.client.delete(contracts.ROUTES["space"].format(id=space)).status_code == 200
+    assert again.store.query("SELECT COUNT(*) FROM twin_previews")[0][0] == 0
+    again.store.close()

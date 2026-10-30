@@ -123,6 +123,7 @@ ChoreKind = Literal["outcome", "inbox", "test", "channel"]
 DialSource = Literal["learned", "preset", "you"]
 TwinTurnSide = Literal["twin", "other"]
 TwinMessageKind = Literal["first_message", "reply"]
+MissionSource = Literal["page", "notion"]  # given on the twins page, or taken from its task inbox
 PieceOpName = Literal["add", "change", "remove", "dial"]
 SetupPanel = Literal["connect", "samples", "style", "pages", "chores", "autonomy", "memory", "rehearsal"]
 FactSuggest = Literal["keep", "drop"]
@@ -135,6 +136,9 @@ BAR_MAX = 99
 BAR_DEFAULT = 80
 RISKS_MAX = 5  # lines on one draft's risk list
 POLL_SECONDS_DEFAULT = 300  # Gmail threads with an open mission, while the daemon runs
+THREADS_MAX = 20  # recent Gmail conversations the new entry slip offers
+SNIPPET_MAX = 200  # characters of a conversation's last message the slip shows
+GOALS_MAX = 3  # goals Athena suggests for a new mission
 DIAL_MIN = 1  # a style dial's value
 DIAL_MAX = 5
 
@@ -687,6 +691,7 @@ class ChorePreset(TypedDict):
     picked: bool
     later: NotRequired[bool]  # can be picked once the twin is live
     coming: NotRequired[bool]  # a tool this app cannot reach yet: shown, never picked
+    page: NotRequired[str]  # the task inbox: the Notion page it reads, one the twin may read
 
 
 # `from` is a Python keyword, so this one is spelled the functional way.
@@ -774,6 +779,7 @@ Mission = TypedDict(
         "thread": NotRequired[str],  # the Gmail thread it lives on
         "practice": NotRequired[bool],  # the dress rehearsal on a Notion practice page
         "filed": NotRequired[TwinFiled],
+        "source": NotRequired[MissionSource],  # where the person gave it (a real mission only)
     },
 )
 
@@ -808,6 +814,18 @@ class TwinWeek(TypedDict):
     cost_usd: NotRequired[float]  # an estimate; the screen says "est."
 
 
+class TaskInbox(TypedDict):
+    """The task inbox at work (the `task-inbox` preset): the Notion page it reads for new missions, one
+    line each ("<who or thread>: <goal>"), and what it made of the page when it last read it."""
+
+    page: str  # the Notion page id
+    title: str
+    taken: int  # lines it started a mission for, ever
+    unplaced: list[str]  # lines it could not place at its last read, each with why; it left them alone
+    checked_at: NotRequired[str]  # its last read of the page
+    problem: NotRequired[str]  # the page could not be read, plain words
+
+
 class TwinSummary(TypedDict):
     """One twin: a document in the wallet and a row of the ledger."""
 
@@ -827,6 +845,7 @@ class TwinSummary(TypedDict):
     updated: str
     since: NotRequired[str]  # when it first went live
     paused_because: NotRequired[str]
+    inbox: NotRequired[TaskInbox]  # when the task inbox is picked and reads a page
 
 
 class TwinAsk(TypedDict):
@@ -878,6 +897,33 @@ class TwinStats(TypedDict):
 class TwinPage(TypedDict):
     twins: list[TwinSummary]
     stats: TwinStats
+
+
+# `with` is a Python keyword, so this one is spelled the functional way.
+ThreadSummary = TypedDict(
+    "ThreadSummary",
+    {
+        "id": str,  # the Gmail thread id: what a new mission's `thread` names
+        "with": str,  # the other side: a name, else an address
+        "subject": str,
+        "snippet": str,  # an excerpt of its last message (<= SNIPPET_MAX): their words, untrusted
+        "last_at": str,  # its last message, ISO 8601 UTC
+        "theirs_last": bool,  # the other side spoke last: answering it is a reply
+    },
+)
+
+
+class ThreadList(TypedDict):
+    """GET /twins/{id}/threads: recent Gmail conversations, newest first, at most THREADS_MAX."""
+
+    threads: list[ThreadSummary]
+
+
+class GoalList(TypedDict):
+    """POST /twins/{id}/goals: Athena's suggested goals for a new mission (her pencil), at most
+    GOALS_MAX, each <= LABEL_MAX; [] when she has none. The person's own goal always works."""
+
+    goals: list[str]
 
 
 class Connection(TypedDict):
@@ -932,6 +978,7 @@ class PagesBody(TypedDict):
 
 class ChoresBody(TypedDict):
     ids: list[str]
+    inbox: NotRequired[str]  # with `task-inbox`: the picked Notion page it reads
 
 
 class AutonomyBody(TypedDict):
@@ -958,8 +1005,15 @@ class MarkBody(TypedDict):
 
 
 class NewMissionBody(TypedDict):
-    thread: str
+    thread: str  # a Gmail thread id, or the one address of someone new
     goal: str
+
+
+class GoalsBody(TypedDict):
+    """One of the two: the conversation chosen, or the one address of someone new."""
+
+    thread: NotRequired[str]
+    to: NotRequired[str]
 
 
 class ConnectBody(TypedDict):
@@ -1075,6 +1129,8 @@ ROUTES = {
     "twin_missions": "/twins/{id}/missions",
     "twin_mission": "/twins/{id}/missions/{mid}",
     "twin_preview": "/twins/{id}/preview",
+    "twin_threads": "/twins/{id}/threads",
+    "twin_goals": "/twins/{id}/goals",
     "connectors": "/connectors",
     "connector_connect": "/connectors/{kind}/connect",
     "connector_flow": "/connectors/{kind}/flow",

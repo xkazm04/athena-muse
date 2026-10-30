@@ -260,6 +260,7 @@ def test_erasing_the_project_erases_the_twin_whole(world: World, daemon: Daemon)
     twin_id = world.create()
     world.play(twin_id, frames=10)
     space = world.get(twin_id)["space_id"]
+    assert world.client.get(contracts.ROUTES["twin_preview"].format(id=twin_id)).status_code == 200
     for table in TWIN_TABLES:
         assert daemon.store.query(f"SELECT COUNT(*) FROM {table} WHERE space_id = ?", (space,))[0][
             0

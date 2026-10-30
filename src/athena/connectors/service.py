@@ -151,6 +151,21 @@ class Service:
             raise ServiceError("engine_error", f"Gmail answered {status} to the thread read")
         return messages
 
+    def recent_threads(self, limit: int) -> list[tuple[str, list[gmail.ThreadMessage]]]:
+        """The newest Gmail conversations, newest first, each with its messages' headers and Gmail's
+        snippet of each (untrusted: a model reads them fenced, never bare)."""
+        if self.spec.id != "gmail":
+            raise ServiceError("unknown_ref", f"{self.spec.label} has no threads")
+        try:
+            status, threads = gmail.fetch_threads(self._request(), limit)
+        except NeedsReauth as exc:
+            raise ServiceError("validator_failed", str(exc)) from None
+        except VaultError as exc:
+            raise ServiceError("engine_error", str(exc)) from None
+        if status >= 300:
+            raise ServiceError("engine_error", f"Gmail answered {status} to the conversation list")
+        return threads
+
     def _request(self, answers: list[tuple[int, Any]] | None = None) -> gmail.Request:
         def request(method: str, url: str, json_body: Any) -> tuple[int, Any]:
             status, body = self.vault.request(self.spec.id, method, url, json_body)

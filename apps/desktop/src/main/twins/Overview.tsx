@@ -3,13 +3,13 @@
 // waiting card opens its draft's own page, and each mission's beat dots open its script.
 
 import type { ReactNode } from "react";
-import type { Mission, TwinDraft, TwinStats, TwinSummary } from "../../lib/contract";
+import type { Mission, TaskInbox, TwinDraft, TwinStats, TwinSummary } from "../../lib/contract";
 import { Ledger, StatStrip, type LedgerColumn, type StatTile } from "../../ui";
 import type { Route } from "../route";
 import { barOf, beatAt, clearance, clearanceShort, handedBack, lastOf, money, num, rel, waitsOn } from "./format";
 import { Icon, Meter, Portrait, Stamp } from "./marks";
 import type { TwinsState } from "./types";
-import { CHANNEL_LABEL, MISSION_BADGE, STATE_BADGE, TWINS_WORDS as w } from "./words";
+import { CHANNEL_LABEL, MISSION_BADGE, STATE_BADGE, WAIT, TWINS_WORDS as w } from "./words";
 
 export interface OverviewProps {
   state: TwinsState;
@@ -354,6 +354,11 @@ function MissionRow({ m, t, now, go }: { m: Mission; t: TwinSummary; now: Date; 
     <li className="ms" data-state={m.state}>
       <div className="ms__h">
         <b>{m.title}</b>
+        {m.source === "notion" && (
+          <span className="tag" title="It took this one from the page it reads for new missions">
+            from your inbox
+          </span>
+        )}
         <span className="badge" data-tone={badge.tone}>
           {badge.label}
         </span>
@@ -387,7 +392,7 @@ function DraftRow({ d, t, go }: { d: TwinDraft; t: TwinSummary; go: (r: Route) =
         </span>
         <span className="dr__to">
           to {d.to}
-          {ms ? ` · ${ms.with}` : ""}
+          {ms && ms.with !== d.to ? ` · ${ms.with}` : ""}
         </span>
         <span className="dr__x">{d.text}</span>
       </button>
@@ -467,6 +472,35 @@ function PausedCard({
   );
 }
 
+/** The task inbox at work: the page it reads, what it took, and the lines it could not place. */
+function InboxLine({ inbox, now }: { inbox: TaskInbox; now: Date }) {
+  const n = inbox.unplaced.length;
+  return (
+    <div className="inbox" data-role="inbox" data-problem={String(!!inbox.problem || n > 0)}>
+      <p className="inbox__l">
+        <Icon name="notion" />
+        <span>
+          <b>Task inbox</b> reads &lsquo;{inbox.title}&rsquo; · {inbox.taken} taken
+          {inbox.checked_at ? ` · read ${rel(inbox.checked_at, now)}` : " · not read yet"}
+        </span>
+      </p>
+      {inbox.problem && <p className="inbox__x">{inbox.problem}</p>}
+      {n > 0 && (
+        <details className="inbox__x">
+          <summary>
+            {n} line{n === 1 ? "" : "s"} it could not place, left as you wrote {n === 1 ? "it" : "them"}
+          </summary>
+          <ul>
+            {inbox.unplaced.map((u) => (
+              <li key={u}>{u}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
 function Spread({
   t,
   state,
@@ -482,15 +516,28 @@ function Spread({
   onSignIn: (id: string) => void;
   onResume: (id: string) => void;
 }) {
-  const missions = t.missions.length ? (
-    <ul className="mss">
-      {t.missions.map((m) => (
-        <MissionRow key={m.id} m={m} t={t} now={now} go={go} />
-      ))}
-    </ul>
-  ) : (
-    <p className="empty">No missions yet.</p>
+  const missions = (
+    <>
+      {t.missions.length ? (
+        <ul className="mss">
+          {t.missions.map((m) => (
+            <MissionRow key={m.id} m={m} t={t} now={now} go={go} />
+          ))}
+        </ul>
+      ) : (
+        <p className="empty">No missions yet.</p>
+      )}
+      {t.inbox && <InboxLine inbox={t.inbox} now={now} />}
+    </>
   );
+  // the document's entries: a live or paused twin takes a new mission from here
+  const give =
+    t.state !== "setting_up" && t.channels.some((c) => c.kind === "gmail") ? (
+      <button type="button" className="btn ovpage__give" data-role="give-mission" onClick={() => go({ view: "twin_entry", id: t.id })}>
+        <Icon name="plus" />
+        {w.giveMission}
+      </button>
+    ) : null;
   const drafts = t.waiting.length ? (
     <ul className="drs">
       {t.waiting.map((d) => (
@@ -507,6 +554,7 @@ function Spread({
     <section className="ovpage">
       <h3>
         Missions <span>{t.missions.length}</span>
+        {give}
       </h3>
       {missions}
     </section>
@@ -529,6 +577,7 @@ function Spread({
       <section className="ovpage">
         <h3>
           Missions <span>{t.missions.length}</span>
+          {give}
         </h3>
         {missions}
       </section>
@@ -600,7 +649,13 @@ function Queue({ rows, go }: { rows: TwinSummary[]; go: (r: Route) => void }) {
   const also: ReactNode[] = [];
   for (const t of rows) {
     for (const d of t.waiting) {
-      const why = d.reason === "risk" ? `Held: ${d.risks.length} on its risk list` : `Not sure enough: ${d.confidence} of ${barOf(d, t) ?? "-"}`;
+      // why it waits: its risk list, how sure it was against the bar, or the level its message is on
+      const why =
+        d.reason === "risk"
+          ? `Held: ${d.risks.length} on its risk list`
+          : d.reason === "below_bar"
+            ? `Not sure enough: ${d.confidence} of ${barOf(d, t) ?? "-"}`
+            : WAIT[d.reason ?? "assist"];
       items.push(<WaitingCard key={d.id} kind="draft" twin={t.name} why={why} what={d.subject} onOpen={() => go({ view: "twin_draft", id: t.id, draft: d.id })} />);
     }
     for (const m of handedBack(t)) {

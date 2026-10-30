@@ -1071,3 +1071,177 @@
     overflow: hidden;
   }
 }
+
+/* ---------- the new entry: giving it a mission (the document's entries) ---------- */
+[data-twins-view="passport"] .ovpage__give {
+  margin-left: auto;
+  padding-block: 2px;
+  font-size: var(--fs-xs);
+  letter-spacing: normal;
+  text-transform: none;
+}
+[data-twins-view="passport"] .ms__h .tag {
+  margin-left: 2px;
+}
+/* the task inbox at work, under the missions */
+[data-twins-view="passport"] .inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--r-md);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .inbox[data-problem="true"] {
+  border-color: color-mix(in srgb, var(--role-human) 45%, transparent);
+}
+[data-twins-view="passport"] .inbox__l {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted-foreground);
+}
+[data-twins-view="passport"] .inbox__l b {
+  color: var(--foreground);
+  font-weight: 500;
+}
+[data-twins-view="passport"] .inbox__l .ic {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+[data-twins-view="passport"] .inbox__x {
+  margin: 0;
+  color: var(--role-human);
+}
+[data-twins-view="passport"] .inbox__x summary {
+  cursor: pointer;
+}
+[data-twins-view="passport"] .inbox__x ul {
+  margin: 4px 0 0;
+  padding-left: var(--sp-4);
+  color: var(--muted-foreground);
+}
+/* the nested page: who it is with, then the slip */
+[data-twins-view="passport"] .npage[data-role="entry-page"] .npage__page:last-child {
+  padding: var(--sp-3) var(--sp-4);
+}
+[data-twins-view="passport"] .entry-list {
+  min-height: 0;
+}
+[data-twins-view="passport"] .entry-row {
+  align-items: center;
+}
+[data-twins-view="passport"] .entry-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+[data-twins-view="passport"] .entry-row__at {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .tick--round {
+  border-radius: 50%;
+}
+[data-twins-view="passport"] .entry-new {
+  align-items: center;
+  cursor: default;
+}
+[data-twins-view="passport"] .entry-new .field {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+}
+[data-twins-view="passport"] .slip[data-kind="entry"] {
+  height: 100%;
+  margin: 0;
+}
+[data-twins-view="passport"] .entry-k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: calc(var(--sp-2) * -1);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-twins-view="passport"] .entry-k .ic {
+  width: 13px;
+  height: 13px;
+}
+[data-twins-view="passport"] .entry-k .tag {
+  letter-spacing: normal;
+  text-transform: none;
+}
+[data-twins-view="passport"] .entry-goal {
+  flex: none;
+  min-height: 72px;
+  resize: vertical;
+  border-left: 3px solid var(--role-human);
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .entry-pencil > .pc {
+  position: relative;
+}
+[data-twins-view="passport"] .entry-pencil__b {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+[data-twins-view="passport"] .entry-pencil > .pc[data-state="pencil"] .entry-pencil__b {
+  color: var(--role-agent);
+}
+[data-twins-view="passport"] .entry-pencil__b:hover {
+  text-decoration: underline;
+}
+[data-twins-view="passport"] .entry-rule,
+[data-twins-view="passport"] .entry-problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+[data-twins-view="passport"] .entry-rule .ic,
+[data-twins-view="passport"] .entry-problem .ic {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-top: 1px;
+}
+[data-twins-view="passport"] .entry-problem {
+  border: 1px solid color-mix(in srgb, var(--status-error) 45%, transparent);
+  background: transparent;
+  color: var(--foreground);
+}
+/* the chores slip: which page the task inbox reads */
+[data-twins-view="passport"] .inbox-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0 4px 34px;
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .inbox-pick .field {
+  height: 32px;
+}
+@media (max-height: 760px) {
+  [data-twins-view="passport"] .entry-goal {
+    min-height: 56px;
+  }
+}

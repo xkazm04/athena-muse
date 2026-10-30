@@ -1,5 +1,6 @@
 """The twins tables: one row per twin, and one table per part of it (channels, dials, samples, pages,
-chores picked, memory facts, voice examples, missions and their turns), each row's body JSON.
+chores picked, memory facts, voice examples, missions and their turns, and how it sounds: the preview
+kept for its voice), each row's body JSON.
 
 Every table carries `space_id`, so erasing a Project erases its twins whole. A twin is the only twin
 of its Project: the setup conversation is the Project's conversation, and its costs are the
@@ -31,6 +32,7 @@ PARTS = (
     "examples",
     "missions",
     "turns",
+    "previews",
 )
 
 

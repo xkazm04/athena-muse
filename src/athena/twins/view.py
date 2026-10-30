@@ -18,6 +18,7 @@ from athena.contracts import (
     MissionTurn,
     NotionPage,
     Sample,
+    TaskInbox,
     TwinChannel,
     TwinDetail,
     TwinDraft,
@@ -169,6 +170,24 @@ def _name_and_purpose(daemon: Daemon, twin_id: str, space_id: str) -> tuple[str,
     return name or daemon.spaces.get(space_id)["name"], purpose
 
 
+def inbox(twins: Twins, twin_id: str) -> TaskInbox | None:
+    """The task inbox's report, once it is picked with a page to read."""
+    row = twins.one("chores", twin_id, catalogue.INBOX)
+    if row is None or not row.get("page"):
+        return None
+    out: TaskInbox = {
+        "page": row["page"],
+        "title": row.get("title", ""),
+        "taken": len(row.get("taken", [])),
+        "unplaced": [str(x) for x in row.get("unplaced", [])],
+    }
+    if row.get("checked_at"):
+        out["checked_at"] = row["checked_at"]
+    if row.get("problem"):
+        out["problem"] = row["problem"]
+    return out
+
+
 def summary(daemon: Daemon, twin_id: str) -> TwinSummary:
     row = daemon.twins.row(twin_id)
     name, purpose = _name_and_purpose(daemon, twin_id, row["space_id"])
@@ -194,6 +213,9 @@ def summary(daemon: Daemon, twin_id: str) -> TwinSummary:
         out["since"] = row["since"]
     if row["paused_because"]:
         out["paused_because"] = row["paused_because"]
+    reading = inbox(daemon.twins, twin_id)
+    if reading is not None:
+        out["inbox"] = reading
     return out
 
 
@@ -235,7 +257,7 @@ def detail(daemon: Daemon, twin_id: str) -> TwinDetail:
             "style_presets": list(style.PRESETS),
             "samples": samples(twins, twin_id),
             "pages": pages(twins, twin_id),
-            "chores": catalogue.listed(picked, connected(daemon)),
+            "chores": catalogue.listed(picked, connected(daemon), base.get("inbox", {}).get("page", "")),
             "memory": memory(twins, twin_id),
         },
     )

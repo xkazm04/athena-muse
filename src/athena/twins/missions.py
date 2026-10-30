@@ -46,6 +46,7 @@ from athena.contracts import (
     Card,
     Mission,
     MissionBeat,
+    MissionSource,
     MissionState,
     MissionTurn,
     TwinChannel,
@@ -111,15 +112,15 @@ def _held(mission_id: str, *, wait: bool) -> Iterator[bool]:
 # --- reading the conversation ----------------------------------------------------------------------
 
 
-def _account(daemon: Daemon) -> str:
+def account_of(daemon: Daemon) -> str:
     return daemon.connectors.connection("gmail").get("account", "").lower()
 
 
-def _mine(message: ThreadMessage, account: str) -> bool:
+def is_mine(message: ThreadMessage, account: str) -> bool:
     return bool(account) and one_address(message.sender) == account
 
 
-def _party(raw: str) -> tuple[str, str]:
+def party(raw: str) -> tuple[str, str]:
     """(name or address, address) of the first person a header names."""
     found = [(name.strip(), addr.strip().lower()) for name, addr in getaddresses([raw]) if addr]
     if not found:
@@ -128,7 +129,7 @@ def _party(raw: str) -> tuple[str, str]:
     return name or addr, addr
 
 
-def _at(message: ThreadMessage) -> str:
+def sent_at(message: ThreadMessage) -> str:
     try:
         when = parsedate_to_datetime(message.date)
     except (TypeError, ValueError, IndexError):
@@ -137,7 +138,7 @@ def _at(message: ThreadMessage) -> str:
     return when.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def _thread(daemon: Daemon, thread_id: str) -> list[ThreadMessage]:
+def read_thread(daemon: Daemon, thread_id: str) -> list[ThreadMessage]:
     """The conversation, oldest first; anything but an answer is ApiError in plain words."""
     if daemon.connectors.connection("gmail")["status"] != "connected":
         raise ApiError("bad_request", "Gmail is not connected; sign in with Google again first.")
@@ -152,9 +153,10 @@ def _thread(daemon: Daemon, thread_id: str) -> list[ThreadMessage]:
 # --- making a mission ------------------------------------------------------------------------------
 
 
-def create(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> str:
-    """A new open mission on a Gmail conversation (`thread`: its id, or the one address to write to).
-    The conversation's messages so far become its first turns. Answers the mission's id."""
+def create(daemon: Daemon, twin_id: str, body: dict[str, Any], source: MissionSource = "page") -> str:
+    """A new open mission on a Gmail conversation (`thread`: its id, or the one address to write to),
+    given on the twins page or taken from the task inbox (`source`). The conversation's messages so far
+    become its first turns. Answers the mission's id."""
     twins = daemon.twins
     row = twins.row(twin_id)
     if row["state"] == "setting_up":
@@ -186,6 +188,7 @@ def create(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> str:
         "state": "open",
         "beats": [],
         "created": now_iso(),
+        "source": source,
         "_seen": [],
     }
     turns: list[MissionTurn] = []
@@ -194,12 +197,12 @@ def create(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> str:
             {"with": address, "_to": address, "note": f"It writes the first message to {address}."}
         )
     else:
-        messages = _thread(daemon, thread)
+        messages = read_thread(daemon, thread)
         if not messages:
             raise ApiError("bad_request", "that conversation has no messages")
-        account = _account(daemon)
-        theirs = [m for m in messages if not _mine(m, account)]
-        who, to = _party(theirs[0].sender) if theirs else _party(messages[0].to)
+        account = account_of(daemon)
+        theirs = [m for m in messages if not is_mine(m, account)]
+        who, to = party(theirs[0].sender) if theirs else party(messages[0].to)
         if not to:
             raise ApiError("bad_request", "that conversation names no one to write to")
         mission.update(
@@ -209,7 +212,7 @@ def create(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> str:
                 "_to": to,
                 "_subject": messages[-1].subject,
                 "note": "It answers when they write next."
-                if _mine(messages[-1], account)
+                if is_mine(messages[-1], account)
                 else "It is writing its reply.",
             }
         )
@@ -228,14 +231,14 @@ def _seen_turn(
 ) -> MissionTurn:
     """One message of the conversation as a turn: theirs, or one the person sent before the twin."""
     mission["_seen"].append(message.id)
-    mine = _mine(message, account)
+    mine = is_mine(message, account)
     if mine:
         mission["_ours"] = True
     return {
         "id": f"t{len(turns) + 1}",
         "side": "twin" if mine else "other",
         "text": cut_text(own_words(message.text)) or "(no words)",
-        "at": _at(message),
+        "at": sent_at(message),
     }
 
 
@@ -268,9 +271,9 @@ def _run(daemon: Daemon, engine: Engine, twin_id: str, space_id: str, mission_id
     if mission.get("_card") and _waiting(daemon, mission["_card"]):
         return False
     turns = cast("list[MissionTurn]", twins.rows("turns", mission_id))
-    account = _account(daemon)
+    account = account_of(daemon)
     try:
-        messages = _thread(daemon, mission["thread"]) if mission.get("thread") else []
+        messages = read_thread(daemon, mission["thread"]) if mission.get("thread") else []
     except ApiError as e:
         return _noted(daemon, twin_id, space_id, mission, f"{e.reason} It tries again on its next check.")
     fresh = [m for m in messages if m.id not in mission["_seen"]]
@@ -283,7 +286,7 @@ def _run(daemon: Daemon, engine: Engine, twin_id: str, space_id: str, mission_id
     last = messages[-1] if messages else None
     if last is None and any(t["side"] == "twin" for t in turns):
         return _settled(daemon, twin_id, space_id, mission, bool(fresh))
-    if last is not None and (_mine(last, account) or last.id == mission.get("_answered")):
+    if last is not None and (is_mine(last, account) or last.id == mission.get("_answered")):
         return _settled(daemon, twin_id, space_id, mission, bool(fresh))
     try:
         return _answer(daemon, engine, twin_id, space_id, mission, turns, messages)
@@ -343,7 +346,7 @@ def _answer(
     found, _ = code_risks(nevers, their_last, text)
     risks = merged(found, drafted.get("risks"))
     confidence = _percent(drafted.get("confidence"))
-    channel = _channel(daemon, twin_id, "gmail")
+    channel = channel_of(daemon, twin_id, "gmail")
     live = twins.row(twin_id)["state"] == "live"
     ruling = decide(channel, DraftFacts(kind=kind, confidence=confidence, risks=tuple(risks)), twin_live=live)
     if new_thread and not mission.get("_subject"):
@@ -413,7 +416,7 @@ def _one_line(text: str) -> str:
     return cut(text, SUBJECT_MAX) if text.strip() else ""
 
 
-def _channel(daemon: Daemon, twin_id: str, kind: str) -> TwinChannel:
+def channel_of(daemon: Daemon, twin_id: str, kind: str) -> TwinChannel:
     found = next((c for c in view.channels(daemon, twin_id) if c["kind"] == kind), None)
     if found is None:
         raise ApiError("bad_request", f"it has no {kind.capitalize()} to work in")
@@ -529,11 +532,11 @@ def _outcome(daemon: Daemon, twin_id: str, space_id: str, mission: dict[str, Any
     }
     text = cut_note(f"Outcome: {mission['title']}. With {row['with']}. {row['outcome']} ({row['date']})")
     filed = {"chore": preset.id, "where": f"Notion: {page['title']}", "row": row}
-    channel = _channel(daemon, twin_id, "notion")
+    channel = channel_of(daemon, twin_id, "notion")
     live = twins.row(twin_id)["state"] == "live"
     ruling = decide(channel, DraftFacts(kind="reply", confidence=sure, risks=()), twin_live=live)
     if ruling.decision == "sent_alone":
-        problem = _note(daemon, page["id"], text)
+        problem = write_note(daemon, page["id"], text)
         if not problem:
             mission["filed"] = filed
             mission["note"] += f" Filed to {filed['where']}."
@@ -564,7 +567,7 @@ def cut_note(text: str) -> str:
     return text.strip()[:NOTE_MAX]
 
 
-def _note(daemon: Daemon, page_id: str, text: str) -> str:
+def write_note(daemon: Daemon, page_id: str, text: str) -> str:
     """Appends one note to a picked page, letting it onto Notion's allow-list: the pages the person
     picked are the twin's scope there. Answers "" when written, else the problem in plain words."""
     vault = daemon.connectors.vault
@@ -596,9 +599,11 @@ def sign(daemon: Daemon, card: Card) -> str:
         if mission is None:
             raise ApiError("unknown_ref", "the mission this draft belongs to is gone")
         if card["action"] == "twin_note":
-            problem = _note(daemon, str(args["page"]), cut_note(str(args["text"])))
+            problem = write_note(daemon, str(args["page"]), cut_note(str(args["text"])))
             if problem:
                 raise ApiError("bad_request", problem)
+            if args.get("taken"):  # the task inbox's note that it took a line: the mission is as it was
+                return f"Marked taken on {args['where']}."
             mission["filed"] = {"chore": args["chore"], "where": args["where"], "row": dict(args["row"])}
             mission["note"] = cut(f"{mission.get('note', '')} Filed to {args['where']}.".strip(), DETAIL_MAX)
             _settled(daemon, twin_id, space_id, mission, True)
@@ -652,11 +657,11 @@ def _last_theirs(daemon: Daemon, mission: dict[str, Any]) -> str:
     if not mission.get("thread"):
         return ""
     try:
-        messages = _thread(daemon, mission["thread"])
+        messages = read_thread(daemon, mission["thread"])
     except ApiError:
         return ""
-    account = _account(daemon)
-    theirs = [m for m in messages if not _mine(m, account)]
+    account = account_of(daemon)
+    theirs = [m for m in messages if not is_mine(m, account)]
     found = theirs[-1].message_id if theirs else ""
     return found if _MESSAGE_ID.fullmatch(found) else ""
 
@@ -677,6 +682,8 @@ def declined(daemon: Daemon, card: Card) -> None:
         if mission is None:
             return
         if card["action"] == "twin_note":
+            if args.get("taken"):  # the line stays on the page unmarked; the mission is as it was
+                return
             mission["note"] = cut(f"{mission.get('note', '')} You chose not to file it.".strip(), DETAIL_MAX)
         else:
             daemon.twins.drop("turns", mission_id, str(args.get("turn", "")))

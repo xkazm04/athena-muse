@@ -139,6 +139,10 @@ export const TWINS_WORDS = {
   backToLive: "Back to your own twins",
   simulated: "Simulated",
   simulatedTitle: "Athena runs without a Muse key: her replies and the twin's drafts are simulated, and say so.",
+  // the new entry
+  giveMission: "Give it a mission",
+  missionStarted: (who: string) => `It took the mission with ${who}. Whatever needs your signature waits on your twins page.`,
+  exampleNoStart: "The invented example starts no missions: it shows what the slip offers. Start one on your own twin.",
   // the nested pages
   soundsLike: "Sounds like",
   soundsLikeNone: "not written yet: it needs a voice of yours first",
@@ -213,6 +217,45 @@ function firstClause(s: string): string {
 function lowerFirst(s: string): string {
   return s ? s[0]!.toLowerCase() + s.slice(1) : s;
 }
+
+/** The new entry: giving a live twin a mission from its document. */
+export const ENTRY_WORDS = {
+  kicker: "New entry",
+  title: "Give it a mission",
+  sub: "A goal on one conversation, in your words. It writes toward it as you, under the send rule.",
+  lands: "Entries",
+  withWhom: "Who it is with",
+  recent: (n: number) => `${n} recent conversation${n === 1 ? "" : "s"} in your Gmail`,
+  reading: "Reading your recent conversations in Gmail.",
+  noThreads: "No recent conversations in your Gmail. Write to someone new below.",
+  theirsLast: "They wrote last",
+  mineLast: "You wrote last",
+  someoneNew: "Someone new",
+  theirAddress: "Their address",
+  writeTo: "Write to them",
+  oneAddress: "Give one address, like name@example.com.",
+  hasMission: "has a mission",
+  chooseFirst: "Choose who it is with, on the left.",
+  answering: "answering their message",
+  waitingOnThem: "it answers when they write next",
+  startsNew: "it starts a new conversation",
+  goalLabel: "The goal, in your words",
+  goalPlaceholder: "What should it get from this conversation?",
+  herPencil: "Her pencil",
+  pencilWaits: "Choose who it is with, and she suggests up to three goals. Your own words always work.",
+  thinking: "She is thinking of goals for this one.",
+  noSuggestions: "No suggestions this time. Your own goal works just as well.",
+  noGmail: "It has no Gmail to write in; connect Gmail in its setup first.",
+  ruleUnchosen: "Which part of the send rule applies depends on who it is with.",
+  firstMessage: "Writing to someone new is a first message",
+  reply: "Answering their thread is a reply",
+  answersNext: "It writes once they answer, and that is a reply",
+  onAuto: (bar: number) => `on Auto it sends on its own when it is at least ${bar} sure and its risk list is empty, else it waits for your signature`,
+  onAssist: "on Assist it waits for your signature",
+  onReview: "on Review you write it; its draft only suggests",
+  paused: "It is paused, so nothing goes out until it is live again.",
+  start: "Start the mission",
+};
 
 /** Connecting Gmail and Notion, in plain words (ADR 0008). */
 export const CONNECT_WORDS = {

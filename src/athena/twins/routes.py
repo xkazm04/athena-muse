@@ -1,5 +1,6 @@
 """Routes over twins: the overview, setup and its slips, the dress rehearsal, going live and pausing,
-missions, and how it sounds now (the preview).
+missions (with the recent conversations and suggested goals a new one is given from), and how it
+sounds now (the preview).
 
 Every setup change answers the whole `TwinDetail`. The two streams (`say`, `rehearse`) and every call
 that waits on a model or a connected account run off the event loop. A new mission is worked once at
@@ -24,7 +25,7 @@ from athena.contracts import ROUTES
 from athena.engine import Engine, EngineError
 from athena.errors import ApiError
 from athena.keys import KeyStore
-from athena.twins import missions, panels, preview, rehearse, setup, view
+from athena.twins import missions, panels, preview, rehearse, setup, threads, view
 
 
 async def _body(request: Request) -> dict[str, Any]:
@@ -140,6 +141,15 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         )
         return JSONResponse(found)
 
+    async def recent(request: Request) -> Response:
+        return JSONResponse(await run_in_threadpool(threads.listed, daemon, request.path_params["id"]))
+
+    async def goals(request: Request) -> Response:
+        body = await _body(request)
+        twin_id = request.path_params["id"]
+        daemon.twins.row(twin_id)
+        return JSONResponse(await run_in_threadpool(threads.goals, daemon, engine(), twin_id, body))
+
     async def sounds(request: Request) -> Response:
         twin_id = request.path_params["id"]
         daemon.twins.row(twin_id)
@@ -170,7 +180,7 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         ),
         Route(
             ROUTES["twin_chores"],
-            change(lambda d, t, b: panels.pick_chores(d, t, b.get("ids"))),
+            change(lambda d, t, b: panels.pick_chores(d, t, b.get("ids"), b.get("inbox"))),
             methods=["POST"],
         ),
         Route(ROUTES["twin_autonomy"], change(panels.set_autonomy), methods=["POST"]),
@@ -182,4 +192,6 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route(ROUTES["twin_missions"], new_mission, methods=["POST"]),
         Route(ROUTES["twin_mission"], mission, methods=["GET"]),
         Route(ROUTES["twin_preview"], sounds, methods=["GET"]),
+        Route(ROUTES["twin_threads"], recent, methods=["GET"]),
+        Route(ROUTES["twin_goals"], goals, methods=["POST"]),
     ]

@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseHash, toHash, type Route } from "../route";
+import { EntryPage, ruleFor } from "./Entry";
 import { createExampleIo } from "./example";
 import { TWIN_FIXTURE as fx } from "./fixture/twins";
 import { stateOf, type TwinStateId } from "./states";
@@ -16,7 +17,7 @@ const scripted = desk!.missions.filter((m) => m.beats.length);
 const rush = desk!.missions.find((m) => m.state === "handed_back")!;
 
 describe("the twins routes", () => {
-  it.each(["#twins", "#twin/new", `#twin/${desk!.id}`, `#twin/${partners!.id}/voice`, `#twin/${desk!.id}/mission/ms_1`, `#twin/${desk!.id}/draft/dr_1`])(
+  it.each(["#twins", "#twin/new", `#twin/${desk!.id}`, `#twin/${partners!.id}/voice`, `#twin/${desk!.id}/entry`, `#twin/${desk!.id}/mission/ms_1`, `#twin/${desk!.id}/draft/dr_1`])(
     "%s round-trips",
     (hash) => expect(toHash(parseHash(hash))).toBe(hash),
   );
@@ -26,6 +27,7 @@ describe("the twins routes", () => {
     expect(parseHash("#/twin/tw_1/mission/ms_3")).toEqual({ view: "twin_mission", id: "tw_1", mission: "ms_3" });
     expect(parseHash("#twin/tw_1/draft/dr_2")).toEqual({ view: "twin_draft", id: "tw_1", draft: "dr_2" });
     expect(parseHash("#twin/tw_1/voice")).toEqual({ view: "twin_voice", id: "tw_1" });
+    expect(parseHash("#twin/tw_1/entry")).toEqual({ view: "twin_entry", id: "tw_1" });
     expect(parseHash("#twin")).toEqual({ view: "twins" });
     // a nested page with nothing after it falls back to the twin itself
     expect(parseHash("#twin/tw_1/mission")).toEqual({ view: "twin", id: "tw_1" });
@@ -136,6 +138,131 @@ describe("the setup", () => {
   it("presses the seal when it goes live", () => {
     show("golive");
     expect(document.querySelector('[data-role="seal"]')!.getAttribute("aria-label")).toBe("Issued 29 Oct 2026");
+  });
+
+  it("opens an issued twin as its document once the person left its setup", () => {
+    const { store } = show("golive");
+    const closeSetup = vi.fn();
+    const live = { ...store.getState(), page: fx.pageAfter, closeSetup };
+    cleanup();
+    render(<TwinsView route={{ view: "twins" }} top={() => null} navigate={vi.fn()} store={live} />);
+    expect(closeSetup).toHaveBeenCalledTimes(1);
+    cleanup();
+    const left = { ...live, setup: { ...live.setup, sealed: false } };
+    render(<TwinsView route={{ view: "twin", id: fx.setup.twinId }} top={() => null} navigate={vi.fn()} store={left} />);
+    expect(document.querySelector(".tw-frame--setup")).toBeNull();
+    expect(document.querySelector('[data-role="give-mission"]')).toBeTruthy();
+  });
+});
+
+describe("the new entry", () => {
+  const threads = fx.threads[desk!.id]!.threads;
+  const goals = fx.goals[desk!.id]!;
+  const key = `${desk!.id}|${goals.thread}`;
+
+  function entry(over: Partial<Parameters<typeof EntryPage>[0]> = {}) {
+    const go = vi.fn<(r: Route) => void>();
+    const onGoals = vi.fn();
+    const onStart = vi.fn(async () => ({ mission: { ...desk!.missions[0]!, id: "ms_new" }, problem: "" }));
+    render(
+      <div data-twins-view="passport">
+        <EntryPage
+          twin={desk!}
+          entry={{ load: "ready", threads }}
+          goals={{ [key]: { load: "ready", goals: goals.goals } }}
+          simulated
+          now={new Date(fx.now)}
+          go={go}
+          onGoals={onGoals}
+          onStart={onStart}
+          {...over}
+        />
+      </div>,
+    );
+    return { go, onGoals, onStart };
+  }
+
+  it("is given from the opened document's entries", () => {
+    const { go } = show("overview-row-open");
+    fireEvent.click(document.querySelector('[data-role="give-mission"]')!);
+    expect(go).toHaveBeenLastCalledWith({ view: "twin_entry", id: desk!.id });
+  });
+
+  it("lists the conversations where they wrote last first; one with an open mission cannot be picked", () => {
+    entry();
+    const rows = [...document.querySelectorAll<HTMLButtonElement>('[data-role="entry-thread"]')];
+    const theirs = threads.filter((t) => t.theirs_last).map((t) => t.id);
+    expect(rows.slice(0, theirs.length).map((r) => r.dataset.id)).toEqual(theirs);
+    const busy = new Set(desk!.missions.filter((m) => m.state === "open").map((m) => m.thread));
+    for (const r of rows) expect(r.disabled).toBe(busy.has(r.dataset.id!));
+    expect(screen.getByText(/Choose who it is with, on the left/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: /Start the mission/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("starts the mission on the conversation in the person's words, with her pencil to take from, and opens it", async () => {
+    const { go, onGoals, onStart } = entry();
+    fireEvent.click(document.querySelector(`[data-role="entry-thread"][data-id="${goals.thread}"]`)!);
+    expect(onGoals).toHaveBeenCalledWith({ thread: goals.thread });
+    const pencil = document.querySelectorAll('[data-role="entry-suggestion"]');
+    expect([...pencil].map((b) => b.textContent)).toEqual(goals.goals);
+    expect(screen.getByText("simulated")).toBeTruthy();
+    // the rule its first message meets: it wrote last there, so its next message is a reply
+    expect(document.querySelector('[data-role="entry-rule"]')!.textContent).toMatch(/a reply: on Auto it sends on its own when it is at least 80 sure/);
+    fireEvent.click(pencil[1]!);
+    expect((screen.getByLabelText("The goal, in your words") as HTMLTextAreaElement).value).toBe(goals.goals[1]);
+    fireEvent.change(screen.getByLabelText("The goal, in your words"), { target: { value: "Get Oren's sign-off by Friday" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Start the mission/ })));
+    expect(onStart).toHaveBeenCalledWith({ thread: goals.thread, goal: "Get Oren's sign-off by Friday" });
+    expect(go).toHaveBeenLastCalledWith({ view: "twin_mission", id: desk!.id, mission: "ms_new" });
+  });
+
+  it("writes to someone new as a first message, and keeps the daemon's refusal on the slip", async () => {
+    const onStart = vi.fn(async () => ({ problem: "Gmail is not connected; sign in with Google again first." }));
+    const { go, onGoals } = entry({ onStart });
+    fireEvent.change(screen.getByLabelText("Their address"), { target: { value: "kai@moss" } });
+    fireEvent.click(screen.getByRole("button", { name: "Write to them" }));
+    expect(screen.getByRole("alert").textContent).toMatch(/one address/);
+    fireEvent.change(screen.getByLabelText("Their address"), { target: { value: "kai@moss.example" } });
+    fireEvent.click(screen.getByRole("button", { name: "Write to them" }));
+    expect(onGoals).toHaveBeenCalledWith({ to: "kai@moss.example" });
+    expect(document.querySelector('[data-role="entry-rule"]')!.textContent).toMatch(/a first message: on Assist it waits for your signature/);
+    fireEvent.change(screen.getByLabelText("The goal, in your words"), { target: { value: "Ask Kai for a call" } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Start the mission/ })));
+    expect(onStart).toHaveBeenCalledWith({ thread: "kai@moss.example", goal: "Ask Kai for a call" });
+    expect(screen.getByRole("alert").textContent).toMatch(/Gmail is not connected/);
+    expect(go).not.toHaveBeenCalled();
+  });
+
+  it("shows the task inbox at work on the document: what it took, and the lines it left alone", () => {
+    const { store } = show("overview-row-open");
+    const page = store.getState().page!;
+    const unplaced = "'Morgan: Ask about the invoice': no recent conversation with 'Morgan'; write their address instead";
+    const withInbox = {
+      ...desk!,
+      missions: desk!.missions.map((m, i) => (i === 0 ? { ...m, source: "notion" as const } : m)),
+      inbox: { page: "9".repeat(32), title: "Twin inbox", taken: 2, unplaced: [unplaced], checked_at: fx.now },
+    };
+    cleanup();
+    render(
+      <TwinsView
+        route={{ view: "twin", id: desk!.id }}
+        top={() => null}
+        navigate={vi.fn()}
+        store={{ ...store.getState(), page: { ...page, twins: page.twins.map((t) => (t.id === desk!.id ? withInbox : t)) } }}
+      />,
+    );
+    const line = document.querySelector('[data-role="inbox"]')!;
+    expect(line.textContent).toMatch(/Task inbox reads .Twin inbox. · 2 taken · read just now/);
+    expect(line.textContent).toMatch(/1 line it could not place/);
+    expect(line.textContent).toContain(unplaced);
+    expect(screen.getAllByText("from your inbox")).toHaveLength(1);
+  });
+
+  it("says the rule plainly for a paused twin and for each level", () => {
+    const paused = fx.page.twins.find((t) => t.state === "paused")!;
+    expect(ruleFor(paused, { to: "a@b.example" })).toMatch(/paused, so nothing goes out/);
+    expect(ruleFor(desk!, null)).toMatch(/depends on who it is with/);
+    expect(ruleFor({ ...desk!, channels: [] }, null)).toMatch(/no Gmail/);
   });
 });
 
