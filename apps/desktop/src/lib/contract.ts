@@ -747,6 +747,20 @@ export interface TwinAsk {
   channel?: ChannelKind;
 }
 
+/**
+ * How it sounds now (the Mirror's live preview, nested on the voice section): one message from the
+ * other side and the twin's reply in its current voice. The daemon writes it with one engine call and
+ * keeps it until the compiled voice changes.
+ */
+export interface TwinPreview {
+  /** A short message from the other side: the latest one it answered, or an invented one. */
+  inbound: string;
+  /** Its reply in its voice now. */
+  text: string;
+  /** What changed in its voice since the last preview, plain words; [] the first time. */
+  changed: string[];
+}
+
 export interface TwinDetail extends TwinSummary {
   pieces: Piece[];
   coverage: PlaceCoverage;
@@ -762,6 +776,8 @@ export interface TwinDetail extends TwinSummary {
   ask?: TwinAsk;
   /** The latest dress rehearsal. */
   rehearsal?: Mission;
+  /** How it sounds, when one is kept for its voice as it is now. */
+  preview?: TwinPreview;
 }
 
 /** The stat strip. The counts are always known; a weekly sum is omitted until a twin measured it. */
@@ -957,6 +973,7 @@ export const ROUTES = {
   twin_pause: "/twins/{id}/pause",
   twin_missions: "/twins/{id}/missions",
   twin_mission: "/twins/{id}/missions/{mid}",
+  twin_preview: "/twins/{id}/preview",
   connectors: "/connectors",
   connector_connect: "/connectors/{kind}/connect",
   connector_flow: "/connectors/{kind}/flow",

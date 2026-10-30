@@ -9,7 +9,7 @@ Modules: `store` (the tables), `rubric` (places, coverage, readiness, pieces), `
 vault), `setup` (the setup turn), `panels` (the working slips), `voice` (the voice compiler),
 `decide` (the send rule), `rehearse` (the dress rehearsal, marks, going live), `view` (the wire
 shapes and the stat strip), `missions` (the runner and the signature cards), `poller` (the Gmail
-threads with an open mission, while the daemon runs) and `routes`.
+threads with an open mission, while the daemon runs), `preview` (how it sounds now) and `routes`.
 """
 
 from __future__ import annotations

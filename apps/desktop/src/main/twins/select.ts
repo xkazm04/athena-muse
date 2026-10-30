@@ -103,29 +103,40 @@ export type RehearsalStep =
   | "handed"
   | "golive";
 
+/**
+ * The draft the person goes through now: the daemon plays the whole conversation in one stream, then
+ * each draft that waited is marked in turn, oldest first. A draft they edited stays current until they
+ * move on from it ("Send it": a rehearsal sends nothing to anyone).
+ */
+function pendingOf(turns: readonly MissionTurn[], continued: readonly string[]): MissionTurn | undefined {
+  return turns.find(
+    (t) => t.side === "twin" && t.decision === "waits" && (!t.mark || (t.mark === "edited" && !continued.includes(t.id))),
+  );
+}
+
 /** Where the rehearsal is, from its turns: who is writing, which draft waits, what came of it. */
 export function rehearsalStep(s: SetupState): RehearsalStep {
   const r = s.rehearsal;
   if (s.sealed) return "golive";
   if (!r) return "intro";
-  if (r.outcome?.state === "resolved") return "resolved";
-  if (r.outcome?.state === "handed_back") return "handed";
   if (r.editing) return "editing";
   const turns = turnsOf(r, s.twin);
   const last = turns.at(-1);
   if (r.streaming) return !last || last.side === "other" ? "writing" : last.decision === "sent_alone" ? "sent" : "typing";
-  const twin = [...turns].reverse().find((t) => t.side === "twin");
-  if (!twin) return r.streaming ? "writing" : "intro";
-  if (twin.mark === "edited" && !r.continued.includes(twin.id)) return "edited";
-  if (twin.decision === "waits" && !twin.mark) return twin.kind === "first_message" ? "waits" : "held";
-  if (twin.decision === "sent_alone") return "sent";
-  return "typing";
+  const pending = pendingOf(turns, r.continued);
+  if (pending) return pending.mark === "edited" ? "edited" : pending.kind === "first_message" ? "waits" : "held";
+  if (r.outcome?.state === "resolved") return "resolved";
+  if (r.outcome?.state === "handed_back") return "handed";
+  return turns.length ? "typing" : "intro";
 }
 
 /** The twin turn the person acts on now, if any. */
 export function currentTurn(s: SetupState): MissionTurn | undefined {
   if (!s.rehearsal) return undefined;
   const step = rehearsalStep(s);
-  if (!["waits", "held", "editing", "edited", "sent"].includes(step)) return undefined;
-  return [...turnsOf(s.rehearsal, s.twin)].reverse().find((t) => t.side === "twin");
+  const turns = turnsOf(s.rehearsal, s.twin);
+  if (step === "editing") return turns.find((t) => t.id === s.rehearsal!.editing);
+  if (step === "waits" || step === "held" || step === "edited") return pendingOf(turns, s.rehearsal.continued);
+  if (step === "sent") return [...turns].reverse().find((t) => t.side === "twin");
+  return undefined;
 }

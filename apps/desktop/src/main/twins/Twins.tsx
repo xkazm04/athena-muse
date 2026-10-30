@@ -1,13 +1,15 @@
 // The twins page and its nested pages (Passport): one store, one stylesheet scoped under
 // [data-twins-view="passport"]. The overview and the nested pages sit under the app's own header; a
-// twin's setup takes the whole window, like the stage, with its own header.
+// twin's setup takes the whole window, like the stage, with its own header. It talks to the daemon;
+// the invented example plays only when the person asks for it, and says so.
 
-import { useCallback, useEffect, type ReactNode } from "react";
-import type { TwinDetail } from "../../lib/contract";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import type { AppEvent, TwinDetail } from "../../lib/contract";
 import { toggleAthena } from "../../lib/windows";
 import { Seal } from "../../theme";
+import { useAppEvents } from "../../ui";
 import type { Route } from "../route";
-import { TWIN_FIXTURE } from "./fixture/twins";
+import { useMain } from "../store";
 import { Icon, InventedBadge } from "./marks";
 import { DraftPage, MissionPage, VoicePage } from "./Nested";
 import { Overview } from "./Overview";
@@ -40,14 +42,38 @@ function isSetup(route: TwinRoute, st: TwinsStore): boolean {
   return t?.state === "setting_up";
 }
 
+/** What the daemon publishes that changes the twins page: a card filed or decided (a twin's draft
+ * waits, or was signed), and a Project changed (a mission was worked, by the poller or a signature). */
+const CHANGES: ReadonlySet<AppEvent["type"]> = new Set(["card_filed", "card_resolved", "space_changed"]);
+const REFRESH_MS = 400;
+
+/** Live daemon events, folded into one read of the page a moment later. */
+function useRefreshOnEvents(st: TwinsStore, enabled: boolean) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refresh = st.refresh;
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+  useAppEvents((e) => {
+    if (!CHANGES.has(e.type)) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void refresh();
+    }, REFRESH_MS);
+  }, enabled);
+}
+
 /** The page's own view of the store, for the app (the hook) or the harness (a snapshot). */
 export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
   const hooked = useTwins();
   const st = store ?? hooked;
-  const { loadPage, openSetup, loadDetail } = st;
+  const simulated = useMain((s) => s.engine?.simulated ?? false);
+  const { loadPage, openSetup, loadDetail, loadPreview } = st;
   const setup = isSetup(route, st);
   const id = "id" in route ? route.id : null;
   const go = useCallback((r: Route) => navigate(r), [navigate]);
+  const example = st.mode === "example";
+
+  useRefreshOnEvents(st, !store && !example);
 
   useEffect(() => {
     if (!setup && st.pageLoad === "idle") void loadPage();
@@ -69,19 +95,34 @@ export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
     if (detailId && !known && st.setup.twin?.id !== detailId) void loadDetail(detailId);
   }, [detailId, known, st.setup.twin?.id, loadDetail]);
 
-  const example = st.mode === "example";
+  // the voice page reads how it sounds now: one engine call, which the daemon keeps until the voice changes
+  const voiceOf: TwinDetail | undefined = detailId ? (st.setup.twin?.id === detailId ? st.setup.twin : known) : undefined;
+  const voiced = !!voiceOf?.pieces.some((p) => p.place === "voice" && p.confirmed);
+  const asked = detailId ? st.previews[detailId]?.load : undefined;
+  useEffect(() => {
+    if (detailId && voiced && !store && asked === undefined) void loadPreview(detailId);
+  }, [detailId, voiced, store, asked, loadPreview]);
+
   const now = st.now();
+  const label = example ? (
+    <InventedBadge title={w.inventedTitle}>{w.invented}</InventedBadge>
+  ) : undefined;
 
   if (setup) {
     const name = st.setup.twin?.name && st.setup.twin.pieces.length ? st.setup.twin.name : "a new twin";
     return (
-      <div className="tw-frame tw-frame--setup" data-twins-view="passport">
+      <div className="tw-frame tw-frame--setup" data-twins-view="passport" data-work={st.setup.work ?? ""} data-phase={st.setup.phase}>
         <header className="tw-top">
           <a className="tw-brand" href="#twins" onClick={(e) => (e.preventDefault(), go({ view: "twins" }))} aria-label="Athena: your twins">
             <Seal state={st.setup.work ? "working" : "rest"} size={34} label="Athena" />
             <b>Athena</b>
           </a>
-          {example && <InventedBadge title={TWIN_FIXTURE.invented}>{w.invented}</InventedBadge>}
+          {label}
+          {!example && simulated && (
+            <span className="badge" data-tone="warning" data-role="simulated" title={w.simulatedTitle}>
+              {w.simulated}
+            </span>
+          )}
           <span className="tw-top__where">Setting up {name}</span>
           <span className="tw-top__gap" />
           <button type="button" className="btn" onClick={() => void toggleAthena()} title="The whole conversation so far is in her window">
@@ -99,7 +140,6 @@ export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
             dispatch={st.dispatch}
             onBack={() => go({ view: "twins" })}
             onVoice={() => st.setup.twin && go({ view: "twin_voice", id: st.setup.twin.id })}
-            practice={example ? { where: TWIN_FIXTURE.setup.rehearsal.where, playedBy: TWIN_FIXTURE.setup.rehearsal.playedBy } : undefined}
           />
         </main>
       </div>
@@ -116,14 +156,24 @@ export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
         now={now}
         go={go}
         onRetry={() => void loadPage()}
-        onExample={st.mode === "live" ? () => st.useExample() : undefined}
+        onExample={example || store ? undefined : () => st.useExample()}
+        onLive={example && !store ? st.useLive : undefined}
         onSignIn={(tid) => void st.signInAgain(tid)}
+        onResume={(tid) => void st.resume(tid)}
         onFlashOff={st.clearFlash}
       />
     );
   } else if (route.view === "twin_voice" && twin) {
-    const detail: TwinDetail | undefined = st.setup.twin?.id === twin.id ? st.setup.twin : st.details[twin.id];
-    body = <VoicePage twin={twin} detail={detail} now={now} go={go} />;
+    body = (
+      <VoicePage
+        twin={twin}
+        detail={voiceOf}
+        preview={st.previews[twin.id]}
+        onPreview={store ? undefined : () => void loadPreview(twin.id)}
+        now={now}
+        go={go}
+      />
+    );
   } else if (route.view === "twin_mission" && twin) {
     const fromSetup = st.setup.twin?.rehearsal?.id === route.mission ? st.setup.twin.rehearsal : undefined;
     body = <MissionPage twin={twin} mission={twin.missions.find((m) => m.id === route.mission) ?? fromSetup} now={now} go={go} onTakeOver={st.takeOver} />;
@@ -133,7 +183,7 @@ export function TwinsView({ route, top, navigate, store }: TwinsViewProps) {
   }
   return (
     <div className="tw-frame" data-twins-view="passport">
-      {top(example ? <InventedBadge title={TWIN_FIXTURE.invented}>{w.invented}</InventedBadge> : undefined)}
+      {top(label)}
       <main className={`view ${route.view === "twins" || route.view === "twin" ? "view--overview" : "view--nested"}`}>{body}</main>
     </div>
   );

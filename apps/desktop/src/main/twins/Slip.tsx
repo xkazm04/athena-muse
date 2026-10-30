@@ -348,7 +348,7 @@ function Rows<T extends { id: string }>({
 
 function Samples({ s, dispatch }: SlipProps) {
   const list = s.twin?.samples ?? [];
-  const on = (x: (typeof list)[number]) => chosen(s.choices, "samples", x.id, x.picked);
+  const on = (x: (typeof list)[number]) => chosen(s.choices, "samples", x, list);
   const n = list.filter(on).length;
   return (
     <Shell
@@ -359,7 +359,7 @@ function Samples({ s, dispatch }: SlipProps) {
       foot={
         <>
           <span className="slip__count">{n} kept</span>
-          <button type="button" className="btn btn-primary" disabled={!n || !!s.work} onClick={() => dispatch({ type: "panel_go" })}>
+          <button type="button" className="btn btn-primary" disabled={!n || !!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
             Learn from these {n}
           </button>
         </>
@@ -401,7 +401,7 @@ function Style({ s, dispatch }: SlipProps) {
       title="Its particulars"
       sub="Eight dials, set from your four mails. Each says where its value came from. Change any; or swap to a preset."
       foot={
-        <button type="button" className="btn btn-primary" disabled={!!s.work} onClick={() => dispatch({ type: "panel_go" })}>
+        <button type="button" className="btn btn-primary" disabled={!!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
           Keep this style
         </button>
       }
@@ -436,7 +436,7 @@ function Style({ s, dispatch }: SlipProps) {
 
 function Pages({ s, dispatch }: SlipProps) {
   const list = s.twin?.pages ?? [];
-  const on = (x: (typeof list)[number]) => chosen(s.choices, "pages", x.id, x.picked);
+  const on = (x: (typeof list)[number]) => chosen(s.choices, "pages", x, list);
   const n = list.filter(on).length;
   return (
     <Shell
@@ -447,7 +447,7 @@ function Pages({ s, dispatch }: SlipProps) {
       foot={
         <>
           <span className="slip__count">{n} chosen</span>
-          <button type="button" className="btn btn-primary" disabled={!!s.work} onClick={() => dispatch({ type: "panel_go" })}>
+          <button type="button" className="btn btn-primary" disabled={!!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
             Read from these {n}
           </button>
         </>
@@ -480,7 +480,7 @@ function Chores({ s, dispatch }: SlipProps) {
   const all = s.twin?.chores ?? [];
   const ready = all.filter((c) => !c.coming);
   const coming = all.filter((c) => c.coming);
-  const on = (x: (typeof all)[number]) => chosen(s.choices, "chores", x.id, x.picked);
+  const on = (x: (typeof all)[number]) => chosen(s.choices, "chores", x, all);
   const n = ready.filter(on).length;
   const toolName = (tool: string) => tool.slice(0, 1).toUpperCase() + tool.slice(1);
   return (
@@ -492,7 +492,7 @@ function Chores({ s, dispatch }: SlipProps) {
       foot={
         <>
           <span className="slip__count">{n} to issue</span>
-          <button type="button" className="btn btn-primary" disabled={!!s.work} onClick={() => dispatch({ type: "panel_go" })}>
+          <button type="button" className="btn btn-primary" disabled={!!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
             Issue {n} permit{n === 1 ? "" : "s"}
           </button>
         </>
@@ -564,7 +564,7 @@ function AutonomySlip({ s, dispatch }: SlipProps) {
       lands="autonomy"
       title="Clearance per channel"
       foot={
-        <button type="button" className="btn btn-primary" disabled={!!s.work} onClick={() => dispatch({ type: "panel_go" })}>
+        <button type="button" className="btn btn-primary" disabled={!!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
           Set clearance
         </button>
       }
@@ -636,7 +636,7 @@ function Memory({ s, dispatch }: SlipProps) {
       foot={
         <>
           <span className="slip__count">{n} kept</span>
-          <button type="button" className="btn btn-primary" disabled={!!s.work} onClick={() => dispatch({ type: "panel_go" })}>
+          <button type="button" className="btn btn-primary" disabled={!!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
             Keep {n}, drop {facts.length - n}
           </button>
         </>

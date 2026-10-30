@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { TwinSetupEvent } from "../../lib/contract";
+import { DaemonError } from "../../lib/daemon";
 import { createExampleIo } from "./example";
 import { TWIN_FIXTURE as fx } from "./fixture/twins";
 import { coverageOf, currentTurn, readinessOf, rehearsalStep } from "./select";
@@ -27,6 +28,7 @@ describe("reduceSetup", () => {
   it("folds every setup stream into the twin the daemon stored after it", () => {
     let s: SetupState = { ...initialSetup(), twin: fx.setup.created };
     for (const f of frames) {
+      if (f.before) s = reduceSetup(s, { type: "twin", twin: f.before });
       for (const e of f.events) s = reduceSetup(s, e);
       expect(s.twin!.pieces).toEqual(f.twin.pieces);
       expect(s.twin!.dials).toEqual(f.twin.dials);
@@ -39,12 +41,14 @@ describe("reduceSetup", () => {
   });
 
   it("marks what a reply wrote and what it inked, so each animates once", () => {
-    const s0 = setupAt(0);
-    let s = s0;
+    let s = setupAt(0);
     for (const e of frames[1]!.events) s = reduceSetup(s, e);
-    expect(s.inked).toEqual(["p_name"]);
     expect(s.arrived).toEqual(["p_sign", "p_gmail"]);
-    s = reduceSetup(s, frames[2]!.events[0]!);
+    s = setupAt(1);
+    // Gmail was signed in before this reply: the daemon inks its visa in the reply's stream
+    for (const e of frames[2]!.events) s = reduceSetup(s, e);
+    expect(s.inked).toEqual(["p_gmail"]);
+    s = reduceSetup(s, frames[3]!.events[0]!);
     expect(s.arrived).toEqual([]);
     expect(s.phase).toBe("thinking");
   });
@@ -60,14 +64,24 @@ describe("reduceSetup", () => {
     expect(failed.twin).toBe(s.twin);
   });
 
-  it("adds rehearsal turns by id and ends on the outcome", () => {
+  it("takes the whole rehearsal in one stream, then walks the drafts that waited before the outcome", () => {
+    const r = fx.setup.rehearsal;
     let s: SetupState = { ...setupAt(11), rehearsal: null };
-    for (const { event } of fx.setup.rehearsal.legs[0]!.events) s = reduceSetup(s, event);
-    expect(s.rehearsal!.turns.map((t) => t.id)).toEqual(["t1"]);
-    s = { ...s, rehearsal: { ...s.rehearsal!, streaming: false } };
+    for (const { event } of r.events) s = reduceSetup(s, event);
+    expect(s.rehearsal!.turns.map((t) => t.id)).toEqual(["t1", "t2", "t3", "t4", "t5"]);
+    expect(s.rehearsal!.outcome?.state).toBe("resolved");
+    expect(rehearsalStep(s)).toBe("sent"); // still streaming: the last draft went on its own
+    s = reduceSetup({ ...s, rehearsal: { ...s.rehearsal!, streaming: false } }, { type: "twin", twin: r.played });
     expect(rehearsalStep(s)).toBe("waits");
-    s = reduceSetup(s, { type: "outcome", state: "handed_back" });
-    expect(rehearsalStep(s)).toBe("handed");
+    expect(currentTurn(s)?.id).toBe("t1");
+    s = reduceSetup(s, { type: "twin", twin: r.marks[0]!.twin });
+    expect(rehearsalStep(s)).toBe("held");
+    expect(currentTurn(s)?.id).toBe("t3");
+    s = reduceSetup(s, { type: "twin", twin: r.marks[1]!.twin });
+    expect(rehearsalStep(s)).toBe("edited");
+    s = { ...s, rehearsal: { ...s.rehearsal!, continued: ["t3"] } };
+    expect(rehearsalStep(s)).toBe("resolved");
+    expect(currentTurn(s)).toBeUndefined();
   });
 });
 
@@ -119,7 +133,7 @@ describe("the store over the example", () => {
     const done = store.getState().setup;
     expect(done.twin!.ready).toBe(true);
     expect(done.connect).toEqual({ gmail: "connected", notion: "connected" });
-    expect(done.ask?.panel).toBe("rehearsal");
+    expect(done.ask).toBeNull(); // the mission is set; she asks nothing more, the rehearsal is the person's call
   });
 
   it("inks her pencil, and the coverage counts it", async () => {
@@ -146,6 +160,9 @@ describe("the store over the example", () => {
 
   it("rehearses, marks, edits and goes live; the page then counts it", async () => {
     const store = exampleStore();
+    const marks: string[] = [];
+    const io = createExampleIo(fx, { pace: 0 });
+    store.getState().useExample({ ...io, twinMark: (id, body) => (marks.push(`${body.turn}:${body.mark}`), io.twinMark(id, body)) });
     store.setState({ setup: setupAt(11) });
     store.getState().dispatch({ type: "rehearse" });
     await settled(store);
@@ -161,11 +178,12 @@ describe("the store over the example", () => {
     const edited = store.getState().setup;
     expect(rehearsalStep(edited)).toBe("edited");
     expect(currentTurn(edited)).toMatchObject({ mark: "edited", edited_text: "My own words, plainly." });
-    expect(currentTurn(edited)?.learned).toBeTruthy();
     store.getState().dispatch({ type: "reh_send" });
     await settled(store);
     expect(rehearsalStep(store.getState().setup)).toBe("resolved");
-    expect(store.getState().setup.rehearsal!.outcome!.filed?.where).toBe("Notion: Partnerships");
+    expect(store.getState().setup.twin!.rehearsal!.state).toBe("resolved");
+    // a mark never plays the conversation again: one stream, two marks
+    expect(marks).toEqual(["t1:me", "t3:edited"]);
     store.getState().dispatch({ type: "golive" });
     await settled(store);
     expect(store.getState().setup.sealed).toBe(true);
@@ -180,15 +198,19 @@ describe("the store over the example", () => {
     s2.setState({ setup: setupAt(11) });
     s2.getState().dispatch({ type: "rehearse" });
     await settled(s2);
-    for (const a of [{ type: "reh_mark", mark: "me" }, { type: "reh_mark", mark: "me" }, { type: "reh_send" }] as const) {
+    for (const a of [{ type: "reh_mark", mark: "me" }, { type: "reh_mark", mark: "me" }] as const) {
       s2.getState().dispatch(a);
       await settled(s2);
     }
     expect(rehearsalStep(s2.getState().setup)).toBe("resolved");
     s2.getState().dispatch({ type: "reh_alt" });
     await settled(s2);
-    s2.getState().dispatch({ type: "reh_mark", mark: "me" });
-    await settled(s2);
+    // its first message and the draft it could not send wait for marks, then the hand-back shows
+    for (const step of ["waits", "held"]) {
+      expect(rehearsalStep(s2.getState().setup)).toBe(step);
+      s2.getState().dispatch({ type: "reh_mark", mark: "me" });
+      await settled(s2);
+    }
     expect(rehearsalStep(s2.getState().setup)).toBe("handed");
     expect(s2.getState().setup.twin!.rehearsal!.state).toBe("handed_back");
   });
@@ -219,5 +241,65 @@ describe("the named states", () => {
     const shown = stateOf(id);
     expect(shown.state.mode).toBe("example");
     expect(shown.route.view.startsWith("twin")).toBe(true);
+  });
+});
+
+describe("the store over the daemon's own answers", () => {
+  it("takes a Notion key's answer as the end, without asking about a sign-in flow", async () => {
+    const io = createExampleIo(fx, { pace: 0 });
+    const connectFlow = vi.fn(io.connectFlow);
+    const store = createTwinsStore({ ...io, connect: async () => ({ state: "done" }), connectFlow }, { pollMs: 0 });
+    store.setState({ setup: setupAt(4) });
+    store.getState().dispatch({ type: "notion", key: "a key" });
+    await settled(store);
+    expect(connectFlow).not.toHaveBeenCalled();
+    expect(store.getState().setup.connect.notion).toBe("connected");
+  });
+
+  it("keeps the daemon's words when Google's sign-in does not finish", async () => {
+    const io = createExampleIo(fx, { pace: 0 });
+    const detail = "Google said no. Nothing was saved.";
+    const store = createTwinsStore(
+      { ...io, connect: async () => ({ state: "waiting", url: "https://accounts.example/sign-in" }), connectFlow: async () => ({ state: "failed", detail }) },
+      { pollMs: 0 },
+    );
+    store.setState({ setup: setupAt(1) });
+    store.getState().dispatch({ type: "gmail" });
+    await settled(store);
+    expect(store.getState().setup.connect.gmail).toBe("failed");
+    expect(store.getState().setup.connectDetail).toBe(detail);
+  });
+
+  it("signs through the one decision call, with the person's words, and answers a failed send's problem", async () => {
+    const io = createExampleIo(fx, { pace: 0 });
+    const decide = vi.fn(io.decide);
+    const store = createTwinsStore({ ...io, decide }, { pollMs: 0 });
+    store.getState().useExample({ ...io, decide });
+    await store.getState().loadPage();
+    const draft = store.getState().page!.twins[0]!.waiting[0]!;
+    expect(await store.getState().sign(draft, "My words.")).toBe("");
+    expect(decide).toHaveBeenCalledWith(draft.card_id, "approve", { text: "My words." });
+    const failing = createTwinsStore({ ...io, decide: () => Promise.reject(new DaemonError(400, "bad_request", "Gmail did not send it: refused")) });
+    expect(await failing.getState().sign(draft)).toBe("Gmail did not send it: refused");
+    expect(failing.getState().done[draft.id]).toBeUndefined();
+  });
+
+  it("reads the page and the open twins again when the daemon says something changed", async () => {
+    const io = createExampleIo(fx, { pace: 0 });
+    const twins = vi.fn(io.twins);
+    const twin = vi.fn(io.twin);
+    const store = createTwinsStore({ ...io, twins, twin }, { pollMs: 0 });
+    await store.getState().loadPage();
+    await store.getState().loadDetail(fx.page.twins[0]!.id);
+    await store.getState().refresh();
+    expect(twins).toHaveBeenCalledTimes(2);
+    expect(twin).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks how a twin sounds once, and keeps the daemon's answer", async () => {
+    const io = createExampleIo(fx, { pace: 0 });
+    const store = createTwinsStore(io, { pollMs: 0 });
+    await store.getState().loadPreview(partners);
+    expect(store.getState().previews[partners]).toEqual({ load: "ready", value: fx.previews[partners] });
   });
 });

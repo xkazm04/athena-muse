@@ -1,5 +1,5 @@
 """Routes over twins: the overview, setup and its slips, the dress rehearsal, going live and pausing,
-and missions.
+missions, and how it sounds now (the preview).
 
 Every setup change answers the whole `TwinDetail`. The two streams (`say`, `rehearse`) and every call
 that waits on a model or a connected account run off the event loop. A new mission is worked once at
@@ -24,7 +24,7 @@ from athena.contracts import ROUTES
 from athena.engine import Engine, EngineError
 from athena.errors import ApiError
 from athena.keys import KeyStore
-from athena.twins import missions, panels, rehearse, setup, view
+from athena.twins import missions, panels, preview, rehearse, setup, view
 
 
 async def _body(request: Request) -> dict[str, Any]:
@@ -140,6 +140,11 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         )
         return JSONResponse(found)
 
+    async def sounds(request: Request) -> Response:
+        twin_id = request.path_params["id"]
+        daemon.twins.row(twin_id)
+        return JSONResponse(await run_in_threadpool(preview.preview, daemon, engine(), twin_id))
+
     return [
         Route(ROUTES["twins"], twins, methods=["GET", "POST"]),
         Route(ROUTES["twin"], twin, methods=["GET"]),
@@ -176,4 +181,5 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route(ROUTES["twin_pause"], pause, methods=["POST"]),
         Route(ROUTES["twin_missions"], new_mission, methods=["POST"]),
         Route(ROUTES["twin_mission"], mission, methods=["GET"]),
+        Route(ROUTES["twin_preview"], sounds, methods=["GET"]),
     ]

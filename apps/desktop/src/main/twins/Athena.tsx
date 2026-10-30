@@ -56,7 +56,9 @@ function asked(p: AthenaPanelProps): (RehearsalAsk & { about: "place" | "practic
         case "sent":
           return REHEARSAL_ASK.sent(turn?.confidence ?? 0, turn?.bar);
         case "resolved":
-          return REHEARSAL_ASK.resolved(r.outcome?.filed?.where ?? "Notion");
+          return r.outcome?.filed
+            ? REHEARSAL_ASK.resolved(r.outcome.filed.where)
+            : REHEARSAL_ASK.resolvedNote(s.twin?.rehearsal?.note ?? "It got what the goal asked for.");
         case "handed":
           return REHEARSAL_ASK.handed(s.twin?.rehearsal?.note ?? "It stopped and handed the conversation back to you.");
         default:
@@ -151,7 +153,7 @@ export function AthenaPanel(props: AthenaPanelProps) {
           {w.goLive}
           <Icon name="arrow" />
         </button>
-        <p className="sp-still">{can ? w.goLiveNow : w.goLiveWhen}</p>
+        <p className="sp-still">{can ? w.goLiveNow : s.rehearsal.outcome ? w.goLiveMarks : w.goLiveWhen}</p>
       </div>
     );
   } else if (twin && twin.pieces.length) {

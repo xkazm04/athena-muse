@@ -14,6 +14,7 @@ import type {
   TwinPage,
   TwinRehearsalEvent,
   TwinSetupEvent,
+  TwinPreview,
   TwinStats,
 } from "../../lib/contract";
 import type { ReplyPhase } from "../stage/types";
@@ -43,7 +44,7 @@ export interface RehearsalState {
   outcome: { state: MissionState; filed?: TwinFiled } | null;
   /** The draft the person is editing. */
   editing: string | null;
-  /** Edited drafts the person sent on with "Send it". */
+  /** Edited drafts the person moved on from with "Send it" (a rehearsal sends nothing to anyone). */
   continued: string[];
   /** The person's version while they edit. */
   editText: string;
@@ -71,6 +72,10 @@ export interface SetupState {
   connect: Record<ChannelKind, ConnectView>;
   /** When the current connect began to wait (ms). */
   connectSince: number;
+  /** What the daemon said about the last connect that did not finish, plain words; "" when none. */
+  connectDetail: string;
+  /** While Google's sign-in waits: its page, for when the browser did not open. */
+  connectUrl: string;
   /** The Notion steps are open. */
   where: boolean;
   choices: Choices;
@@ -87,6 +92,13 @@ export interface SetupState {
 /** What the person did on the overview that the next read has not caught up with. */
 export type Done = "signed" | "declined" | "taken";
 
+/** How it sounds now, per twin: read from the daemon when the voice page opens. */
+export interface PreviewView {
+  load: Load;
+  value?: TwinPreview;
+  problem?: string;
+}
+
 export interface TwinsState {
   /** "example" plays the invented example, labelled on screen; "live" talks to the daemon. */
   mode: "live" | "example";
@@ -98,6 +110,7 @@ export interface TwinsState {
   /** The twin that just went live, for its fresh stamp. */
   issued: string | null;
   details: Record<string, TwinDetail>;
+  previews: Record<string, PreviewView>;
   done: Record<string, Done>;
   flash: string;
   /** Signing in to Google again for a paused twin, from the overview. */

@@ -18,8 +18,13 @@ export interface OverviewProps {
   now: Date;
   go: (route: Route) => void;
   onRetry: () => void;
+  /** Plays the invented example instead of the daemon: offered on the first run and on a problem. */
   onExample?: () => void;
+  /** Back to the daemon from the invented example. */
+  onLive?: () => void;
   onSignIn: (twinId: string) => void;
+  /** A paused twin goes live again. */
+  onResume: (twinId: string) => void;
   onFlashOff: () => void;
 }
 
@@ -38,7 +43,10 @@ function rowsOf(state: TwinsState): TwinSummary[] {
 
 const initial = (t: TwinSummary) => t.name.slice(0, 1).toUpperCase();
 
-export function Overview({ state, open, now, go, onRetry, onExample, onSignIn, onFlashOff }: OverviewProps) {
+/** Its Gmail is no longer signed in: signing in again comes before anything else. */
+const needsSignIn = (t: TwinSummary) => t.channels.some((c) => c.kind === "gmail" && c.status !== "connected");
+
+export function Overview({ state, open, now, go, onRetry, onExample, onLive, onSignIn, onResume, onFlashOff }: OverviewProps) {
   const mode: Mode =
     state.pageLoad === "problem" ? "error" : !state.page ? "loading" : state.page.twins.length === 0 ? "first" : "today";
   const rows = mode === "today" ? rowsOf(state) : [];
@@ -81,6 +89,11 @@ export function Overview({ state, open, now, go, onRetry, onExample, onSignIn, o
             {w.firstRunGo}
           </button>
           <span className="muted">{w.firstRunHint}</span>
+          {onExample && (
+            <button type="button" className="btn btn-quiet" data-role="show-example" onClick={onExample}>
+              {w.showExample}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -99,7 +112,7 @@ export function Overview({ state, open, now, go, onRetry, onExample, onSignIn, o
               {w.retry}
             </button>
             {onExample && (
-              <button type="button" className="btn" onClick={onExample}>
+              <button type="button" className="btn" data-role="show-example" onClick={onExample}>
                 {w.showExample}
               </button>
             )}
@@ -111,7 +124,7 @@ export function Overview({ state, open, now, go, onRetry, onExample, onSignIn, o
     shelf = (
       <>
         {opened ? (
-          <Spread t={opened} state={state} now={now} go={go} onSignIn={onSignIn} />
+          <Spread t={opened} state={state} now={now} go={go} onSignIn={onSignIn} onResume={onResume} />
         ) : (
           <div className="wallet">
             {rows.map((t) => (
@@ -133,10 +146,17 @@ export function Overview({ state, open, now, go, onRetry, onExample, onSignIn, o
           <p>{w.lead}</p>
         </div>
         <Stats stats={stats} rows={rows} mode={mode} before={state.before} />
-        <button type="button" className="btn btn-primary ov__new" onClick={newTwin}>
-          <Icon name="plus" />
-          {w.newTwin}
-        </button>
+        {onLive ? (
+          <button type="button" className="btn ov__new" data-role="back-to-live" onClick={onLive}>
+            <Icon name="back" />
+            {w.backToLive}
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary ov__new" onClick={newTwin}>
+            <Icon name="plus" />
+            {w.newTwin}
+          </button>
+        )}
       </div>
       <div className="shelf" data-open={String(!!opened)}>
         {shelf}
@@ -171,7 +191,7 @@ function Stats({ stats: st, rows, mode, before }: { stats?: TwinStats; rows: Twi
           value: st.live,
           unit: (
             <>
-              of {rows.length} twins{moved("live")}
+              of {rows.length} {rows.length === 1 ? "twin" : "twins"}{moved("live")}
             </>
           ),
           tone: before && before.live !== st.live ? "moved" : undefined,
@@ -254,10 +274,15 @@ function Booklet({ t, fresh, go }: { t: TwinSummary; fresh: boolean; go: (r: Rou
   const wait = waitsOn(t);
   let foot: ReactNode;
   if (t.state === "paused")
-    foot = (
+    foot = needsSignIn(t) ? (
       <button type="button" className="btn booklet__act" onClick={() => go({ view: "twin", id: t.id })}>
         <Icon name="gmail" />
         Sign in with Google
+      </button>
+    ) : (
+      <button type="button" className="btn booklet__act" onClick={() => go({ view: "twin", id: t.id })}>
+        Paused: open it
+        <Icon name="arrow" />
       </button>
     );
   else if (t.state === "setting_up")
@@ -376,16 +401,36 @@ export function DraftStamp({ d, bar, fresh = false }: { d: TwinDraft; bar?: numb
   return <Stamp text="Waits for you" tone="human" sub="your signature" fresh={fresh} />;
 }
 
-function PausedCard({ t, state, onSignIn }: { t: TwinSummary; state: TwinsState; onSignIn: (id: string) => void }) {
+function PausedCard({
+  t,
+  state,
+  onSignIn,
+  onResume,
+}: {
+  t: TwinSummary;
+  state: TwinsState;
+  onSignIn: (id: string) => void;
+  onResume: (id: string) => void;
+}) {
   const s = state.signin?.twin === t.id ? state.signin.state : "idle";
   const done = s === "connected" || t.state === "live";
-  let act: ReactNode = (
+  // Google asked to sign in again: that first. Else the person paused it, and it goes live again.
+  const signIn = needsSignIn(t);
+  let act: ReactNode = signIn ? (
     <>
       <button type="button" className="btn btn-primary btn-big" onClick={() => onSignIn(t.id)}>
         <Icon name="gmail" />
         Sign in with Google
       </button>
       <span className="muted">One press. It asks for the same things as before: read and send mail.</span>
+    </>
+  ) : (
+    <>
+      <button type="button" className="btn btn-primary btn-big" data-role="resume" onClick={() => onResume(t.id)}>
+        <Icon name="arrow" />
+        Go live again
+      </button>
+      <span className="muted">Its document stands as it was. Every draft still passes the send rule.</span>
     </>
   );
   if (s === "waiting")
@@ -403,7 +448,7 @@ function PausedCard({ t, state, onSignIn }: { t: TwinSummary; state: TwinsState;
       <div className="cstate" data-state="connected">
         <Stamp text="Stamped" tone="success" fresh />
         <div>
-          <b>Signed in again as {t.channels[0]?.account}</b>
+          <b>{signIn || s === "connected" ? `Signed in again as ${t.channels[0]?.account}` : "Live again"}</b>
           <span>{t.name} is live.</span>
         </div>
       </div>
@@ -428,12 +473,14 @@ function Spread({
   now,
   go,
   onSignIn,
+  onResume,
 }: {
   t: TwinSummary;
   state: TwinsState;
   now: Date;
   go: (r: Route) => void;
   onSignIn: (id: string) => void;
+  onResume: (id: string) => void;
 }) {
   const missions = t.missions.length ? (
     <ul className="mss">
@@ -475,7 +522,7 @@ function Spread({
   if (t.state === "paused" || state.signin?.twin === t.id) {
     left = (
       <section className="ovpage">
-        <PausedCard t={t} state={state} onSignIn={onSignIn} />
+        <PausedCard t={t} state={state} onSignIn={onSignIn} onResume={onResume} />
       </section>
     );
     right = (
@@ -569,7 +616,16 @@ function Queue({ rows, go }: { rows: TwinSummary[]; go: (r: Route) => void }) {
       );
     }
     if (t.state === "paused")
-      also.push(<WaitingCard key={t.id} kind="also" twin={`${t.name}: paused`} why="" what="Sign in with Google again" onOpen={() => go({ view: "twin", id: t.id })} />);
+      also.push(
+        <WaitingCard
+          key={t.id}
+          kind="also"
+          twin={`${t.name}: paused`}
+          why=""
+          what={needsSignIn(t) ? "Sign in with Google again" : "Go live again when you are ready"}
+          onOpen={() => go({ view: "twin", id: t.id })}
+        />,
+      );
   }
   return (
     <aside className="queue" aria-label={w.waitingForYou}>
@@ -709,7 +765,7 @@ function TwinLedger({
   const totals =
     mode === "today" && st
       ? [
-          <b key="n">{rows.length} twins</b>,
+          <b key="n">{rows.length} {rows.length === 1 ? "twin" : "twins"}</b>,
           `${st.live} live`,
           `${st.waiting_for_you} waiting for you · ${st.missions_open} missions open · ${num(st.sent_week)} sent this week, ${num(st.sent_alone_week)} on their own · ${num(st.held_by_risk_week)} held back · est. ${money(st.cost_usd_week)}`,
         ]

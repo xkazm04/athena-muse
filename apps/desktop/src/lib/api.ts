@@ -53,6 +53,7 @@ import {
   type TurnList,
   type TwinDetail,
   type TwinPage,
+  type TwinPreview,
   type TwinRehearsalEvent,
   type TwinSayBody,
   type TwinSetupEvent,
@@ -179,6 +180,8 @@ export const twinPause = (id: string) => request<TwinDetail>("POST", path(ROUTES
 export const startMission = (id: string, body: NewMissionBody) =>
   request<Mission>("POST", path(ROUTES.twin_missions, { id }), body);
 export const mission = (id: string, mid: string) => request<Mission>("GET", path(ROUTES.twin_mission, { id, mid }));
+/** How it sounds now: one engine call, kept by the daemon until its voice changes. */
+export const twinPreview = (id: string) => request<TwinPreview>("GET", path(ROUTES.twin_preview, { id }));
 
 // Connected accounts (ADR 0008): Google sign-in runs in the browser, so `connect` starts a flow to watch.
 export const connections = async () => (await request<ConnectionList>("GET", ROUTES.connectors)).connections;

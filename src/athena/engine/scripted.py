@@ -126,7 +126,8 @@ def _stage(messages: list[dict[str, Any]], said: str) -> tuple[str, list[ToolCal
     return line, calls
 
 
-# --- a twin (ADR 0008-0010): its setup, the slips' engine call and the dress rehearsal --------------
+# --- a twin (ADR 0008-0010): its setup, the slips' engine call, the dress rehearsal, its missions and
+# how it sounds ---------------------------------------------------------------------------------------
 # The setup plays the prototype's staged Partnerships example step by step; the step is the number of
 # questions asked so far, which the twin's frame lists per place. The person's own words are quoted
 # back, so what they picked decides what is ink. The JSON calls are recognised by their headings.
@@ -137,6 +138,11 @@ TWIN_CAST = "## Casting the rehearsal"
 TWIN_OTHER = "## Playing the other side"
 TWIN_DRAFT = "## Drafting the next message"
 TWIN_JUDGE = "## Judging the rehearsal"
+TWIN_MISSION_JUDGE = "## Judging the mission"
+TWIN_PREVIEW = "## Previewing the voice"
+_FROM = re.compile(r"^from: .*$", re.M)
+_DIAL = re.compile(r"^- (\w+): (\d) of 5", re.M)
+_YES = re.compile(r"\b(go for it|go ahead|sounds (good|fair|great)|yes|deal|agreed)\b", re.I)
 _ASKED_LINE = re.compile(r"^- ([a-z_]+) asked (\d+)$", re.M)
 _SO_FAR = re.compile(r"Messages so far: (\d+)")
 _MONEY = re.compile(r"\$|\bmoney\b|\bfee\b", re.I)
@@ -375,7 +381,8 @@ def _other(system: str, goal: str, so_far: int) -> dict[str, Any]:
 def _draft(user: str, goal: str, so_far: int) -> dict[str, Any]:
     """The twin's draft: the staged first message, the held reply, the reply that goes alone."""
     to = m.group(1).strip() if (m := re.search(r"You write to: (.+)", user)) else "there"
-    track = m.group(1) if (m := re.search(r"'([^']+)'", goal)) else "your track"
+    # the quoted title, not an apostrophe ("Lumen Vale's yes to feature 'Glass Harbor'")
+    track = m.group(1) if (m := re.search(r"(?:^|\s)'([^']+)'", goal)) else "your track"
     if so_far == 0:
         text = (
             f"(Simulated) Hi {to.split()[0]}, I've had '{track}' on repeat all week; the way it opens up "
@@ -401,6 +408,75 @@ def _draft(user: str, goal: str, so_far: int) -> dict[str, Any]:
     return {"text": text, "confidence": 91, "risks": []}
 
 
+# --- a live twin's own calls: a mission's judgement and drafts, and how it sounds -----------------------
+# A mission reads a real Gmail thread, fenced as `gmail`; a rehearsal's drafts read the practice page.
+
+
+def _their_last(user: str) -> str:
+    """The text of the thread's last message: what follows its last `from:` header block."""
+    found = list(_FROM.finditer(user))
+    if not found:
+        return ""
+    rest = user[found[-1].end() :]
+    body = rest.split("\n\n", 1)[1] if "\n\n" in rest else rest
+    return body.split("gmail:", 1)[0].strip()
+
+
+def _said_yes(user: str) -> bool:
+    """Their last message says yes and asks nothing more."""
+    last = _their_last(user)
+    return bool(_YES.search(last)) and "?" not in last
+
+
+def _mission_judge(user: str) -> dict[str, Any]:
+    """Resolved once their last message says yes; otherwise it is still going."""
+    if _said_yes(user):
+        return {"state": "resolved", "note": "(Simulated) They said yes.", "confidence": 88}
+    return {"state": "open", "note": "(Simulated) They wrote back; it answers.", "confidence": 80}
+
+
+def _mission_draft(user: str, goal: str) -> dict[str, Any]:
+    """A mission's draft: a first message toward the goal, an answer to their question (below the
+    usual bar of 80, so on Auto it waits for the person), or a thank-you once they said yes."""
+    to = m.group(1).strip() if (m := re.search(r"You write to: (.+)", user)) else "there"
+    first = (to.split("@")[0].split() or ["there"])[0]
+    if "This is the first message" in user:
+        text = (
+            f"(Simulated) Hi {first}, I'm writing about this: {_lower_first(goal)}. "
+            "Would that work for you?\n\ncheers"
+        )
+        return {"text": text, "confidence": 84, "risks": [], "subject": _cut(goal, 60)}
+    if _said_yes(user):
+        text = f"(Simulated) Brilliant, thank you {first}! I'll take it from here and let you know.\n\ncheers"
+        return {"text": text, "confidence": 92, "risks": []}
+    text = (
+        f"(Simulated) Thanks for getting back to me, {first}. To your question: it is as I said, and "
+        "nothing more is asked of you. Shall I go ahead?\n\ncheers"
+    )
+    return {"text": text, "confidence": 74, "risks": []}
+
+
+def _preview(system: str, user: str) -> dict[str, Any]:
+    """How the twin sounds: its reply to the message given, or to one it writes first. The reply moves
+    with its formality and length dials, so a change shows."""
+    dials = {name.lower(): int(v) for name, v in _DIAL.findall(system)}
+    inbound = (
+        ""
+        if "The message to answer:" in user
+        else (
+            "(Simulated) Hi! I came across your work and wondered if you'd be open to working together. "
+            "What would that look like?"
+        )
+    )
+    hello = "Hello" if dials.get("formality", 3) >= 3 else "Hey"
+    text = f"(Simulated) {hello}, thanks for writing! Happy to: here is what I had in mind."
+    if dials.get("length", 3) >= 3:
+        text += " I'd keep it simple, credit you properly and send everything over before it goes out."
+    if "Signs off the same way every time" in system:
+        text += "\n\ncheers"
+    return {"inbound": inbound, "text": text}
+
+
 def _twin_json(system: str, user: str) -> str | None:
     """The answer to one of a twin's JSON calls, or None when the call is not a twin's."""
     so_far = int(m.group(1)) if (m := _SO_FAR.search(user)) else 0
@@ -412,10 +488,16 @@ def _twin_json(system: str, user: str) -> str | None:
         answer = {"with": _who(goal)}
     elif TWIN_OTHER in system:
         answer = _other(system, goal, so_far)
+    elif TWIN_DRAFT in system and ("<<<gmail:" in user or "starts a new conversation" in system):
+        answer = _mission_draft(user, goal)
     elif TWIN_DRAFT in system:
         answer = _draft(user, goal, so_far)
     elif TWIN_JUDGE in system:
         answer = {"state": "resolved", "note": "(Simulated) They agreed to the feature."}
+    elif TWIN_MISSION_JUDGE in system:
+        answer = _mission_judge(user)
+    elif TWIN_PREVIEW in system:
+        answer = _preview(system, user)
     return json.dumps(answer) if answer is not None else None
 
 

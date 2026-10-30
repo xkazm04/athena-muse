@@ -7,7 +7,7 @@ import { TWIN_FIXTURE } from "./fixture/twins";
 import type { TwinFixture } from "./fixture/types";
 import { initialSetup, initialTwins, reduceSetup } from "./store";
 import type { TwinRoute } from "./Twins";
-import type { SetupState, TwinsState } from "./types";
+import type { RehearsalState, SetupState, TwinsState } from "./types";
 
 export const TWIN_STATES = [
   "overview-loading",
@@ -56,6 +56,8 @@ export function setupAt(n: number, fx: TwinFixture = TWIN_FIXTURE): SetupState {
   let s: SetupState = { ...initialSetup(), twin: fx.setup.created };
   const frames = fx.setup.frames;
   for (let i = 0; i <= n; i++) {
+    const before = frames[i]!.before;
+    if (before) s = reduceSetup(s, { type: "twin", twin: before });
     for (const e of frames[i]!.events) s = reduceSetup(s, e);
     s = reduceSetup(s, { type: "twin", twin: frames[i]!.twin });
   }
@@ -67,43 +69,47 @@ export function setupAt(n: number, fx: TwinFixture = TWIN_FIXTURE): SetupState {
   return s;
 }
 
+/** The rehearsal at one step: the daemon played the whole conversation, then the person marks each
+ * draft that waited (the twin after each mark is the daemon's answer). */
 function rehearsalAt(step: string, fx: TwinFixture): SetupState {
   const r = fx.setup.rehearsal;
-  const [leg0, leg1, leg2] = r.legs;
+  const [first, held] = r.marks;
   const base = setupAt(fx.setup.frames.length - 1, fx);
   const reh = { goal: r.goal, turns: [] as MissionTurn[], outcome: null, editing: null, continued: [] as string[], editText: "", streaming: false };
   const t = { ...base, ask: null, line: "", rehearsal: reh };
-  const usual = [...turnsOf(leg0!.events), ...turnsOf(leg1!.events)];
+  const turns = turnsOf(r.events);
+  const heldTurn = turns.find((x) => x.id === held!.mark.turn)!;
+  const ended = outcomeOf(r.events);
+  const played = { ...reh, turns, outcome: ended };
   switch (step) {
     case "running":
       return { ...t, rehearsal: { ...reh, streaming: true }, work: "rehearse", startedAt: Date.now() - 3400 };
     case "waits":
-      return { ...t, rehearsal: { ...reh, turns: turnsOf(leg0!.events) } };
+      return { ...t, twin: r.played, rehearsal: played };
     case "held":
-      return { ...t, twin: leg1!.twin!, rehearsal: { ...reh, turns: usual } };
+      return { ...t, twin: first!.twin, rehearsal: played };
     case "editing":
-      return { ...t, twin: leg1!.twin!, rehearsal: { ...reh, turns: usual, editing: usual.at(-1)!.id, editText: usual.at(-1)!.text } };
+      return { ...t, twin: first!.twin, rehearsal: { ...played, editing: heldTurn.id, editText: heldTurn.text } };
     case "edited":
-      return { ...t, twin: leg2!.twin!, rehearsal: { ...reh, turns: usual } };
-    case "sent-alone": {
-      const turns = [...usual, ...turnsOf(leg2!.events)];
-      return { ...t, twin: leg2!.twin!, rehearsal: { ...reh, turns, continued: [usual.at(-1)!.id], streaming: true }, work: "rehearse" };
-    }
-    case "resolved": {
-      const turns = [...usual, ...turnsOf(leg2!.events)];
-      const outcome = leg2!.events.find((e) => e.event.type === "outcome")!.event;
-      const filed = outcome.type === "outcome" ? outcome.filed : undefined;
-      return { ...t, twin: r.rehearsed, rehearsal: { ...reh, turns, continued: [usual.at(-1)!.id], outcome: filed ? { state: "resolved", filed } : { state: "resolved" } } };
-    }
-    case "handed": {
-      const turns = [...turnsOf(leg0!.events), ...turnsOf(r.handed.events)];
-      return { ...t, twin: r.handed.after, rehearsal: { ...reh, turns, outcome: { state: "handed_back" } } };
-    }
+      return { ...t, twin: held!.twin, rehearsal: played };
+    case "sent-alone":
+      return { ...t, twin: r.played, rehearsal: { ...reh, turns, streaming: true }, work: "rehearse" };
+    case "resolved":
+      return { ...t, twin: r.rehearsed, rehearsal: { ...played, continued: [heldTurn.id] } };
+    case "handed":
+      return { ...t, twin: r.handed.after, rehearsal: { ...reh, goal: r.handed.goal, turns: turnsOf(r.handed.events), outcome: outcomeOf(r.handed.events) } };
     default: {
       const done = rehearsalAt("resolved", fx);
       return { ...done, twin: fx.setup.golive, sealed: true };
     }
   }
+}
+
+function outcomeOf(events: { event: TwinRehearsalEvent }[]): RehearsalState["outcome"] {
+  for (const { event } of events) {
+    if (event.type === "outcome") return event.filed ? { state: event.state, filed: event.filed } : { state: event.state };
+  }
+  return null;
 }
 
 /** One named state of the page, in the example, with the address it lives at. */
@@ -155,11 +161,16 @@ export function stateOf(id: TwinStateId, fx: TwinFixture = TWIN_FIXTURE): Shown 
       return setup(rehearsalAt("golive", fx));
     case "voice":
       return {
-        state: { ...ready, page: fx.pageAfter, details: { [partners]: fx.setup.golive } },
+        state: {
+          ...ready,
+          page: fx.pageAfter,
+          details: { [partners]: fx.setup.golive },
+          previews: { [partners]: { load: "ready", value: fx.previews[partners] } },
+        },
         route: { view: "twin_voice", id: partners },
       };
     case "mission":
-      return { state: ready, route: { view: "twin_mission", id: desk!.id, mission: desk!.missions[0]!.id } };
+      return { state: ready, route: { view: "twin_mission", id: desk!.id, mission: desk!.missions.find((m) => !m.practice && m.state === "open")!.id } };
     case "draft":
       return { state: ready, route: { view: "twin_draft", id: desk!.id, draft: desk!.waiting[0]!.id } };
     default:

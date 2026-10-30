@@ -238,11 +238,12 @@ const BLANK_DIALS: StyleDial[] = [
 ].map(([id, label]) => ({ id: id!, label: label!, low: "", high: "", value: 0, source: "learned" }));
 
 /** The voice section's one stat: how its latest reply sounds. It opens the voice page. */
-function SoundsLike({ line, onOpen }: { line?: string; onOpen: () => void }) {
+function SoundsLike({ line, voiced, onOpen }: { line?: string; voiced: boolean; onOpen: () => void }) {
+  const shown = line ? `"${line}"` : voiced ? w.soundsLikeAsk : "not written yet";
   return (
-    <button type="button" className="sounds" data-role="sounds-like" onClick={onOpen} title={line ? `${w.soundsLike}: ${line}` : `${w.soundsLike}: ${w.soundsLikeNone}`}>
+    <button type="button" className="sounds" data-role="sounds-like" onClick={onOpen} title={`${w.soundsLike}: ${line ?? (voiced ? w.soundsLikeAsk : w.soundsLikeNone)}`}>
       <span className="sounds__k">{w.soundsLike}</span>
-      <span className="sounds__t">{line ? `"${line}"` : "not written yet"}</span>
+      <span className="sounds__t">{shown}</span>
       <Icon name="arrow" />
     </button>
   );
@@ -394,7 +395,11 @@ export function TwinDocument({ s, lit, onInk, onVoice, issued, soundsLike }: Doc
             s={s}
             lit={lit}
             printed={!piecesAt(t, "voice").length}
-            aside={onVoice && !blank ? <SoundsLike line={soundsLike} onOpen={onVoice} /> : undefined}
+            aside={
+              onVoice && !blank ? (
+                <SoundsLike line={soundsLike} voiced={piecesAt(t, "voice").some((p) => p.confirmed)} onOpen={onVoice} />
+              ) : undefined
+            }
           >
             <Voice s={s} onInk={onInk} />
           </Sec>

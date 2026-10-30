@@ -140,7 +140,7 @@ def test_twin_shapes_match() -> None:
     shapes = ("Piece", "StyleDial", "Sample", "NotionPage", "ChorePreset", "MemoryFact", "AutonomySplit")
     shapes += ("TwinChannel", "MissionBeat", "MissionTurn", "TwinFiled", "Mission", "TwinDraft", "TwinWeek")
     shapes += ("TwinSummary", "TwinAsk", "TwinDetail", "TwinStats", "PieceOp", "Connection")
-    shapes += ("ConnectFlow",)
+    shapes += ("ConnectFlow", "TwinPreview")
     bodies = (
         "NewTwinBody",
         "TwinSayBody",

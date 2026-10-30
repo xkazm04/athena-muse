@@ -1,7 +1,8 @@
 // The invented example as a daemon: every route the twins page uses, answered from the generated
-// fixture (fixture/twins.ts) in wire shape, at the example's own pace. The screen labels it "Invented
-// example"; nothing here reaches a real account. Only what the person does locally (ink, the slips'
-// choices, signing a draft) is computed here, with the twin rubric's own count (select.ts).
+// fixture (fixture/twins.ts: what the daemon answered on the scripted engine) at the example's own
+// pace. The screen labels it "Invented example"; nothing here reaches a real account. Only what the
+// person does off the example's one path (ink, the slips' choices, a mark it did not record, signing
+// a draft) is computed here, with the twin rubric's own count (select.ts).
 
 import { DaemonError } from "../../lib/daemon";
 import type {
@@ -19,7 +20,7 @@ import type {
   TwinSetupEvent,
 } from "../../lib/contract";
 import { TWIN_FIXTURE } from "./fixture/twins";
-import type { RehearsalLeg, TwinFixture } from "./fixture/types";
+import type { TimedRehearsal, TwinFixture } from "./fixture/types";
 import type { TwinsIo } from "./io";
 import { coverageOf, isReady, readinessOf } from "./select";
 import { TWINS_WORDS } from "./words";
@@ -45,7 +46,7 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
   let live = false;
   let relive = false;
   const decided = new Set<string>();
-  let run: { kind: "usual" | "handed"; leg: number; ended: boolean } | null = null;
+  let run: { kind: "usual" | "handed"; ended: boolean } | null = null;
   let resolvedOnce = false;
   const flows: Partial<Record<ChannelKind, { at: number; ok: boolean; again: boolean }>> = {};
 
@@ -66,8 +67,8 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
     throw new DaemonError(404, "unknown_ref", `No ${what} in this example.`);
   };
 
-  const legsOf = (kind: "usual" | "handed"): RehearsalLeg[] =>
-    kind === "usual" ? S.rehearsal.legs : [S.rehearsal.legs[0]!, S.rehearsal.handed];
+  const streamOf = (kind: "usual" | "handed"): TimedRehearsal[] =>
+    kind === "usual" ? S.rehearsal.events : S.rehearsal.handed.events;
 
   function pageNow(): TwinPage {
     const page = clone(live ? fx.pageAfter : fx.page);
@@ -98,8 +99,8 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
         if (t === S.need || t === TWINS_WORDS.describeSuggestions[0]) return "";
         return (TWINS_WORDS.describeSuggestions as readonly string[]).includes(t) ? TWINS_WORDS.staged : TWINS_WORDS.typed;
       }
-      if (body.text) return TWINS_WORDS.typed;
-      return body.choice && next.say.choice && body.choice !== next.say.choice ? TWINS_WORDS.staged : "";
+      if (body.text) return body.text === next.say.text ? "" : TWINS_WORDS.typed;
+      return body.choice && body.choice !== next.say.choice ? TWINS_WORDS.staged : "";
     },
 
     reset: () => {
@@ -185,44 +186,40 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
     },
 
     twinRehearse: async (_id, _goal, onEvent) => {
-      if (!run || run.ended) {
-        // a new run: the setup is complete (the daemon takes her suggested mission when it was not set)
-        // and the twin holds no rehearsal until this one plays
-        run = { kind: resolvedOnce ? "handed" : "usual", leg: 0, ended: false };
-        frame = S.frames.length - 1;
-        twin = clone(S.frames[frame]!.twin);
-        delete twin.ask;
-      }
-      const leg = legsOf(run.kind)[run.leg];
-      if (!leg) return refuse("further rehearsal");
+      // the setup is complete (the daemon takes her suggested mission when it was not set) and the twin
+      // holds no rehearsal until this one plays; the daemon plays the whole conversation in one stream.
+      // The usual path plays first; tried again, the other side asks for money.
+      run = { kind: resolvedOnce ? "handed" : "usual", ended: false };
+      frame = S.frames.length - 1;
+      twin = clone(S.frames[frame]!.twin);
+      delete twin.ask;
       let prev = -1;
-      for (const { at_s, event } of leg.events) {
+      for (const { at_s, event } of streamOf(run.kind)) {
         await sleep(waitBefore(event, at_s, prev));
         prev = at_s;
         onEvent(event);
         if (event.type === "outcome") {
           run.ended = true;
           resolvedOnce = event.state === "resolved";
-          twin = clone(event.state === "resolved" ? S.rehearsal.rehearsed : S.rehearsal.handed.after);
+          twin = clone(run.kind === "usual" ? S.rehearsal.played : S.rehearsal.handed.after);
         }
       }
     },
 
     twinMark: async (_id, body) => {
-      const legs = run ? legsOf(run.kind) : [];
-      const next = run ? legs[run.leg + 1] : undefined;
-      if (run && next?.mark && next.mark.turn === body.turn && next.twin) {
-        run.leg += 1;
-        twin = clone(next.twin);
-      }
-      // the person's own words stay theirs, whatever the example's edit said
+      const recorded = run?.kind === "usual" ? S.rehearsal.marks.find((m) => m.mark.turn === body.turn && m.mark.mark === body.mark) : undefined;
+      // the daemon's answer when the person marks as the example did; otherwise their own mark, kept
+      // on the turn as the daemon keeps it
+      if (recorded) twin = clone(recorded.twin);
       const r = twin.rehearsal;
       if (r) {
-        r.turns = r.turns.map((t: MissionTurn) =>
-          t.id !== body.turn
-            ? t
-            : { ...t, mark: body.mark, ...(body.edited_text ? { edited_text: body.edited_text } : {}) },
-        );
+        r.turns = r.turns.map((t: MissionTurn) => {
+          if (t.id !== body.turn) return t;
+          const out: MissionTurn = { ...t, mark: body.mark };
+          if (body.mark === "edited" && body.edited_text) out.edited_text = body.edited_text;
+          else delete out.edited_text;
+          return out;
+        });
       }
       return withInks(twin);
     },
@@ -231,6 +228,13 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
       live = true;
       twin = clone(S.golive);
       return clone(twin);
+    },
+
+    twinPreview: async (id: string) => {
+      const found = fx.previews[id];
+      if (!found) return refuse("preview for that twin");
+      await sleep(2);
+      return clone(found);
     },
 
     mission: async (id: string, mid: string) => {
@@ -253,17 +257,17 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
       return { state: "done" };
     },
 
-    decideDraft: async (cardId, body) => {
+    decide: async (cardId, verdict, edited) => {
       const all = pageNow().twins.flatMap((t) => t.waiting);
       const d = all.find((w) => w.card_id === cardId) ?? refuse("such draft");
       decided.add(d.id);
       return {
         id: cardId,
         space_id: "",
-        action: "twin_send",
+        action: d.channel === "gmail" ? "twin_send" : "twin_note",
         label: d.subject,
-        args: body.edited ? { text: body.edited.text } : { text: d.text },
-        state: body.verdict === "approve" ? "approved" : "declined",
+        args: edited ? { text: edited.text } : { text: d.text },
+        state: verdict === "approve" ? "approved" : "declined",
         created: d.created,
         resolved: fx.now,
       } satisfies Card;

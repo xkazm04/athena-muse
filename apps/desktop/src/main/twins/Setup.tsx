@@ -60,11 +60,10 @@ const signsAs = (t: TwinDetail | null) => {
   return sign ? sign.label.replace(/^signs as\s+/i, "").split(/\s+from\s+/i)[0]! : "you";
 };
 
-/** What the twin wrote last that someone answered: its voice in one line. */
+/** How it sounds, in one line: the first words of the preview the daemon keeps for its voice as it
+ * is now. None while there is no such preview (the voice page writes one). */
 export function soundsLikeOf(t: TwinDetail | null): string | undefined {
-  const turns = [...(t?.rehearsal?.turns ?? []), ...(t?.missions.flatMap((m) => m.turns) ?? [])];
-  const mine = turns.filter((x) => x.side === "twin").at(-1);
-  return mine ? firstSentence(mine.edited_text ?? mine.text) : undefined;
+  return t?.preview ? firstSentence(t.preview.text) : undefined;
 }
 
 /** The setup's own keys: 1-3 pick her suggestions, unless the person is typing. */

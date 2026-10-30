@@ -10,8 +10,8 @@ import {
   BAR_MIN,
   CORE,
   type ChannelKind,
+  type ConnectFlow,
   type DialsBody,
-  type MissionTurn,
   type TwinDetail,
   type TwinDraft,
   type TwinSayBody,
@@ -31,7 +31,7 @@ import type {
   TwinsEvent,
   TwinsState,
 } from "./types";
-import { TWINS_WORDS } from "./words";
+import { CONNECT_WORDS, TWINS_WORDS } from "./words";
 
 export const emptyChoices = (): Choices => ({
   samples: {},
@@ -57,6 +57,8 @@ export function initialSetup(): SetupState {
     note: "",
     connect: { gmail: "idle", notion: "idle" },
     connectSince: 0,
+    connectDetail: "",
+    connectUrl: "",
     where: false,
     choices: emptyChoices(),
     rehearsal: null,
@@ -77,6 +79,7 @@ export function initialTwins(mode: TwinsState["mode"] = "live"): TwinsState {
     before: null,
     issued: null,
     details: {},
+    previews: {},
     done: {},
     flash: "",
     signin: null,
@@ -210,15 +213,23 @@ export function applyLocal(s: SetupState, a: TwinsAction): SetupState {
 
 const LOCAL: ReadonlySet<TwinsAction["type"]> = new Set(["choose", "dial", "preset", "level", "bar", "split", "where", "reh_text"]);
 
-/** Whether a slip's row is on: the person's choice, else what the twin holds (her suggestion first). */
-export const chosen = (c: Choices, group: "samples" | "pages" | "chores", id: string, picked: boolean) =>
-  c[group][id] ?? picked;
+/** A row on a slip: what the daemon keeps of it. */
+interface SlipRow {
+  id: string;
+  picked: boolean;
+  suggest: boolean;
+}
 
-/** The style presets' dial values (the Passport example's "Particulars" swap). */
+/** Whether a slip's row is on: the person's choice; else what the twin holds once anything on the
+ * slip was picked; else her suggestion (the daemon lists rows unpicked, each with her suggestion). */
+export const chosen = (c: Choices, group: "samples" | "pages" | "chores", x: SlipRow, all: readonly SlipRow[]) =>
+  c[group][x.id] ?? (all.some((y) => y.picked) ? x.picked : x.suggest);
+
+/** The style presets' dial values, as the daemon applies them (`twins/style.py` PRESETS). */
 export const PRESET_VALUES: Record<string, Record<string, number>> = {
-  "Friendly pro": { formality: 3, warmth: 4, humor: 2, energy: 3, length: 3, directness: 3, expressiveness: 3, detail: 3 },
+  "Friendly pro": { formality: 3, warmth: 4, humor: 2, energy: 3, length: 3, directness: 3, expressiveness: 3, detail: 2 },
   "Brief and direct": { formality: 3, warmth: 2, humor: 1, energy: 2, length: 1, directness: 5, expressiveness: 2, detail: 1 },
-  "Warm storyteller": { formality: 2, warmth: 5, humor: 3, energy: 3, length: 4, directness: 3, expressiveness: 4, detail: 4 },
+  "Warm storyteller": { formality: 2, warmth: 5, humor: 3, energy: 4, length: 4, directness: 2, expressiveness: 5, detail: 4 },
 };
 
 /** The dials as the slip shows them: the twin's, with a preset or the person's own values on top. */
@@ -241,15 +252,26 @@ export const SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000;
 export interface TwinsStore extends TwinsState {
   /** Plays the invented example (labelled on screen) instead of the daemon. */
   useExample: (io?: TwinsIo) => void;
+  /** Back to the daemon from the invented example. */
+  useLive: () => void;
   loadPage: () => Promise<void>;
   loadDetail: (id: string) => Promise<TwinDetail | null>;
+  /** The daemon changed something (a card filed or decided, a mission worked): read the page again,
+   * and the twins it has open, unless an act of the person's is in flight there. */
+  refresh: () => Promise<void>;
+  /** How a twin sounds now; the daemon keeps it until its voice changes. */
+  loadPreview: (id: string) => Promise<void>;
   /** Opens a twin's setup, or `null` for a new one (the describe step). */
   openSetup: (id: string | null) => Promise<void>;
   dispatch: (action: TwinsAction) => void;
-  sign: (draft: TwinDraft, text?: string) => Promise<void>;
-  decline: (draft: TwinDraft) => Promise<void>;
+  /** Signs a waiting draft, with the person's words when they changed it. Answers the problem the
+   * daemon gave, in plain words, or "" when it went. */
+  sign: (draft: TwinDraft, text?: string) => Promise<string>;
+  decline: (draft: TwinDraft) => Promise<string>;
   takeOver: (missionId: string) => void;
   signInAgain: (twinId: string) => Promise<void>;
+  /** A paused twin goes live again (its rehearsal stands). */
+  resume: (twinId: string) => Promise<void>;
   clearFlash: () => void;
   /** "now" for relative times: the example's own, else the clock. */
   now: () => Date;
@@ -338,16 +360,23 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       }
     };
 
-    /** Polls a connection until Google or Notion answers, or the wait runs out. */
-    const connectFlow = async (kind: ChannelKind, from: number): Promise<"done" | "failed"> => {
+    /** Follows a connect until Google or Notion answers, or the wait runs out. A Notion key is checked
+     * inside its connect, so its first answer is already the end; Google's sign-in waits in the browser. */
+    const connectFlow = async (
+      kind: ChannelKind,
+      first: ConnectFlow,
+      from: number,
+      onWait?: (f: ConnectFlow) => void,
+    ): Promise<ConnectFlow> => {
       const started = clock();
+      let f = first;
       for (;;) {
-        if (from !== session || cancelled) return "failed";
-        const f = await io.connectFlow(kind);
-        if (f.state === "done") return "done";
-        if (f.state === "failed") return "failed";
-        if (clock() - started > SIGN_IN_TIMEOUT_MS) return "failed";
+        if (f.state === "done" || f.state === "failed") return f;
+        if (from !== session || cancelled) return { state: "failed" };
+        if (clock() - started > SIGN_IN_TIMEOUT_MS) return { state: "failed", detail: CONNECT_WORDS.gmail.failed };
+        onWait?.(f);
         await new Promise((r) => setTimeout(r, pollMs));
+        f = await io.connectFlow(kind);
       }
     };
 
@@ -355,21 +384,33 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       const s = get().setup;
       const waiting: ConnectView = kind === "gmail" ? "waiting" : "checking";
       cancelled = false;
-      setS({ connect: { ...s.connect, [kind]: waiting }, connectSince: clock(), note: "" });
+      setS({ connect: { ...s.connect, [kind]: waiting }, connectSince: clock(), connectDetail: "", connectUrl: "", note: "" });
       const { from } = begin("connect", null);
       try {
-        await io.connect(kind, body);
-        const end = await connectFlow(kind, from);
+        const first = await io.connect(kind, body);
+        const end = await connectFlow(kind, first, from, (f) => {
+          if (from === session && f.url) setS({ connectUrl: f.url });
+        });
         if (from !== session) return;
-        const shown: ConnectView = end === "done" ? "connected" : kind === "gmail" ? "failed" : "rejected";
-        setS((x) => ({ connect: { ...x.connect, [kind]: shown }, where: kind === "notion" && end !== "done" ? true : x.where }));
+        const done = end.state === "done";
+        const shown: ConnectView = done ? "connected" : kind === "gmail" ? "failed" : "rejected";
+        setS((x) => ({
+          connect: { ...x.connect, [kind]: shown },
+          connectDetail: done ? "" : (end.detail ?? ""),
+          connectUrl: "",
+          where: kind === "notion" && !done ? true : x.where,
+        }));
         finish();
-        if (end === "done") {
+        if (done) {
           const ask = get().setup.ask;
           await say({ text: "", choice: ask?.suggestions[0] ?? "Connected" }, null, ask?.suggestions[0] ?? "");
         }
       } catch (e) {
-        setS((x) => ({ connect: { ...x.connect, [kind]: kind === "gmail" ? "failed" : "rejected" } }));
+        setS((x) => ({
+          connect: { ...x.connect, [kind]: kind === "gmail" ? "failed" : "rejected" },
+          connectDetail: reasonOf(e, ""),
+          connectUrl: "",
+        }));
         await fail(null, from, e);
       }
     };
@@ -385,7 +426,7 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       let words = "";
       const runs: (() => Promise<TwinDetail>)[] = [];
       if (panel === "samples") {
-        const ids = t.samples.filter((x) => chosen(c, "samples", x.id, x.picked)).map((x) => x.id);
+        const ids = t.samples.filter((x) => chosen(c, "samples", x, t.samples)).map((x) => x.id);
         runs.push(() => io.twinSamples(id, ids));
         words = `Learn from these ${ids.length}`;
       } else if (panel === "style") {
@@ -394,11 +435,11 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
         if (Object.keys(dials).length) runs.push(() => io.twinDials(id, body));
         words = "Keep this style";
       } else if (panel === "pages") {
-        const ids = t.pages.filter((x) => chosen(c, "pages", x.id, x.picked)).map((x) => x.id);
+        const ids = t.pages.filter((x) => chosen(c, "pages", x, t.pages)).map((x) => x.id);
         runs.push(() => io.twinPages(id, ids));
         words = `Read from these ${ids.length}`;
       } else if (panel === "chores") {
-        const ids = t.chores.filter((x) => !x.coming && chosen(c, "chores", x.id, x.picked)).map((x) => x.id);
+        const ids = t.chores.filter((x) => !x.coming && chosen(c, "chores", x, t.chores)).map((x) => x.id);
         runs.push(() => io.twinChores(id, ids));
         words = `Issue ${ids.length} permit${ids.length === 1 ? "" : "s"}`;
       } else if (panel === "autonomy") {
@@ -452,12 +493,13 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       return { goal, note: goal ? TWINS_WORDS.tookMission(goal) : "" };
     };
 
-    const mark = async (action: TwinsAction, turn: MissionTurn, body: Parameters<TwinsIo["twinMark"]>[1], go: boolean) => {
+    /** The person's mark on one draft. The daemon played the whole conversation already, so a mark
+     * never plays it again: the next draft that waited, or the outcome, comes up. */
+    const mark = async (action: TwinsAction, body: Parameters<TwinsIo["twinMark"]>[1]) => {
       const id = get().setup.twin?.id;
       if (!id) return;
       if (!(await call("mark", action, () => io.twinMark(id, body)))) return;
       setS((s) => (s.rehearsal ? { rehearsal: { ...s.rehearsal, editing: null } } : {}));
-      if (go && turn.decision === "waits") await stream(action, false, get().setup.rehearsal?.goal ?? "");
     };
 
     const rehPick = async (i: number, action: TwinsAction) => {
@@ -467,19 +509,21 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       if (step === "intro") return act({ type: "rehearse" });
       if (step === "waits" && turn) {
         if (i === 2) return act({ type: "reh_edit" });
-        return mark(action, turn, { turn: turn.id, mark: i === 0 ? "me" : "not_me" }, true);
+        return mark(action, { turn: turn.id, mark: i === 0 ? "me" : "not_me" });
       }
       if (step === "held" && turn) {
         if (i === 0) return act({ type: "reh_edit" });
-        return mark(action, turn, { turn: turn.id, mark: i === 1 ? "me" : "not_me" }, true);
+        return mark(action, { turn: turn.id, mark: i === 1 ? "me" : "not_me" });
       }
       if (step === "editing" && turn) {
         if (i === 0) return act({ type: "reh_save" });
-        if (i === 1) return mark(action, turn, { turn: turn.id, mark: "me" }, true);
+        if (i === 1) return mark(action, { turn: turn.id, mark: "me" });
         return setS((x) => (x.rehearsal ? { rehearsal: { ...x.rehearsal, editText: turn.text } } : {}));
       }
-      if (step === "edited") return act(i === 0 ? { type: "reh_send" } : { type: "reh_edit" });
-      if (step === "sent" && turn) return mark(action, turn, { turn: turn.id, mark: i === 0 ? "me" : "not_me" }, false);
+      if (step === "edited" && turn) {
+        if (i === 2) return mark(action, { turn: turn.id, mark: "me" });
+        return act(i === 0 ? { type: "reh_send" } : { type: "reh_edit" });
+      }
       if (step === "resolved") return i === 0 ? act({ type: "golive" }) : i === 1 ? act({ type: "reh_alt" }) : undefined;
       if (step === "handed") return i === 0 ? act({ type: "golive" }) : i === 1 ? act({ type: "reh_alt" }) : undefined;
       return undefined;
@@ -557,7 +601,7 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
         }
         case "reh_mark": {
           const turn = currentTurn(s);
-          if (turn) await mark(a, turn, { turn: turn.id, mark: a.mark }, true);
+          if (turn) await mark(a, { turn: turn.id, mark: a.mark });
           return;
         }
         case "reh_edit": {
@@ -570,8 +614,12 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
           const turn = currentTurn(s);
           const r = s.rehearsal;
           if (!turn || !r) return;
-          const text = r.editText.trim() || turn.text;
-          await mark(a, turn, { turn: turn.id, mark: "edited", edited_text: text }, false);
+          const text = r.editText.trim();
+          if (!text || text === turn.text.trim()) {
+            await mark(a, { turn: turn.id, mark: "me" });
+            return;
+          }
+          await mark(a, { turn: turn.id, mark: "edited", edited_text: text });
           return;
         }
         case "reh_send": {
@@ -579,7 +627,7 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
           const r = s.rehearsal;
           if (!turn || !r) return;
           setS({ rehearsal: { ...r, continued: [...r.continued, turn.id] } });
-          return stream(a, false, r.goal);
+          return;
         }
         case "reh_alt":
           return stream(a, true, s.rehearsal?.goal ?? goalOf(s).goal);
@@ -614,6 +662,12 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
         set({ ...initialTwins("example") });
       },
 
+      useLive: () => {
+        io = io0;
+        session++;
+        set({ ...initialTwins("live") });
+      },
+
       loadPage: async () => {
         if (get().pageLoad !== "ready") set({ pageLoad: "reading", pageProblem: "" });
         try {
@@ -630,6 +684,28 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
           return d;
         } catch {
           return null;
+        }
+      },
+
+      refresh: async () => {
+        const st = get();
+        const from = session;
+        if (st.pageLoad === "ready") await get().loadPage();
+        for (const id of Object.keys(get().details)) await get().loadDetail(id);
+        const open = get().setup;
+        if (open.twin && !open.work && open.phase !== "failed" && from === session) await reread(from);
+      },
+
+      loadPreview: async (id) => {
+        const was = get().previews[id];
+        if (was?.load === "reading") return;
+        set((st) => ({ previews: { ...st.previews, [id]: { ...was, load: "reading", problem: "" } } }));
+        try {
+          const value = await io.twinPreview(id);
+          set((st) => ({ previews: { ...st.previews, [id]: { load: "ready", value } } }));
+        } catch (e) {
+          const problem = reasonOf(e, "It could not write how it sounds just now. Nothing was changed.");
+          set((st) => ({ previews: { ...st.previews, [id]: { ...st.previews[id], load: "problem", problem } } }));
         }
       },
 
@@ -657,29 +733,31 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       },
 
       sign: async (draft, text) => {
-        if (!draft.card_id) return;
+        if (!draft.card_id) return "This draft has nothing to sign.";
         const edited = text !== undefined && text.trim() && text.trim() !== draft.text.trim() ? { text: text.trim() } : undefined;
         try {
-          await io.decideDraft(draft.card_id, edited ? { verdict: "approve", edited } : { verdict: "approve" });
-          set((st) => ({
-            done: { ...st.done, [draft.id]: "signed" },
-            flash: edited ? "Your version was sent. It learns from what you changed." : "Signed and sent as you.",
-          }));
-          await get().loadPage();
+          await io.decide(draft.card_id, "approve", edited);
         } catch (e) {
-          set({ flash: reasonOf(e, "It could not be sent. Nothing went out.") });
+          return reasonOf(e, "It could not be sent. Nothing went out.");
         }
+        set((st) => ({
+          done: { ...st.done, [draft.id]: "signed" },
+          flash: edited ? "Your version was sent. It learns from what you changed." : "Signed and sent as you.",
+        }));
+        await get().loadPage();
+        return "";
       },
 
       decline: async (draft) => {
-        if (!draft.card_id) return;
+        if (!draft.card_id) return "This draft has nothing to decline.";
         try {
-          await io.decideDraft(draft.card_id, { verdict: "decline" });
-          set((st) => ({ done: { ...st.done, [draft.id]: "declined" }, flash: "Declined. It will not send that draft." }));
-          await get().loadPage();
+          await io.decide(draft.card_id, "decline");
         } catch (e) {
-          set({ flash: reasonOf(e, "Could not decline it. Nothing changed.") });
+          return reasonOf(e, "Could not decline it. Nothing changed.");
         }
+        set((st) => ({ done: { ...st.done, [draft.id]: "declined" }, flash: "Declined. It will not send that draft." }));
+        await get().loadPage();
+        return "";
       },
 
       takeOver: (missionId) =>
@@ -692,12 +770,21 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
         const from = session;
         set({ signin: { twin: twinId, state: "waiting", since: clock() } });
         try {
-          await io.connect("gmail", {});
-          const end = await connectFlow("gmail", from);
-          set({ signin: { twin: twinId, state: end === "done" ? "connected" : "failed", since: clock() } });
-          if (end === "done") await get().loadPage();
+          const end = await connectFlow("gmail", await io.connect("gmail", {}), from);
+          set({ signin: { twin: twinId, state: end.state === "done" ? "connected" : "failed", since: clock() } });
+          if (end.state === "done") await get().loadPage();
         } catch {
           set({ signin: { twin: twinId, state: "failed", since: clock() } });
+        }
+      },
+
+      resume: async (twinId) => {
+        try {
+          const t = await io.twinGoLive(twinId);
+          set({ flash: TWINS_WORDS.resumed(t.name) });
+          await get().loadPage();
+        } catch (e) {
+          set({ flash: reasonOf(e, "It could not go live again. Nothing changed.") });
         }
       },
 

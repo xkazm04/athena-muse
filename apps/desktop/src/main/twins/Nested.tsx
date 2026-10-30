@@ -10,6 +10,7 @@ import { barOf, beatAt, day, rel } from "./format";
 import { Icon, Portrait, Stamp, Sure } from "./marks";
 import { DraftStamp } from "./Overview";
 import { piecesAt } from "./select";
+import type { PreviewView } from "./types";
 import { CHANNEL_LABEL, MISSION_BADGE, WAIT } from "./words";
 
 interface PageProps {
@@ -84,7 +85,11 @@ function Bubble({ t, twin, other, now }: { t: MissionTurn; twin: TwinSummary; ot
   let stamp: ReactNode = null;
   if (mine && t.decision === "sent_alone") stamp = <Stamp text="Sent on its own" tone="success" />;
   else if (mine && t.mark === "edited") stamp = <Stamp text="You edited" tone="human" sub="and signed" />;
-  else if (mine && t.decision === "waits") stamp = <Stamp text={t.mark ? "Signed" : t.reason === "risk" ? "Held" : "Waits for you"} tone={t.mark ? "human" : t.reason === "risk" ? "warning" : "human"} />;
+  else if (mine && t.decision === "waits" && t.draft && !t.mark)
+    stamp = <Stamp text={t.reason === "risk" ? "Held" : "Waits for you"} tone={t.reason === "risk" ? "warning" : "human"} />;
+  // a draft that waited and is no longer waiting was signed: in the person's words when they changed it
+  else if (mine && t.decision === "waits")
+    stamp = t.edited_text && !t.mark ? <Stamp text="You edited" tone="human" sub="and signed" /> : <Stamp text="Signed" tone="human" />;
   return (
     <li className={`nturn ${mine ? "nturn--twin" : "nturn--other"}`}>
       <span className="nturn__who">
@@ -122,23 +127,46 @@ function exchangeOf(d: TwinDetail | undefined, t: TwinSummary): { theirs?: Missi
   return { with: "" };
 }
 
-export function VoicePage({ twin, detail, now, go }: { twin: TwinSummary; detail?: TwinDetail; now: Date; go: (r: Route) => void }) {
+export function VoicePage({
+  twin,
+  detail,
+  preview,
+  onPreview,
+  now,
+  go,
+}: {
+  twin: TwinSummary;
+  detail?: TwinDetail;
+  /** How it sounds now, as the daemon wrote it for its voice as it is. */
+  preview?: PreviewView;
+  /** Asks the daemon again after a problem. */
+  onPreview?: () => void;
+  now: Date;
+  go: (r: Route) => void;
+}) {
   const back: Route = { view: "twin", id: twin.id };
   const ex = exchangeOf(detail, twin);
   const traits = piecesAt(detail ?? null, "voice");
+  const voiced = traits.some((p) => p.confirmed);
   const sample = detail?.samples.find((s) => s.picked);
   const own = (detail?.dials ?? []).filter((d) => d.source !== "learned");
+  const sounds = preview?.value ?? detail?.preview;
+  const reading = preview?.load === "reading" && !sounds;
   const left = (
     <>
       <h3>
-        Their message <span>{ex.with || "no one yet"}</span>
+        Their message <span>{sounds ? (ex.theirs ? ex.with : "written by Athena for this") : ex.with || "no one yet"}</span>
       </h3>
-      {ex.theirs ? (
+      {sounds ? (
+        <blockquote className="theirs" data-role="preview-inbound">
+          <p>{sounds.inbound}</p>
+        </blockquote>
+      ) : ex.theirs ? (
         <ul className="nturns">
           <Bubble t={ex.theirs} twin={twin} other={ex.with} now={now} />
         </ul>
       ) : (
-        <p className="empty">It has not answered anyone yet. Its first draft shows here once it rehearses.</p>
+        <p className="empty">{voiced ? "Athena writes one for it to answer." : "It has not answered anyone yet, and it has no voice yet."}</p>
       )}
       {sample && (
         <blockquote className="specimen">
@@ -152,16 +180,63 @@ export function VoicePage({ twin, detail, now, go }: { twin: TwinSummary; detail
       )}
     </>
   );
+  let reply: ReactNode;
+  if (sounds) {
+    reply = (
+      <>
+        <p className="dr__full" data-role="preview-text">
+          {sounds.text}
+        </p>
+        <h4 className="npage__k">Since the last time you looked</h4>
+        {sounds.changed.length ? (
+          <ul className="pcs pcs--lines" data-role="preview-changed">
+            {sounds.changed.map((c) => (
+              <li key={c} className="pc" data-state="ink" data-origin="you">
+                <span className="pc__l">{c}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="empty">This is the first time it was written, so nothing is compared yet.</p>
+        )}
+      </>
+    );
+  } else if (reading) {
+    reply = (
+      <p className="empty" role="status">
+        <span className="spin" aria-hidden="true" /> Writing its reply in its voice now. Once written, it is kept until its voice changes.
+      </p>
+    );
+  } else if (preview?.load === "problem") {
+    reply = (
+      <div className="problem" role="alert">
+        <Icon name="risk" />
+        <div>
+          <p>{preview.problem}</p>
+          {onPreview && (
+            <button type="button" className="btn" onClick={onPreview}>
+              <Icon name="retry" />
+              Try again
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  } else {
+    reply = ex.mine ? (
+      <ul className="nturns">
+        <Bubble t={ex.mine} twin={twin} other={ex.with} now={now} />
+      </ul>
+    ) : (
+      <p className="empty">Not written yet: it answers once it has a voice of yours to answer in.</p>
+    );
+  }
   const right = (
     <>
       <h3>
-        Its reply, in its voice now <span>{ex.mine ? rel(ex.mine.at, now) : ""}</span>
+        Its reply, in its voice now <span>{sounds ? "kept until its voice changes" : ex.mine ? rel(ex.mine.at, now) : ""}</span>
       </h3>
-      {ex.mine && (
-        <ul className="nturns">
-          <Bubble t={ex.mine} twin={twin} other={ex.with} now={now} />
-        </ul>
-      )}
+      {reply}
       <h4 className="npage__k">What shapes it</h4>
       {traits.length ? (
         <ul className="pcs pcs--lines pcs--voice">
@@ -188,7 +263,7 @@ export function VoicePage({ twin, detail, now, go }: { twin: TwinSummary; detail
       twin={twin}
       kicker="Voice"
       title="How it sounds"
-      sub="A message from the other side and its reply, in its voice now, with what shapes it."
+      sub="A message from the other side and its reply, in its voice now, with what changed it."
       back={back}
       backLabel="Its document"
       go={go}
@@ -198,6 +273,7 @@ export function VoicePage({ twin, detail, now, go }: { twin: TwinSummary; detail
     />
   );
 }
+
 
 // --- a mission's script ---------------------------------------------------------------------------
 
@@ -311,12 +387,14 @@ export function DraftPage({
   draft?: TwinDraft;
   now: Date;
   go: (r: Route) => void;
-  onSign: (d: TwinDraft, text?: string) => Promise<void>;
-  onDecline: (d: TwinDraft) => Promise<void>;
+  /** Each answers the daemon's problem in plain words, or "" when it went. */
+  onSign: (d: TwinDraft, text?: string) => Promise<string>;
+  onDecline: (d: TwinDraft) => Promise<string>;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(draft?.text ?? "");
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
   if (!draft) return <Missing what="That draft no longer waits" back={{ view: "twins" }} go={go} />;
   const bar = barOf(draft, twin);
   const ms = twin.missions.find((m) => m.id === draft.mission);
@@ -326,11 +404,14 @@ export function DraftPage({
       : draft.reason === "below_bar"
         ? `Its risk list is empty, but ${draft.confidence} is below your bar of ${bar ?? "-"}, so it waits for your signature.`
         : `${WAIT[draft.reason ?? "assist"]}.`;
-  const act = async (run: () => Promise<void>) => {
+  /** A signature or a decline; a failed one stays on the page with the daemon's own words. */
+  const act = async (run: () => Promise<string>) => {
     setBusy(true);
-    await run();
+    setProblem("");
+    const found = await run();
     setBusy(false);
-    go({ view: "twins" });
+    if (found) setProblem(found);
+    else go({ view: "twins" });
   };
   const left = (
     <>
@@ -388,6 +469,12 @@ export function DraftPage({
         )}
       </div>
       <p className="dr__why">{why}</p>
+      {problem && (
+        <p className="dr__problem" role="alert" data-role="draft-problem">
+          <Icon name="risk" />
+          {problem}
+        </p>
+      )}
       <div className="dr__act">
         {editing ? (
           <>

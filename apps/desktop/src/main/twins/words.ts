@@ -132,11 +132,17 @@ export const TWINS_WORDS = {
   goLive: "Go live",
   goLiveWhen: "Go live opens when the rehearsal ends: resolved, or handed back to you.",
   goLiveNow: "The rehearsal is done. Go live when you are happy.",
+  goLiveMarks: "It played the whole conversation. Go live opens once you have gone through each draft that waited.",
   issuedNothingMore: "Issued. Nothing more is needed.",
   liveFlash: (name: string) => `${name} is live. Its document is issued and in your wallet.`,
+  resumed: (name: string) => `${name} is live again. Every draft still passes the send rule.`,
+  backToLive: "Back to your own twins",
+  simulated: "Simulated",
+  simulatedTitle: "Athena runs without a Muse key: her replies and the twin's drafts are simulated, and say so.",
   // the nested pages
   soundsLike: "Sounds like",
-  soundsLikeNone: "not written yet: its first draft shows once it rehearses",
+  soundsLikeNone: "not written yet: it needs a voice of yours first",
+  soundsLikeAsk: "hear it in its voice now",
 } as const;
 
 /** The bottom panel during the rehearsal: her line and her one question, per step. */
@@ -179,6 +185,12 @@ export const REHEARSAL_ASK = {
   }),
   resolved: (where: string): RehearsalAsk => ({
     line: `Mission resolved. It filed the row to ${where}, as the chore says.`,
+    ask: "Ready to go live?",
+    suggestions: ["Go live", "Try it another way", "Not yet"],
+  }),
+  /** Resolved with nothing filed: a rehearsal writes only its practice page. */
+  resolvedNote: (note: string): RehearsalAsk => ({
+    line: `Mission resolved. ${note}`,
     ask: "Ready to go live?",
     suggestions: ["Go live", "Try it another way", "Not yet"],
   }),

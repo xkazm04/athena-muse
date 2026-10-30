@@ -10,6 +10,10 @@ import { TwinsView, type TwinRoute } from "./Twins";
 afterEach(cleanup);
 
 const [desk, family, partners] = fx.page.twins;
+// Client desk, as the daemon left it: a reply held below the bar, and a money ask handed back
+const invoice = desk!.waiting.find((d) => d.subject === "Re: Invoice 2026-031")!;
+const scripted = desk!.missions.filter((m) => m.beats.length);
+const rush = desk!.missions.find((m) => m.state === "handed_back")!;
 
 describe("the twins routes", () => {
   it.each(["#twins", "#twin/new", `#twin/${desk!.id}`, `#twin/${partners!.id}/voice`, `#twin/${desk!.id}/mission/ms_1`, `#twin/${desk!.id}/draft/dr_1`])(
@@ -53,9 +57,9 @@ describe("the overview", () => {
   it("opens a waiting card's draft on its own page, and a handed-back card's mission", () => {
     const { go } = show("overview-today");
     fireEvent.click(screen.getByRole("button", { name: /Re: Invoice 2026-031/ }));
-    expect(go).toHaveBeenLastCalledWith({ view: "twin_draft", id: desk!.id, draft: "dr_1" });
+    expect(go).toHaveBeenLastCalledWith({ view: "twin_draft", id: desk!.id, draft: invoice.id });
     fireEvent.click(screen.getByRole("button", { name: /handed back to you/ }));
-    expect(go).toHaveBeenLastCalledWith({ view: "twin_mission", id: desk!.id, mission: "ms_3" });
+    expect(go).toHaveBeenLastCalledWith({ view: "twin_mission", id: desk!.id, mission: rush.id });
   });
 
   it("opens a twin in place from its ledger row, and its beat dots open the mission's script", () => {
@@ -64,17 +68,26 @@ describe("the overview", () => {
     expect(go).toHaveBeenLastCalledWith({ view: "twin", id: desk!.id });
     cleanup();
     const opened = show("overview-row-open");
+    // its rehearsal has no script; each mission on Gmail has its beats, counted by the daemon
     const dots = document.querySelectorAll('[data-role="beat-dots"]');
-    expect(dots).toHaveLength(desk!.missions.length);
-    expect(dots[0]!.textContent).toContain("4 of 5");
+    expect(dots).toHaveLength(scripted.length);
+    expect(dots[0]!.textContent).toContain("3 of 4");
     fireEvent.click(dots[0]!);
-    expect(opened.go).toHaveBeenLastCalledWith({ view: "twin_mission", id: desk!.id, mission: "ms_1" });
+    expect(opened.go).toHaveBeenLastCalledWith({ view: "twin_mission", id: desk!.id, mission: scripted[0]!.id });
   });
 
-  it("says a paused twin needs Google again, with one press", () => {
-    show("overview-needs-sign-in");
+  it("says why a twin is paused, and takes it live again with one press", () => {
+    const { store } = show("overview-needs-sign-in");
     expect(screen.getByText(family!.paused_because!)).toBeTruthy();
-    expect(screen.getAllByRole("button", { name: /Sign in with Google/ }).length).toBeGreaterThan(0);
+    // the person paused it, and Gmail is still signed in: no sign-in is asked for
+    expect(screen.queryByRole("button", { name: /Sign in with Google/ })).toBeNull();
+    const resume = vi.fn();
+    cleanup();
+    render(
+      <TwinsView route={{ view: "twin", id: family!.id }} top={() => null} navigate={vi.fn()} store={{ ...store.getState(), resume }} />,
+    );
+    fireEvent.click(document.querySelector('[data-role="resume"]')!);
+    expect(resume).toHaveBeenCalledWith(family!.id);
   });
 
   it("shows a failed load as a problem with a retry, never as no twins", () => {
@@ -130,28 +143,43 @@ describe("the nested pages", () => {
   it("lays a draft beside the message it answers, and signs it in the person's words", async () => {
     const { store, go } = show("draft");
     expect(screen.getByText(desk!.waiting[0]!.answers!)).toBeTruthy();
-    expect(document.querySelector('[data-role="draft-page"]')!.textContent).toMatch(/your bar 85/);
+    expect(document.querySelector('[data-role="draft-page"]')!.textContent).toMatch(/74 is below your bar of 80/);
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Your version"), { target: { value: "Thanks, Friday is fine." } });
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign and send yours" })));
-    expect(store.getState().done.dr_1).toBe("signed");
+    expect(store.getState().done[desk!.waiting[0]!.id]).toBe("signed");
     expect(go).toHaveBeenLastCalledWith({ view: "twins" });
+  });
+
+  it("stays on the draft and says the daemon's problem when the send fails", async () => {
+    const { store, go } = show("draft");
+    const sign = vi.fn(async () => "Gmail did not send it: refused");
+    cleanup();
+    render(
+      <TwinsView route={stateOf("draft").route} top={() => null} navigate={go} store={{ ...store.getState(), sign }} />,
+    );
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign and send" })));
+    expect(sign).toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toMatch(/Gmail did not send it: refused/);
+    expect(go).not.toHaveBeenCalledWith({ view: "twins" });
   });
 
   it("draws a mission as its script of beats beside its turns", () => {
     show("mission");
     const beats = document.querySelectorAll(".beat");
-    expect(beats).toHaveLength(5);
-    expect(beats[3]!.getAttribute("data-now")).toBe("true");
+    expect(beats).toHaveLength(4);
+    expect(beats[2]!.getAttribute("data-now")).toBe("true");
     expect(screen.getByText("waits for your signature")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Open the draft that waits/ })).toBeTruthy();
   });
 
-  it("shows its voice: their message, its reply now, and what it learned", () => {
+  it("shows its voice: their message, its reply now, and what changed since", () => {
     show("voice");
     const page = document.querySelector('[data-role="voice-page"]')!;
-    expect(page.textContent).toMatch(/What would I get out of it/);
-    expect(page.textContent).toMatch(/It learned:/);
+    const sounds = fx.previews[partners!.id]!;
+    expect(page.querySelector('[data-role="preview-inbound"]')!.textContent).toBe(sounds.inbound);
+    expect(page.querySelector('[data-role="preview-text"]')!.textContent).toBe(sounds.text);
+    expect(page.querySelector('[data-role="preview-changed"]')!.textContent).toMatch(/rewrote in your own words/);
     expect(page.textContent).toMatch(/from 4 of your mails/);
   });
 

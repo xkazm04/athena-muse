@@ -65,6 +65,7 @@ describe("twin routes", () => {
     const body = { thread: "th_1", goal: "a yes" };
     expect(await called(() => api.startMission("tw_1", body))).toEqual({ method: "POST", url: "/twins/tw_1/missions", body });
     expect(await called(() => api.mission("tw_1", "ms_1"))).toEqual({ method: "GET", url: "/twins/tw_1/missions/ms_1" });
+    expect(await called(() => api.twinPreview("tw_1"))).toEqual({ method: "GET", url: "/twins/tw_1/preview" });
   });
 
   it("streams say and rehearse as NDJSON events", async () => {

@@ -26,7 +26,7 @@ from athena.contracts import (
     TwinSummary,
     TwinWeek,
 )
-from athena.twins import catalogue, style
+from athena.twins import catalogue, preview, style
 from athena.twins.rubric import coverage, piece, readiness, ready
 from athena.twins.store import Twins
 
@@ -245,6 +245,9 @@ def detail(daemon: Daemon, twin_id: str) -> TwinDetail:
     practice = [m for m in base["missions"] if m.get("practice")]
     if practice:
         out["rehearsal"] = practice[-1]
+    sounds = preview.kept(daemon, twin_id)
+    if sounds is not None:
+        out["preview"] = sounds
     return out
 
 

@@ -838,6 +838,16 @@ class TwinAsk(TypedDict):
     channel: NotRequired[ChannelKind]  # with panel "connect"
 
 
+class TwinPreview(TypedDict):
+    """How it sounds now (the Mirror's live preview, nested on the voice section): one message from the
+    other side and the twin's reply in its current voice. The daemon writes it with one engine call and
+    keeps it until the compiled voice changes."""
+
+    inbound: str  # a short message from the other side: the latest one it answered, or an invented one
+    text: str  # its reply in its voice now
+    changed: list[str]  # what changed in its voice since the last preview, plain words; [] the first time
+
+
 class TwinDetail(TwinSummary):
     pieces: list[Piece]
     coverage: PlaceCoverage
@@ -850,6 +860,7 @@ class TwinDetail(TwinSummary):
     memory: list[MemoryFact]
     ask: NotRequired[TwinAsk]  # while setting up: the question still open
     rehearsal: NotRequired[Mission]  # the latest dress rehearsal
+    preview: NotRequired[TwinPreview]  # how it sounds, when one is kept for its voice as it is now
 
 
 class TwinStats(TypedDict):
@@ -1063,6 +1074,7 @@ ROUTES = {
     "twin_pause": "/twins/{id}/pause",
     "twin_missions": "/twins/{id}/missions",
     "twin_mission": "/twins/{id}/missions/{mid}",
+    "twin_preview": "/twins/{id}/preview",
     "connectors": "/connectors",
     "connector_connect": "/connectors/{kind}/connect",
     "connector_flow": "/connectors/{kind}/flow",

@@ -203,6 +203,12 @@ function TwinTurn({ t, p, current, at }: { t: MissionTurn; p: PracticeProps; cur
         <>
           {sure}
           {risks}
+          {t.mark && (
+            <span className="mark" data-v={t.mark}>
+              <Icon name="check" />
+              {t.mark === "me" ? "You: that's me, as it is" : "You: not me"}
+            </span>
+          )}
         </>
       );
       if (current && step === "held") {
@@ -343,7 +349,7 @@ export function PracticePage(p: PracticeProps) {
               <p className="turn__text">{para(t.text)}</p>
             </li>
           ) : (
-            <TwinTurn key={t.id} t={t} p={p} current={t === current} at={clock(atOf(t, first))} />
+            <TwinTurn key={t.id} t={t} p={p} current={t.id === current?.id} at={clock(atOf(t, first))} />
           ),
         )}
         {step === "writing" && <Writing label={turns.length ? "Writing a reply" : "Writing its first message"} name={p.name} s={s} />}

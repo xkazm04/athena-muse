@@ -1,15 +1,21 @@
-"""Generate the twins page's fixture in wire shape (Passport, WP5; ADR 0008-0010).
+"""Generate the twins page's fixture in wire shape, through the daemon itself (Passport, WP5b).
 
-Reads the prototypes' invented example (`docs/concepts/twin-module/prototypes/shared/twin-data.json`,
-plus the mission scripts of the Rehearsal prototype, the exchanges of the Mirror prototype and the
-Passport prototype's rehearsal question) and writes `apps/desktop/src/main/twins/fixture/twins.ts`:
-the overview page, each twin's detail, the setup conversation as the turn streams `POST /twins/{id}/say`
-answers, the dress rehearsal as `POST /twins/{id}/rehearse` streams it, and the page after go-live.
+Drives a daemon in-process on the scripted engine, over the fake Gmail and Notion of the twin tests
+(`tests/twins_kit.py`, `tests/missions_kit.py`; nothing leaves the process), the way the page does:
 
-Every object is checked against the `contracts.py` TypedDicts (required keys present, no unknown key,
-an absent value omitted, never null) and every string against the banned words of SCHEMA.md "Words".
-When the twin store lands (WP3) the source switches to the daemon's scripted setup; the output's shape
-(`TwinFixture` in `fixture/types.ts`) stays as it is.
+- **Partnerships** is set up frame by frame (the prototype's staged answers, the slips first), each
+  reply recorded as the turn stream `POST /twins/{id}/say` answers and the twin `GET` answers after
+  it. It is rehearsed twice: once with a money ask, which hands the conversation back, then the usual
+  way, whose two waiting drafts the person marks ("that's me", then their own words). Then it goes live.
+- **Client desk** and **Family admin** were made earlier the same way, through the same routes, with
+  their own needs and first missions. Client desk is live and works three missions on Gmail threads
+  (a question it answers below the bar, a yes it thanks alone and files to Notion, a money ask it hands
+  back); Family admin is paused by the person.
+
+The clock and the ids are pinned, so the output is byte-identical run to run, and writes
+`apps/desktop/src/main/twins/fixture/twins.ts`. Every object is checked against the `contracts.py`
+TypedDicts (required keys present, no unknown key, an absent value omitted, never null) and every
+string against the banned words of SCHEMA.md "Words".
 
     uv run python scripts/twin_fixture.py          # write twins.ts
     uv run python scripts/twin_fixture.py --check  # exit 1 when twins.ts is out of date
@@ -18,87 +24,68 @@ When the twin store lands (WP3) the source switches to the daemon's scripted set
 from __future__ import annotations
 
 import argparse
+import contextlib
+import itertools
 import json
+import os
 import re
 import sys
 import types
 import typing
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal, NotRequired, Required, TypedDict, Union, get_args, get_origin
-
-from athena import contracts as C
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-PROTOS = ROOT / "docs/concepts/twin-module/prototypes"
-SOURCE = PROTOS / "shared/twin-data.json"
-SCRIPTS = PROTOS / "rehearsal/variant-data.js"  # window.REHEARSAL.missionScripts: each mission's beats
-EXCHANGES = PROTOS / "mirror/js/variant-data.js"  # window.TWIN_VARIANT.exchanges: the latest exchange
-PASSPORT = PROTOS / "passport/js/variant-data.js"  # window.TWIN_VARIANT.rehearsal.intro: frame 11's ask
+sys.path.insert(0, str(ROOT / "tests"))  # the fake Gmail and Notion of the twin tests
+
+from starlette.testclient import TestClient  # noqa: E402
+
+import athena.clock  # noqa: E402
+from athena import contracts as C  # noqa: E402
+from athena import engine as engine_mod  # noqa: E402
+from athena.app import Daemon  # noqa: E402
+from athena.engine.scripted import ScriptedEngine  # noqa: E402
+from athena.server import create_app  # noqa: E402
+from athena.twins import missions as missions_mod  # noqa: E402
+from athena.twins import preview as preview_mod  # noqa: E402
+from athena.twins import rehearse as rehearse_mod  # noqa: E402
+from athena.twins import view as view_mod  # noqa: E402
+from missions_kit import MissionWorld, mine, theirs  # noqa: E402
+from twins_kit import FRAMES, NEED, PAGES, events  # noqa: E402
+
 TARGET = ROOT / "apps/desktop/src/main/twins/fixture/twins.ts"
 REGENERATE = "uv run python scripts/twin_fixture.py"
+TOKEN = "fixture"
+INVENTED = (
+    "Every name, address, track, amount and conversation here is invented for a design prototype. "
+    "None of it is a real person, account or service."
+)
 
-SPACE = C.CORE  # every example twin lives in core
-IDS = {"tw_desk": "tw_00000000d35c", "tw_family": "tw_00000000fa31", "tw_partners": "tw_00000000a127"}
 SETUP_START = datetime(2026, 10, 29, 15, 58, 0, tzinfo=UTC)
+GOAL = "Get Lumen Vale's yes to feature 'Glass Harbor'"
+MONEY_GOAL = "Get Lumen Vale's yes to feature 'Glass Harbor' for no fee"
+THEIR_EDIT = (
+    "You'd get a free visualizer you can use anywhere, plus a credit and a link in the description. "
+    "It isn't exclusive: the track and the visualizer stay yours to share anywhere.\n\ncheers, Alex"
+)
+SIGNS_AS = "As Alex from Low Tide Visuals"
+NEVER_MORE = "Also: never write after 9 pm their time"
 
 # SCHEMA.md "Words": never on screen.
 BANNED = re.compile(
     r"\b(token|connector|oauth|api|llm|model|prompt|node|slot|op|fixture|confidence score)s?\b", re.IGNORECASE
 )
 
-HEADER = """// GENERATED by scripts/twin_fixture.py from the twin prototypes' example - do not edit by hand.
-// Invented data: every name, address, track, amount and conversation here is made up. Simulated on screen.
+HEADER = """// GENERATED by scripts/twin_fixture.py through the daemon (scripted engine, fake Gmail and
+// Notion) - do not edit by hand. Invented data: every name, address, track, amount and conversation
+// here is made up, and every line the engine wrote is simulated and says so.
 
 import type { TwinFixture } from "./types";
 
 export const TWIN_FIXTURE: TwinFixture = """
-
-
-# --- reading the prototypes' JS data ---------------------------------------------------------------
-
-
-def js_object(path: Path, name: str) -> Any:
-    """The object literal assigned to `window.<name>` in a prototype's data file, read as JSON: comments
-    dropped, keys quoted, trailing commas removed. Strings are copied untouched."""
-    text = path.read_text(encoding="utf-8")
-    start = text.index("{", text.index(f"window.{name}"))
-    out: list[str] = []
-    i, depth = start, 0
-    while True:
-        c = text[i]
-        if c in "\"'":
-            j = i + 1
-            while text[j] != c:
-                j += 2 if text[j] == "\\" else 1
-            body = text[i + 1 : j]
-            out.append(json.dumps(json.loads(f'"{body}"') if c == '"' else body.replace("\\'", "'")))
-            i = j + 1
-            continue
-        if text.startswith("//", i):
-            i = text.index("\n", i)
-            continue
-        if c.isalpha() or c == "_":
-            m = re.match(r"[A-Za-z_]\w*", text[i:])
-            assert m
-            word = m.group(0)
-            rest = text[i + len(word) :].lstrip()
-            out.append(json.dumps(word) if rest.startswith(":") else word)
-            i += len(word)
-            continue
-        if c == "{" or c == "[":
-            depth += 1
-        elif c == "}" or c == "]":
-            depth -= 1
-            while out and out[-1].strip() == "":
-                out.pop()
-            if out and out[-1] == ",":
-                out.pop()
-        out.append(c)
-        i += 1
-        if depth == 0:
-            break
-    return json.loads("".join(out))
 
 
 # --- the contract check ----------------------------------------------------------------------------
@@ -185,6 +172,7 @@ class SetupFrameShape(TypedDict):
     elapsed_s: float
     events: list[Any]
     twin: C.TwinDetail
+    before: NotRequired[C.TwinDetail]
 
 
 SETUP_EVENTS = {
@@ -199,596 +187,372 @@ SETUP_EVENTS = {
 REHEARSAL_EVENTS = {"turn": C.TwinTurnEvent, "outcome": C.TwinOutcomeEvent, "error": C.ErrorEvent}
 
 
-def check_events(events: list[dict[str, Any]], shapes: dict[str, Any], path: str) -> None:
-    for i, e in enumerate(events):
+def check_events(found: list[dict[str, Any]], shapes: dict[str, Any], path: str) -> None:
+    for i, e in enumerate(found):
         check(e, shapes[e["type"]], f"{path}[{i}]")
 
 
-# --- building --------------------------------------------------------------------------------------
+# --- a pinned clock and pinned ids -----------------------------------------------------------------
 
 
-def iso(value: str | datetime) -> str:
-    """The prototypes' local times read as UTC, in the wire's form."""
-    if isinstance(value, datetime):
-        return value.isoformat(timespec="seconds").replace("+00:00", "Z")
-    if len(value) == 10:
-        value += "T09:00:00"
-    return value + "Z"
+class Clock:
+    """The daemon's "now": set by the script, and a second later at every reading, so what happens
+    in order is stamped in order."""
+
+    def __init__(self) -> None:
+        self.t = SETUP_START
+
+    def set(self, when: datetime) -> None:
+        self.t = when
+
+    def wait(self, seconds: float) -> None:
+        self.t += timedelta(seconds=seconds)
+
+    def read(self) -> datetime:
+        self.t += timedelta(seconds=1)
+        return self.t
+
+    def iso(self) -> str:
+        return self.t.isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def drop_none(d: dict[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in d.items() if v is not None}
+@contextlib.contextmanager
+def pinned(clock: Clock) -> Iterator[None]:
+    """Pins `athena.clock` (every now and every id), the twins' own clock, and how long a draft takes
+    to write; the scripted engine answers every call, and no preview is kept from an earlier run (the
+    pinned ids meet again). Undone on exit."""
+    counter = itertools.count(1)
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> Frozen:  # type: ignore[override]
+            return cast_frozen(clock.read())
+
+    def cast_frozen(when: datetime) -> Frozen:
+        return Frozen.fromtimestamp(when.timestamp(), UTC)
+
+    ticks = itertools.count(0)
+    writing = types.SimpleNamespace(monotonic=lambda: next(ticks) * 4.2)
+    hexes = types.SimpleNamespace(token_hex=lambda n: f"{next(counter):0{2 * n}x}")
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(mock.patch.object(athena.clock, "datetime", Frozen))
+        stack.enter_context(mock.patch.object(athena.clock, "secrets", hexes))
+        stack.enter_context(mock.patch.object(view_mod, "_now", lambda: clock.t))
+        stack.enter_context(mock.patch.object(rehearse_mod, "time", writing))
+        stack.enter_context(mock.patch.object(missions_mod, "time", writing))
+        stack.enter_context(mock.patch.object(engine_mod, "build_engine", lambda *a, **k: ScriptedEngine()))
+        stack.enter_context(mock.patch.dict(os.environ, {"ATHENA_TWIN_POLL": "0"}))
+        stack.enter_context(mock.patch.dict(preview_mod._KEPT, clear=True))  # pinned ids meet again
+        yield
 
 
-def channel(c: dict[str, Any]) -> C.TwinChannel:
-    out: dict[str, Any] = {
-        "kind": c["kind"],
-        "account": c["account"],
-        "status": c["status"],
-        "autonomy": c["autonomy"],
-        "bar": c["bar"] if c.get("bar") is not None else C.BAR_DEFAULT,
-    }
-    if c.get("split"):
-        out["split"] = {"first_message": c["split"]["first_message"], "reply": c["split"]["replies"]}
-    if c.get("scope"):
-        out["scope"] = c["scope"]
-    if c.get("health"):
-        out["health"] = c["health"]
-    if c.get("last_at"):
-        out["last_at"] = iso(c["last_at"])
-    return out  # type: ignore[return-value]
+# --- driving the daemon --------------------------------------------------------------------------
 
 
-def beats(script: dict[str, Any] | None) -> list[C.MissionBeat]:
-    if not script:
-        return []
-    return [{"label": b, "done": i + 1 < script["at"]} for i, b in enumerate(script["beats"])]
+class Drive:
+    """The routes the page calls, through a TestClient on a daemon whose Gmail and Notion are fakes."""
+
+    def __init__(self, clock: Clock) -> None:
+        self.clock = clock
+        self.daemon = Daemon.open(None)
+        self.client = TestClient(
+            create_app(self.daemon, token=TOKEN), headers={"Authorization": f"Bearer {TOKEN}"}
+        )
+        self.world = MissionWorld(self.daemon, self.client)
+
+    def close(self) -> None:
+        self.daemon.store.close()
+
+    def call(self, method: str, key: str, body: Any = None, status: int = 200, **params: str) -> Any:
+        r = self.client.request(method, C.ROUTES[key].format(**params), json=body)
+        if r.status_code != status:
+            raise SystemExit(f"{method} {key}: {r.status_code} {r.text}")
+        return r.json()
+
+    def twin(self, twin_id: str) -> C.TwinDetail:
+        return self.call("GET", "twin", id=twin_id)  # type: ignore[no-any-return]
+
+    def page(self) -> C.TwinPage:
+        return self.call("GET", "twins")  # type: ignore[no-any-return]
+
+    def post(self, twin_id: str, key: str, body: Any = None) -> C.TwinDetail:
+        return self.call("POST", key, body if body is not None else {}, id=twin_id)  # type: ignore[no-any-return]
+
+    def stream(self, twin_id: str, key: str, body: Any) -> list[dict[str, Any]]:
+        r = self.client.post(C.ROUTES[key].format(id=twin_id), json=body)
+        if r.status_code != 200:
+            raise SystemExit(f"{key}: {r.status_code} {r.text}")
+        return events(r.text)
+
+    def new(self, project: str) -> str:
+        space = self.call("POST", "spaces", {"name": project}, status=201)["id"] if project else ""
+        return str(self.call("POST", "twins", {"space_id": space}, status=201)["id"])
 
 
-def draft_of(w: dict[str, Any], twin_id: str, row: dict[str, Any], answers: str | None) -> C.TwinDraft:
-    ch = next(c for c in row["channels"] if c["kind"] == w["channel"])
-    ms = next((m for m in row["missions"] if m["id"] == w.get("mission")), None)
-    out: dict[str, Any] = {
-        "id": w["id"],
-        "twin_id": twin_id,
-        "channel": w["channel"],
-        "to": w["to"],
-        "subject": w["subject"],
-        "text": w["excerpt"],
-        "confidence": w["confidence"],
-        "risks": w["risks"],
-        "decision": "waits",
-        "created": iso(ms["last_at"]) if ms else iso("2026-10-29T13:12:00"),
-        "mission": w.get("mission"),
-        "reason": "risk" if w["why"] == "held" else "below_bar",
-        "bar": ch["bar"] if ch["autonomy"] == "auto" else None,
-        "card_id": f"card_{w['id']}",
-        "answers": answers,
-    }
-    return drop_none(out)  # type: ignore[return-value]
+Step = tuple[Callable[[], Any], C.TwinSayBody]
 
 
-def summary(
-    row: dict[str, Any],
-    scripts: dict[str, Any],
-    exchanges: dict[str, Any],
-    turns_of: dict[str, list[C.MissionTurn]],
-    filed_of: dict[str, C.TwinFiled],
-) -> C.TwinSummary:
-    twin_id = IDS[row["id"]]
-    ex = exchanges.get(row["id"]) or {}
-    missions: list[C.Mission] = []
-    for m in row["missions"]:
-        turns = turns_of.get(m["id"], [])
-        mission: dict[str, Any] = {
-            "id": m["id"],
-            "twin_id": twin_id,
-            "title": m["title"],
-            "with": m["with"],
-            "channel": m["channel"],
-            "goal": m["title"],
-            "state": m["state"],
-            "beats": beats(scripts.get(m["id"])),
-            "turns": turns,
-            "created": iso(row["since"]) if row.get("since") else iso(m["last_at"]),
-            "last_at": iso(m["last_at"]),
-            "note": m["note"],
-            "practice": True if m["channel"] == "notion" else None,
-            "filed": filed_of.get(m["id"]),
-        }
-        missions.append(drop_none(mission))  # type: ignore[arg-type]
-    waiting = [
-        draft_of(w, twin_id, row, ex.get("theirs") if ex.get("reply_from") == w["id"] else None)
-        for w in row["waiting"]
+def steps(d: Drive, twin_id: str, need: str, mission: str, *, own_name: bool) -> list[Step]:
+    """The prototype's staged setup as the page plays it: the slip's act first, then what the page
+    sends (the slip's own words, a picked suggestion, or what the person typed)."""
+    w = d.world
+
+    def act(*calls: Callable[[], Any]) -> Callable[[], Any]:
+        """The slip's acts in order; answers the last one's answer (the whole twin, or None)."""
+
+        def run() -> Any:
+            answer = None
+            for call in calls:
+                answer = call()
+            return answer
+
+        return run
+
+    ink = lambda ids: lambda: d.post(twin_id, "twin_confirm", {"pieces": ids})  # noqa: E731
+    pieces = lambda prefix: [p["id"] for p in d.twin(twin_id)["pieces"] if p["id"].startswith(prefix)]  # noqa: E731
+    first = ink(["p_name"]) if own_name else (lambda: d.post(twin_id, "twin_drop", {"pieces": ["p_name"]}))
+    gmail_split = {"first_message": "assist", "reply": "auto"}
+    return [
+        (act(), {"text": need}),
+        (act(first), {"text": SIGNS_AS}),
+        (act(w.connect_gmail), {"text": "", "choice": "Sign in with Google"}),
+        (
+            act(lambda: d.post(twin_id, "twin_samples", {"ids": ["s1", "s2", "s3", "s4"]})),
+            {"text": "Learn from these 4"},
+        ),
+        (act(lambda: ink(pieces("v-"))()), {"text": "", "choice": "A little more formal at first contact"}),
+        (act(w.connect_notion), {"text": "", "choice": "I've pasted it"}),
+        (
+            act(lambda: d.post(twin_id, "twin_pages", {"ids": [p[0] for p in PAGES[:3]]})),
+            {"text": "Read from these 3"},
+        ),
+        (
+            act(
+                lambda: d.post(
+                    twin_id, "twin_chores", {"ids": ["file-outcome", "task-inbox", "practice-page"]}
+                )
+            ),
+            {"text": "Issue 3 permits"},
+        ),
+        (act(ink(["p_n0", "p_n1", "p_n2", "p_n3"])), {"text": "", "choice": NEVER_MORE}),
+        (
+            act(
+                lambda: d.post(
+                    twin_id,
+                    "twin_autonomy",
+                    {"channel": "gmail", "autonomy": "auto", "bar": 80, "split": gmail_split},
+                ),
+                lambda: d.post(
+                    twin_id, "twin_autonomy", {"channel": "notion", "autonomy": "auto", "bar": 60}
+                ),
+            ),
+            {"text": "Set clearance"},
+        ),
+        (
+            act(
+                lambda: d.post(twin_id, "twin_memory", {"id": "f1", "keep": True}),
+                lambda: d.post(twin_id, "twin_memory", {"id": "f2", "keep": True}),
+                lambda: d.post(twin_id, "twin_memory", {"id": "f3", "keep": False}),
+                lambda: d.post(twin_id, "twin_memory", {"id": "f4", "keep": False}),
+            ),
+            {"text": "Keep 2, drop 2"},
+        ),
+        (act(ink(["p_mtype"])), {"text": mission}),
     ]
-    lasts = [c["last_at"] for c in row["channels"] if c.get("last_at")] + [
-        m["last_at"] for m in row["missions"]
-    ]
-    out: dict[str, Any] = {
-        "id": twin_id,
-        "space_id": SPACE,
-        "name": row["name"],
-        "purpose": row["purpose"],
-        "state": row["state"],
-        "channels": [channel(c) for c in row["channels"]],
-        "week": drop_none(row["week"]),
-        "readiness": row["readiness"],
-        "open_missions": row["open_missions"],
-        "waiting_count": row["waiting_count"],
-        "missions": missions,
-        "waiting": waiting,
-        "created": iso(row["since"]) if row.get("since") else iso(SETUP_START),
-        "updated": iso(max(lasts)) if lasts else iso(SETUP_START),
-        "since": iso(row["since"]) if row.get("since") else None,
-        "paused_because": row.get("paused_because"),
-    }
-    return drop_none(out)  # type: ignore[return-value]
 
 
-def exchange_turns(row: dict[str, Any], ex: dict[str, Any]) -> dict[str, list[C.MissionTurn]]:
-    """The latest exchange the Mirror prototype shows for a twin, as the turns of the mission it is on."""
-    if not ex or not row["missions"]:
-        return {}
-    waiting = {w["id"]: w for w in row["waiting"]}
-    target = next((m for m in row["missions"] if m["last_at"] == ex["their_at"]), None)
-    if ex.get("reply_from") in waiting:
-        target = next(m for m in row["missions"] if m["id"] == waiting[ex["reply_from"]].get("mission"))
-    if target is None:
-        target = next((m for m in row["missions"] if m["with"] == ex["with"]), None)
-    if target is None:
-        return {}
-    turns: list[C.MissionTurn] = [
-        {"id": f"{target['id']}_t1", "side": "other", "text": ex["theirs"], "at": iso(ex["their_at"])}
-    ]
-    if ex.get("reply"):
-        mine: dict[str, Any] = {
-            "id": f"{target['id']}_t2",
-            "side": "twin",
-            "text": ex["reply"],
-            "at": iso(ex["reply_at"]),
-            "kind": "reply",
-            "decision": "sent_alone" if ex.get("reply_state") == "alone" else "waits",
-        }
-        turns.append(mine)  # type: ignore[arg-type]
-    elif ex.get("reply_from") in waiting:
-        w = waiting[ex["reply_from"]]
-        held: dict[str, Any] = {
-            "id": f"{target['id']}_t2",
-            "side": "twin",
-            "text": w["excerpt"],
-            "at": iso(target["last_at"]),
-            "kind": "reply",
-            "confidence": w["confidence"],
-            "risks": w["risks"],
-            "decision": "waits",
-            "reason": "risk" if w["why"] == "held" else "below_bar",
-            "draft": w["id"],
-        }
-        turns.append(held)  # type: ignore[arg-type]
-    return {target["id"]: turns}
+def say(d: Drive, twin_id: str, body: C.TwinSayBody) -> list[dict[str, Any]]:
+    found = d.stream(twin_id, "twin_say", body)
+    if found[-1]["type"] != "done":
+        raise SystemExit(f"the setup stopped: {found[-1]}")
+    return found
 
 
-PLACE_ORDER: list[str] = list(get_args(C.Place))
+def set_up(
+    d: Drive, twin_id: str, need: str, mission: str, *, own_name: bool, gap_s: float
+) -> list[dict[str, Any]]:
+    """Plays the whole setup; answers each frame as recorded."""
+    frames: list[dict[str, Any]] = []
+    for i, (slip, body) in enumerate(steps(d, twin_id, need, mission, own_name=own_name)):
+        before = slip()
+        elapsed = float(FRAMES[i]["elapsed_s"])  # the prototype's pace: illustrative, the engine is instant
+        found = say(d, twin_id, body)
+        d.clock.wait(gap_s)
+        frame = {"say": body, "elapsed_s": elapsed, "events": found, "twin": d.twin(twin_id)}
+        if isinstance(before, dict):
+            frame["before"] = before
+        frames.append(frame)
+    return frames
 
 
-def coverage_of(raw: dict[str, Any]) -> C.PlaceCoverage:
-    return {p: raw[p] for p in PLACE_ORDER}  # type: ignore[return-value]
+def timed(found: list[dict[str, Any]], start: datetime) -> list[dict[str, Any]]:
+    """A rehearsal stream with the second each event arrived at, from its turns' own times."""
+    out: list[dict[str, Any]] = []
+    last = 0.0
+    for e in found:
+        if e["type"] == "turn":
+            at = datetime.fromisoformat(e["turn"]["at"].replace("Z", "+00:00"))
+            last = max(0.0, (at - start).total_seconds())
+        else:
+            last += 2
+        out.append({"at_s": last, "event": e})
+    return out
 
 
-def blank_coverage() -> C.PlaceCoverage:
-    return {p: 0 for p in PLACE_ORDER}  # type: ignore[return-value]
+def rehearse(d: Drive, twin_id: str, goal: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    start = d.clock.t
+    found = d.stream(twin_id, "twin_rehearse", {"goal": goal})
+    if found[-1]["type"] != "outcome":
+        raise SystemExit(f"the rehearsal stopped: {found[-1]}")
+    return found, timed(found, start)
+
+
+def gmail_thread(them: str, subject: str, *said: tuple[str, str]) -> list[dict[str, Any]]:
+    """A Gmail thread on the fake: the person's messages and theirs, in Gmail's own shape."""
+    out: list[dict[str, Any]] = []
+    for i, (who, text) in enumerate(said):
+        msg = mine(f"m{i}", text) if who == "me" else theirs(f"m{i}", text)
+        heads = {h["name"]: h for h in msg["payload"]["headers"]}
+        heads["From" if who != "me" else "To"]["value"] = them
+        heads["Subject"]["value"] = subject if i == 0 else f"Re: {subject}"
+        out.append(msg)
+    return out
+
+
+def earlier_twin(d: Drive, project: str, need: str, mission: str, made: datetime) -> str:
+    """A twin made before the example begins: set up, rehearsed, gone live."""
+    d.clock.set(made)
+    twin_id = d.new(project)
+    set_up(d, twin_id, need, mission, own_name=False, gap_s=40)
+    rehearse(d, twin_id, mission)
+    d.post(twin_id, "twin_golive")
+    return twin_id
 
 
 def build() -> dict[str, Any]:
-    d = json.loads(SOURCE.read_text(encoding="utf-8"))
-    scripts = js_object(SCRIPTS, "REHEARSAL")["missionScripts"]
-    exchanges = js_object(EXCHANGES, "TWIN_VARIANT")["exchanges"]
-    intro = js_object(PASSPORT, "TWIN_VARIANT")["rehearsal"]["intro"]
-    s = d["setup"]
-    partners = IDS[s["twin_id"]]
+    clock = Clock()
+    with pinned(clock):
+        d = Drive(clock)
+        try:
+            return _build(d)
+        finally:
+            d.close()
 
-    # --- the setup conversation ---
-    samples = s["samples"]
-    pages = s["pages"]
-    chore_presets = s["chorePresets"]
-    facts = s["memory"]
-    first_panel: dict[str, int] = {}
-    for f in s["frames"]:
-        if f["panel"]:
-            first_panel.setdefault(f["panel"]["kind"], f["index"])
 
-    def panels_at(i: int, pieces: list[dict[str, Any]]) -> dict[str, Any]:
-        """What the slips hold once she has found it: the samples, pages, presets and facts."""
-        ids = {p["id"] for p in pieces}
-        out: dict[str, Any] = {"samples": [], "pages": [], "chores": [], "memory": []}
-        if i >= first_panel["samples"]:
-            out["samples"] = [
-                drop_none(
-                    {
-                        "id": x["id"],
-                        "to": x["to"],
-                        "subject": x["subject"],
-                        "date": x["date"],
-                        "words": x["words"],
-                        "excerpt": x["excerpt"],
-                        "suggest": x["mark"],
-                        "picked": x["mark"],
-                        "why_not": x.get("why_not"),
-                    }
-                )
-                for x in samples
-            ]
-        if i >= first_panel["pages"]:
-            out["pages"] = [
-                drop_none(
-                    {
-                        **{k: x[k] for k in ("id", "title", "kind", "suggest")},
-                        "picked": x["suggest"],
-                        "why_not": x.get("why_not"),
-                    }
-                )
-                for x in pages
-            ]
-        if i >= first_panel["chores"]:
-            picked = {"file-outcome": "p_c1", "task-inbox": "p_c2", "practice-page": "p_c3"}
-            out["chores"] = [
-                drop_none(
-                    {
-                        "id": x["id"],
-                        "tool": x["tool"],
-                        "name": x["name"],
-                        "does": x["does"],
-                        "kind": x["kind"],
-                        "suggest": bool(x.get("suggest")),
-                        "picked": picked.get(x["id"], "") in ids
-                        if i > first_panel["chores"]
-                        else bool(x.get("suggest")),
-                        "later": x.get("later"),
-                        "coming": x.get("coming"),
-                    }
-                )
-                for x in chore_presets
-            ]
-        if i >= first_panel["memory"]:
-            kept = {"f1": "p_m1", "f2": "p_m2"}
-            out["memory"] = []
-            for x in facts:
-                fact = drop_none({k: x.get(k) for k in ("id", "fact", "from", "suggest", "reason")})
-                if i > first_panel["memory"]:
-                    fact["keep"] = kept.get(x["id"], "") in ids
-                out["memory"].append(fact)
-        return out
+def _build(d: Drive) -> dict[str, Any]:
+    clock = d.clock
+    w = d.world
 
-    def channels_at(pieces: dict[str, dict[str, Any]], autonomy_set: bool) -> list[C.TwinChannel]:
-        out: list[C.TwinChannel] = []
-        gm = pieces.get("p_gmail")
-        if gm and gm["confirmed"]:
-            c: dict[str, Any] = {
-                "kind": "gmail",
-                "account": gm["detail"],
-                "status": "connected",
-                "autonomy": "assist",
-            }
-            c["bar"] = C.BAR_DEFAULT
-            if autonomy_set:
-                c.update(autonomy="auto", split={"first_message": "assist", "reply": "auto"})
-            out.append(c)  # type: ignore[arg-type]
-        no = pieces.get("p_notion")
-        if no and no["confirmed"]:
-            n: dict[str, Any] = {
-                "kind": "notion",
-                "account": no["detail"],
-                "status": "connected",
-                "autonomy": "assist",
-            }
-            n.update(bar=C.BAR_DEFAULT, scope="practice page only")
-            if autonomy_set:
-                n.update(autonomy="auto", bar=60)
-            out.append(n)  # type: ignore[arg-type]
-        return out
-
-    created_at = iso(SETUP_START)
-    style_presets = s["style"]["presets"]
-
-    def twin_at(
-        i: int,
-        pieces: list[dict[str, Any]],
-        dials: list[dict[str, Any]],
-        cov: C.PlaceCoverage,
-        ready: bool,
-        readiness: int,
-        ask: C.TwinAsk | None,
-        updated: str,
-    ) -> C.TwinDetail:
-        by_id = {p["id"]: p for p in pieces}
-        out: dict[str, Any] = {
-            "id": partners,
-            "space_id": SPACE,
-            "name": by_id["p_name"]["label"] if "p_name" in by_id else "A new twin",
-            "purpose": by_id["p_purpose"]["label"] if "p_purpose" in by_id else "",
-            "state": "setting_up",
-            "channels": channels_at(by_id, any(p["place"] == "autonomy" for p in pieces)),
-            "week": {},
-            "readiness": readiness,
-            "open_missions": 0,
-            "waiting_count": 0,
-            "missions": [],
-            "waiting": [],
-            "created": created_at,
-            "updated": updated,
-            "pieces": pieces,
-            "coverage": cov,
-            "ready": ready,
-            "dials": dials,
-            "style_presets": style_presets if dials else [],
-            **panels_at(i, pieces),
-        }
-        if ask:
-            out["ask"] = ask
-        return out  # type: ignore[return-value]
-
-    created = twin_at(-1, [], [], blank_coverage(), False, 0, None, created_at)
-    pieces: dict[str, dict[str, Any]] = {}
-    dials: dict[str, dict[str, Any]] = {}
-    clock = SETUP_START
-    frames: list[dict[str, Any]] = []
-    prev_place = None
-    follow = 0
-    for f in s["frames"]:
-        i = f["index"]
-        ops: list[dict[str, Any]] = []
-        for pid in f["confirm"]:
-            pieces[pid] = {**pieces[pid], "confirmed": True}
-            ops.append({"op": "change", "piece": dict(pieces[pid])})
-        for o in f["ops"]:
-            if o["op"] == "add":
-                p = {**o["piece"], "confirmed": o["piece"]["origin"] == "you"}
-                pieces[p["id"]] = p
-                ops.append({"op": "add", "piece": dict(p)})
-            elif o["op"] == "change":
-                p = {**pieces[o["piece"]["id"]], **o["piece"]}
-                p["confirmed"] = p["confirmed"] or p["origin"] == "you"
-                pieces[p["id"]] = p
-                ops.append({"op": "change", "piece": dict(p)})
-            elif o["op"] == "dial":
-                dial = {**dials[o["dial"]], "value": o["value"], "source": o["source"]}
-                dials[dial["id"]] = dial
-                ops.append({"op": "dial", "dial": dict(dial)})
-        if not dials and f["coverage"]["voice"]:
-            for dial in f["dials"]:
-                dials[dial["id"]] = dict(dial)
-                ops.append({"op": "dial", "dial": dict(dial)})
-        # the source's whole twin after the frame must be what the ops built
-        built = [{k: v for k, v in p.items()} for p in pieces.values()]
-        if built != f["pieces"]:
-            raise SystemExit(f"frame {i}: the ops do not build the source's pieces")
-        if dials and list(dials.values()) != f["dials"]:
-            raise SystemExit(f"frame {i}: the dial ops do not build the source's dials")
-
-        ask: dict[str, Any] | None = None
-        if f["ask"]:
-            follow = follow + 1 if f["ask"]["place"] == prev_place else 0
-            prev_place = f["ask"]["place"]
-            ask = {
-                "place": f["ask"]["place"],
-                "text": f["ask"]["text"],
-                "suggestions": f["ask"]["suggestions"],
-                "follow_up": follow,
-            }
-        elif f["panel"] and f["panel"]["kind"] == "rehearsal":
-            ask = {
-                "place": "mission",
-                "text": intro["ask"],
-                "suggestions": intro["suggestions"],
-                "follow_up": 0,
-            }
-        if ask and f["panel"]:
-            ask["panel"] = f["panel"]["kind"]
-            if f["panel"].get("channel"):
-                ask["channel"] = f["panel"]["channel"]
-
-        clock += timedelta(seconds=f["elapsed_s"] + 20)
-        cov = coverage_of(f["coverage"])
-        twin = twin_at(i, built, list(dials.values()), cov, f["ready"], f["readiness"], ask, iso(clock))  # type: ignore[arg-type]
-        turn_id = f"turn_0000000a{i:04x}"
-        events: list[dict[str, Any]] = [
-            {"type": "start", "turn_id": turn_id, "engine": "scripted", "simulated": True},
-            {"type": "text", "delta": f["line"]},
-        ]
-        if ops:
-            events.append({"type": "sketch", "ops": ops})
-        if ask:
-            events.append({"type": "ask", "ask": ask})
-        events.append({"type": "coverage", "coverage": cov, "ready": f["ready"], "readiness": f["readiness"]})
-        events.append({"type": "done", "turn_id": turn_id, "waiting": False})
-        user = f["user"]
-        prev_ask = s["frames"][i - 1]["ask"] if i else None
-        say: dict[str, Any] = {"text": user["text"]}
-        if "choice" in user and prev_ask:
-            say = {"text": "", "choice": prev_ask["suggestions"][user["choice"]]}
-        frames.append({"say": say, "elapsed_s": f["elapsed_s"], "events": events, "twin": twin})
-
+    # --- Partnerships: the setup the page plays, from a blank twin in a Project of its own ---
+    clock.set(SETUP_START)
+    partners = d.new("")
+    created = d.twin(partners)
+    frames = set_up(d, partners, NEED, GOAL, own_name=True, gap_s=20)
     setup_done = frames[-1]["twin"]
+    d.call("GET", "twin_preview", id=partners)  # how it sounds before it rehearses
 
-    # --- the dress rehearsal ---
-    r = s["rehearsal"]
-    goal = next(p for p in setup_done["pieces"] if p["id"] == "p_ms")["label"]
-    reh_start = clock + timedelta(seconds=30)
-    bar_of = {"first_message": None, "reply": C.BAR_DEFAULT}
-
-    def wire_turn(t: dict[str, Any], text: str | None = None) -> C.MissionTurn:
-        at = iso(reh_start + timedelta(seconds=t["at_s"]))
-        if t["side"] == "creator":
-            return {"id": t["id"], "side": "other", "text": text or t["text"], "at": at}
-        out: dict[str, Any] = {
-            "id": t["id"],
-            "side": "twin",
-            "text": t["text"],
-            "at": at,
-            "kind": t["kind"],
-            "confidence": t["confidence"],
-            "risks": t["risks"],
-            "decision": t["decision"],
-            "elapsed_s": t["elapsed_s"],
-        }
-        if t["decision"] == "waits":
-            out["reason"] = (
-                "first_message" if t["kind"] == "first_message" else "risk" if t["risks"] else "below_bar"
-            )
-            out["draft"] = f"dr_{t['id']}"
-        if bar_of[t["kind"]] is not None:
-            out["bar"] = bar_of[t["kind"]]
-        return out  # type: ignore[return-value]
-
-    def timed(t: dict[str, Any], text: str | None = None) -> dict[str, Any]:
-        return {"at_s": t["at_s"], "event": {"type": "turn", "turn": wire_turn(t, text)}}
-
-    def marked(t: C.MissionTurn, src: dict[str, Any]) -> C.MissionTurn:
-        out: dict[str, Any] = {**t, "mark": src["mark"]}
-        if src["mark"] == "edited":
-            out["edited_text"] = src["edited_text"]
-            out["learned"] = src["learned"]
-        return out  # type: ignore[return-value]
-
-    T = {t["id"]: t for t in r["turns"]}
-    filed: C.TwinFiled = r["outcome"]["filed"]
-    outcome = {"at_s": T["t5"]["at_s"], "event": {"type": "outcome", "state": "resolved", "filed": filed}}
-    alt = r["stuck_alternative"]
-    handed_outcome = {"at_s": T["t2"]["at_s"] + 4, "event": {"type": "outcome", "state": "handed_back"}}
-
-    def practice(
-        turns: list[C.MissionTurn], state: str, beat_at: int, last: str, extra: dict[str, Any]
-    ) -> C.Mission:
-        m: dict[str, Any] = {
-            "id": "ms_5",
-            "twin_id": partners,
-            "title": goal,
-            "with": "Lumen Vale (practice)",
-            "channel": "notion",
-            "goal": goal,
-            "state": state,
-            "beats": beats({**scripts["ms_5"], "at": beat_at}),
-            "turns": turns,
-            "created": iso(reh_start),
-            "last_at": last,
-            "practice": True,
-            **extra,
-        }
-        return m  # type: ignore[return-value]
-
-    def with_rehearsal(m: C.Mission) -> C.TwinDetail:
-        out = dict(setup_done)
-        out.pop("ask", None)
-        out["rehearsal"] = m
-        out["updated"] = m.get("last_at", out["updated"])
-        return out  # type: ignore[return-value]
-
-    t1 = wire_turn(T["t1"])
-    t1m = marked(t1, T["t1"])
-    t3 = wire_turn(T["t3"])
-    t3m = marked(t3, T["t3"])
-    t2, t4, t5 = wire_turn(T["t2"]), wire_turn(T["t4"]), wire_turn(T["t5"])
-    legs = [
-        {"events": [timed(T["t1"])]},
-        {
-            "mark": {"turn": "t1", "mark": "me"},
-            "twin": with_rehearsal(practice([t1m], "open", 2, t1["at"], {})),
-            "events": [timed(T["t2"]), timed(T["t3"])],
-        },
-        {
-            "mark": {"turn": "t3", "mark": "edited", "edited_text": T["t3"]["edited_text"]},
-            "twin": with_rehearsal(practice([t1m, t2, t3m], "open", 4, t3["at"], {})),
-            "events": [timed(T["t4"]), timed(T["t5"]), outcome],
-        },
-    ]
-    rehearsed = with_rehearsal(
-        practice(
-            [t1m, t2, t3m, t4, t5],
-            "resolved",
-            7,
-            t5["at"],
-            {"filed": filed, "note": "Filed to " + filed["where"] + "."},
-        )
+    # --- the twins made before it: Client desk (live, working three missions) and Family admin ---
+    desk = earlier_twin(
+        d,
+        "Client desk",
+        "Answers client email for the studio: quotes, scheduling and invoices.",
+        "Chase the overdue invoice from Harbor Bakery",
+        datetime(2026, 9, 1, 9, 0, tzinfo=UTC),
     )
-    handed_turn = wire_turn(T["t2"], alt["creator_text"])
-    handed = {
-        "mark": {"turn": "t1", "mark": "me"},
-        "twin": legs[1]["twin"],
-        "events": [{"at_s": T["t2"]["at_s"], "event": {"type": "turn", "turn": handed_turn}}, handed_outcome],
-        "after": with_rehearsal(
-            practice([t1m, handed_turn], "handed_back", 3, handed_turn["at"], {"note": alt["why"]})
-        ),
-    }
+    family = earlier_twin(
+        d,
+        "Family admin",
+        "Handles school and club email: forms, pickups and the monthly invoice.",
+        "Dispute the extra club days in September with Brightside Club",
+        datetime(2026, 9, 15, 9, 0, tzinfo=UTC),
+    )
+    clock.set(datetime(2026, 10, 26, 19, 30, tzinfo=UTC))
+    d.post(family, "twin_pause")
 
-    # --- the overview, before and after go-live ---
-    turns_of: dict[str, list[C.MissionTurn]] = {}
-    for row in d["overview"]["rows"]:
-        turns_of.update(exchange_turns(row, exchanges.get(row["id"]) or {}))
-    page = {
-        "twins": [summary(row, scripts, exchanges, turns_of, {}) for row in d["overview"]["rows"]],
-        "stats": drop_none(d["overview"]["stats"]),
-    }
-    after_turns = dict(turns_of)
-    after_turns["ms_5"] = rehearsed["rehearsal"]["turns"]
-    after_rows = [
-        summary(row, scripts, exchanges, after_turns, {"ms_5": filed})
-        for row in d["overview_after_golive"]["rows"]
-    ]
-    page_after = {"twins": after_rows, "stats": drop_none(d["overview_after_golive"]["stats"])}
+    clock.set(datetime(2026, 10, 29, 9, 40, tzinfo=UTC))
+    w.threads["thharbor"] = gmail_thread(
+        "Harbor Bakery <accounts@harbor-bakery.example>",
+        "Invoice 2026-031",
+        ("me", "Hi, a friendly reminder that invoice 2026-031 is now two weeks overdue."),
+        ("them", "Hi Alex, sorry this slipped. Can you resend the invoice? It goes out by Friday."),
+    )
+    w.threads["thquote"] = gmail_thread(
+        "Oren Vale <oren@greywater.example>",
+        "Album artwork quote",
+        ("me", "Hi Oren, here is the quote for the album artwork: three covers, delivered in two weeks."),
+        ("them", "Looks good to me. Yes, go ahead!"),
+    )
+    w.threads["thrush"] = gmail_thread(
+        "Pia North <pia@northlight.example>",
+        "Poster for Saturday",
+        ("them", "Could you rush the poster for Saturday? What would that cost, is $300 enough?"),
+    )
+    for thread, goal in (
+        ("thharbor", "Chase the overdue invoice from Harbor Bakery"),
+        ("thquote", "Get Oren's sign-off on the artwork quote"),
+        ("thrush", "Answer Pia's rush request for the poster"),
+    ):
+        d.call("POST", "twin_missions", {"thread": thread, "goal": goal}, status=201, id=desk)
+        clock.wait(50 * 60)
 
-    # the twin as issued: every pencil mark inked, and the page's row for it
-    live_row = next(t for t in after_rows if t["id"] == partners)
-    golive = dict(rehearsed)
-    golive["pieces"] = [{**p, "confirmed": True} for p in golive["pieces"]]
-    for k in ("state", "channels", "week", "missions", "since", "readiness", "updated"):
-        golive[k] = live_row[k]
-    golive["coverage"] = {p: 1 for p in PLACE_ORDER}
+    # --- the overview as the Partnerships setup ends ---
+    clock.set(SETUP_START + timedelta(minutes=8))
+    page = d.page()
+    details = {desk: d.twin(desk), family: d.twin(family)}
 
-    def detail_of(t: dict[str, Any], source_row: dict[str, Any]) -> C.TwinDetail:
-        """A twin made before this example began: its coverage as the page shows it, nothing else known."""
-        filled = source_row["filled"]
-        return {  # type: ignore[return-value]
-            **t,
-            "pieces": [],
-            "coverage": coverage_of(filled),
-            "ready": True,
-            "dials": [],
-            "style_presets": [],
-            "samples": [],
-            "pages": [],
-            "chores": [],
-            "memory": [],
-        }
+    # --- Partnerships rehearses: a money ask first (handed back), then the usual way, marked ---
+    clock.wait(60)
+    _, handed_events = rehearse(d, partners, MONEY_GOAL)
+    handed_after = d.twin(partners)
+    clock.wait(60)
+    usual, usual_events = rehearse(d, partners, GOAL)
+    played_twin = d.twin(partners)
+    played = [e["turn"] for e in usual if e["type"] == "turn"]
+    first, held = (t for t in played if t["side"] == "twin" and t["decision"] == "waits")
+    marks = []
+    clock.wait(20)
+    for body in (
+        {"turn": first["id"], "mark": "me"},
+        {"turn": held["id"], "mark": "edited", "edited_text": THEIR_EDIT},
+    ):
+        marks.append({"mark": body, "twin": d.post(partners, "twin_mark", body)})
+        clock.wait(30)
+    rehearsed = d.twin(partners)
 
-    rows = {r0["id"]: r0 for r0 in d["overview"]["rows"]}
-    details = {
-        IDS["tw_desk"]: detail_of(page["twins"][0], rows["tw_desk"]),
-        IDS["tw_family"]: detail_of(page["twins"][1], rows["tw_family"]),
-    }
+    # --- it goes live ---
+    clock.wait(30)
+    golive = d.post(partners, "twin_golive")
+    clock.wait(30)
+    page_after = d.page()
+    clock.wait(30)
+    previews = {t: d.call("GET", "twin_preview", id=t) for t in (partners, desk, family)}
 
     out = {
-        "invented": d["invented"],
-        "now": iso(d["now"]),
+        "invented": INVENTED,
+        "now": clock.iso(),
         "page": page,
         "pageAfter": page_after,
         "details": details,
         "setup": {
             "twinId": partners,
-            "need": s["need"],
-            "firstReadyFrame": s["first_ready_frame"],
+            "need": NEED,
+            "firstReadyFrame": next(i for i, f in enumerate(frames) if f["twin"]["ready"]),
             "created": created,
             "frames": frames,
             "rehearsal": {
-                "goal": goal,
-                "where": r["where"],
-                "playedBy": r["played_by"],
-                "legs": legs,
-                "handed": handed,
+                "goal": GOAL,
+                "events": usual_events,
+                "played": played_twin,
+                "marks": marks,
                 "rehearsed": rehearsed,
+                "handed": {"goal": MONEY_GOAL, "events": handed_events, "after": handed_after},
             },
             "golive": golive,
         },
+        "previews": previews,
     }
+    if setup_done["ready"] is not True:
+        raise SystemExit("the staged setup did not end ready")
     validate(out)
     return out
 
@@ -804,14 +568,17 @@ def validate(out: dict[str, Any]) -> None:
         check({**f, "events": []}, SetupFrameShape, f"setup.frames[{i}]")
         check_events(f["events"], SETUP_EVENTS, f"setup.frames[{i}].events")
     r = s["rehearsal"]
-    for i, leg in enumerate([*r["legs"], r["handed"]]):
-        if "mark" in leg:
-            check(leg["mark"], C.MarkBody, f"rehearsal.legs[{i}].mark")
-            check(leg["twin"], C.TwinDetail, f"rehearsal.legs[{i}].twin")
-        check_events([e["event"] for e in leg["events"]], REHEARSAL_EVENTS, f"rehearsal.legs[{i}].events")
-    check(r["handed"]["after"], C.TwinDetail, "rehearsal.handed.after")
+    check_events([e["event"] for e in r["events"]], REHEARSAL_EVENTS, "rehearsal.events")
+    for i, m in enumerate(r["marks"]):
+        check(m["mark"], C.MarkBody, f"rehearsal.marks[{i}].mark")
+        check(m["twin"], C.TwinDetail, f"rehearsal.marks[{i}].twin")
+    check(r["played"], C.TwinDetail, "rehearsal.played")
     check(r["rehearsed"], C.TwinDetail, "rehearsal.rehearsed")
+    check_events([e["event"] for e in r["handed"]["events"]], REHEARSAL_EVENTS, "rehearsal.handed.events")
+    check(r["handed"]["after"], C.TwinDetail, "rehearsal.handed.after")
     check(s["golive"], C.TwinDetail, "setup.golive")
+    for k, v in out["previews"].items():
+        check(v, C.TwinPreview, f"previews.{k}")
     plain_words(out)
 
 
