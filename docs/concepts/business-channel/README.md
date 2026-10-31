@@ -413,14 +413,15 @@ Not run: it needs the owner's YouTube test channel and is the open half of the s
    - Leave visibility on Private. Expect any "Public" control to be refused.
 7. Record here what ran, what was refused and why, the est. cost from the ledger, and anything that broke. If the upload cannot reach Studio's input, the browser decision goes back to the owner with the measurement, as the Risks say.
 
-### Open questions (for the owner or Director)
+### Owner's answers (2026-10-31)
 
-- **Studio's frame.** If the real upload dialog sits in a cross-origin frame, hands cannot reach it by design. Options: inject `hands.js` into every frame (Tauri `initialization_script_for_all_frames`, with a per-frame reply), or go back to the browser decision. This is irreversible in spirit, so it is asked, not guessed.
-- **Trust beyond the apps list.** Should a person be able to trust a site for reads without adding it as a project app?
-- **The test channel and mailbox:** personal, or new ones for the business? (Also in "Open for the owner" below.)
+- **Access is part of onboarding.** Chore onboarding (the stage, [ADR 0007](../../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md)) tests the flow and then leads the person to sign in to each real web app the chore needs, in her browser, so that next time Athena reaches it on her own. When a session lapses, the Project's overview shows it as a blocker of the process, naming the site and the way back in. Owner's words: "chore onboarding should test the flow and lead user into auth to the specific webpages, so next time Athena can access on her own. If token expires Project overview should alert blocker of the process."
+- **Trust comes only from onboarding.** No separate way to trust a site: the sites a chore needs are added to the project's trust list during its onboarding, and only there ("adding sites into whitelist should be part of the onboarding of chore (project)").
+- **A new, clean business profile.** The music channel runs on new accounts made for the business, not the owner's personal channel and mailbox.
+- **Still open: Studio's frame.** If the real upload dialog sits in a cross-origin frame, hands cannot reach it by design (inject `hands.js` into every frame, or return to the browser decision). Measured in the Phase 0 real-account run before it is decided.
 
 ## Open for the owner
 
 - The partnership offer itself: what you give, what you ask in return, and the first message. The Twin starts from your words.
 - The genres you will use in verdicts. A short closed list keeps the report's counts meaningful.
-- Whether the business uses your personal channel and mailbox, or new ones made for it.
+- ~~Personal or new accounts~~: new, clean business accounts (answered 2026-10-31).
