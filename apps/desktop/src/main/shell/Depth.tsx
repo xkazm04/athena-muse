@@ -284,7 +284,8 @@ export function DepthFrame({ route, extra, children }: { route: Route; extra?: R
         </div>
       )}
       <div className="m-depth">{children}</div>
-      {depth > 0 && <Dock route={route} />}
+      {/* the surface has its tiles; the stage owns its window, like the variant's stage */}
+      {depth > 0 && route.view !== "stage" && <Dock route={route} />}
     </div>
   );
 }

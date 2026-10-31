@@ -2,7 +2,7 @@
  * mounted view fills the rest and owns its own layout under [data-stage-view="..."]. */
 
 .st-stage {
-  --st-head-h: 56px;
+  --st-head-h: 48px;
   --st-z-head: 2;
   --st-z-toast: 30;
   position: relative;
@@ -21,12 +21,16 @@
   gap: var(--sp-3);
   min-width: 0;
   padding: 0 var(--sp-4);
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--glass);
 }
+/* inside the app's frame (ADR 0016) the bar already names her; the stage's row keeps her seal, the
+ * steps, the switch and its ways out, with no rule: the water shows through, as in the variant */
 .st-head__name {
-  font-size: var(--fs-md);
-  font-weight: 500;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .st-head .sp-rail {
   flex: 1;
@@ -43,7 +47,7 @@
 
 .st-switch {
   display: inline-flex;
-  padding: 2px;
+  padding: 3px;
   border: 1px solid var(--border-default);
   border-radius: var(--r-pill);
   background: var(--recessed);
@@ -63,6 +67,8 @@
 .st-switch__tab[aria-selected="true"] {
   color: var(--foreground);
   background: var(--card-raised);
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
 }
 .st-switch__tab:focus-visible {
   outline: 2px solid var(--focus);

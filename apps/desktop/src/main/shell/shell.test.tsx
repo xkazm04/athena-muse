@@ -77,6 +77,13 @@ describe("the frame", () => {
     expect(useMain.getState().route).toEqual({ view: "home" });
   });
 
+  it("the stage keeps the bar and owns the rest of the window: no dock", async () => {
+    await start({ view: "stage", id: null });
+    expect(screen.getByRole("button", { name: "Rise to Chores" })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Main" })).toBeNull();
+    expect(document.querySelector('[data-role="describe"]')).toBeTruthy();
+  });
+
   it("one level down rises to its place, and her pill opens her window", async () => {
     useMain.setState({ spaces: [space("spc_a", "Taxes")] });
     vi.mocked(api.memory).mockResolvedValue({ rows: [], showing: 0, total: 0 });
