@@ -32,6 +32,91 @@
   padding: var(--sp-6);
   animation: m-rise var(--dur-base) var(--ease-settle);
 }
+
+/* ---- the first run, after the variant's waking screen (ADR 0016) ---- */
+.m-wake {
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+}
+.m-wake .m-rail {
+  --dock-h: 0px;
+}
+.m-wake__stage {
+  display: grid;
+  grid-template-columns: minmax(240px, 38%) minmax(0, 1fr);
+  align-items: center;
+  gap: 0 4vw;
+  min-height: 0;
+  padding: 2vh 6vw 6vh calc(52px + 2vw);
+  overflow: hidden auto;
+}
+.m-wake__art {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+}
+.m-wake__seal {
+  width: min(100%, 34vh);
+}
+.m-wake__seal .seal,
+.m-wake__seal .seal__svg {
+  width: 100%;
+  height: auto;
+}
+.m-wake__seal .seal__count {
+  display: none;
+}
+.m-wake__line {
+  margin-top: var(--sp-4);
+  font-size: var(--fs-2xl);
+}
+.m-wake__sub {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--muted-foreground);
+}
+.m-wake .m-step {
+  width: min(640px, 100%);
+  padding: 0;
+}
+.m-wake__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-wake__steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 6px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+}
+.m-wake__steps li[aria-current="step"] {
+  color: var(--foreground);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.m-wake__steps li[data-done="true"] {
+  color: var(--accent-text);
+}
+.m-wake__n {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+}
 /* the first act's titles wear the marquee (base.css): large, light words */
 .m-step__title {
   margin: 0;
