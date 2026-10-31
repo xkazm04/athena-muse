@@ -10,7 +10,7 @@ import { useDraftProject } from "../hooks";
 import { RevisitBanner } from "../parts";
 import { authorOf, isPencil, overlayOf, shownSketch } from "../select";
 import type { Place, StageViewProps } from "../types";
-import { CheckDrawer, Finale, Strip, VerdictDrawer } from "./Later";
+import { AccessDrawer, CheckDrawer, Finale, Strip, VerdictDrawer } from "./Later";
 import { Note } from "./Note";
 import { FENCE, isLane, layout } from "./place";
 import { Sketch } from "./Sketch";
@@ -83,13 +83,13 @@ export function DrawingView({ draft, frame, state, dispatch, words, place }: Sta
 
   const later = { draft, frame, state, dispatch, words };
   const strip = step === "author" || step === "rehearse" || (step === "preview" && !draft.expected && state.work !== "preview");
-  const drawer = (step === "preview" && !strip) || step === "verdict";
+  const drawer = (step === "preview" && !strip) || step === "verdict" || step === "access";
   return (
     <section
       data-stage-view="drawing"
       aria-label={words.view.drawing}
       data-step={step}
-      data-dim={(step === "preview" && drawer) || step === "saved" ? "true" : undefined}
+      data-dim={(step === "preview" && drawer) || step === "access" || step === "saved" ? "true" : undefined}
       data-run={step === "rehearse" ? "true" : undefined}
     >
       <div className="dr">
@@ -113,6 +113,7 @@ export function DrawingView({ draft, frame, state, dispatch, words, place }: Sta
         {strip && <Strip {...later} />}
         {drawer && step === "preview" && <CheckDrawer {...later} />}
         {drawer && step === "verdict" && <VerdictDrawer {...later} />}
+        {drawer && step === "access" && <AccessDrawer {...later} />}
         {step === "saved" && <Finale draft={draft} words={words} />}
       </div>
     </section>

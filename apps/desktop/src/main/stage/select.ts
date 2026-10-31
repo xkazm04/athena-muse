@@ -135,6 +135,9 @@ export function openSlots(cov: Coverage): Slot[] {
 /** Her guesses: pieces she wrote that the person has not inked. Only these can be inked or rubbed out. */
 export const isPencil = (n: SketchNode): boolean => n.origin === "athena" && !n.confirmed;
 
+/** A piece the person can ink: her pencil, or an agreed place whose real site is still her guess (ADR 0014). */
+export const needsInk = (n: SketchNode): boolean => isPencil(n) || (!!n.site && !n.site.confirmed);
+
 /** The sketch as the views draw it: the pieces being rubbed out (and their links) are hidden. */
 export function shownSketch(sketch: Sketch, dropping: readonly string[]): Sketch {
   if (!dropping.length) return sketch;
@@ -233,7 +236,7 @@ export function shownPhase(frame: StageFrame, work: StageWork | null, heardAt: n
   return frame.phase;
 }
 
-export const STEPS: readonly DraftStep[] = ["describe", "shape", "author", "preview", "rehearse", "verdict", "saved"];
+export const STEPS: readonly DraftStep[] = ["describe", "shape", "author", "preview", "rehearse", "verdict", "access", "saved"];
 
 /** The rail's place: the step, or describe before there is a draft. */
 export const stepOf = (draft: Draft | null): DraftStep => draft?.step ?? "describe";
@@ -250,6 +253,10 @@ export function sealOf(state: StageState, phase: ReplyPhase): { state: SealState
   if (step === "preview" && state.draft?.expected) {
     const left = state.draft.expected.filter((c) => !state.marks[c.id]).length;
     return { state: "waiting", count: Math.max(1, left) };
+  }
+  if (step === "access") {
+    const open = state.draft?.sites?.filter((s) => s.state === "open").length ?? 0;
+    return { state: "waiting", count: Math.max(1, open) };
   }
   if (step === "describe" || step === "shape" || step === "verdict" || step === "preview") return { state: "waiting", count: 1 };
   return { state: "rest", count: 0 };

@@ -2,6 +2,7 @@
 // streams into StageState; a view draws it and sends StageActions back. Neither view owns state.
 
 import type {
+  AccessAct,
   Ask,
   AuthorEvent,
   Draft,
@@ -34,7 +35,18 @@ export interface StageFrame {
 }
 
 /** What the stage is waiting on from the daemon; one at a time. */
-export type StageWork = "describe" | "say" | "ink" | "drop" | "write" | "preview" | "key" | "rehearse" | "verdict" | "open";
+export type StageWork =
+  | "describe"
+  | "say"
+  | "ink"
+  | "drop"
+  | "write"
+  | "preview"
+  | "key"
+  | "rehearse"
+  | "verdict"
+  | "access"
+  | "open";
 
 /** A piece's place in one view, kept by node id so a piece never moves, whatever arrives after it. */
 export interface Place {
@@ -90,6 +102,8 @@ export type StageAction =
   | { type: "send_key" }
   | { type: "rehearse" }
   | { type: "verdict"; verdict: DraftVerdict; note?: string }
+  /** The access step (ADR 0014): sign in to one real site, look at it now, or skip it. */
+  | { type: "access"; origin: string; act: AccessAct }
   | { type: "switch_view"; view: StageView }
   | { type: "unmark"; expected_id: string }
   | { type: "remove_missing"; index: number }

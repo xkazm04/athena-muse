@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode }
 import type { Draft, Slot } from "../../../lib/contract";
 import { useClock, useDraftProject } from "../hooks";
 import {
+  AccessList,
   CheckCard,
   Composer,
   Echo,
@@ -81,6 +82,7 @@ export function Hub(p: HubProps) {
   else if (step === "preview") body = <WrittenCard {...p} seal={seal} />;
   else if (step === "rehearse") body = <RunCard {...p} seal={seal} />;
   else if (step === "verdict") body = <VerdictCard {...p} seal={seal} />;
+  else if (step === "access") body = <AccessCard {...p} seal={seal} />;
   else body = <SavedHub draft={draft} words={words} />;
   return (
     <div className="ob-hub" data-role="hub" data-step={step}>
@@ -405,6 +407,23 @@ function VerdictCard({ draft, state, dispatch, words, seal }: CardProps) {
           onKeep={() => dispatch({ type: "verdict", verdict: "keep" })}
           onRevise={(note) => dispatch({ type: "verdict", verdict: "revise", note })}
           busy={!!state.work}
+          words={words}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Signing in to the real sites the chore needs (ADR 0014), after the keep. */
+function AccessCard({ draft, state, dispatch, words, seal }: CardProps) {
+  return (
+    <div className="ob-view ob-view--access">
+      <div className="ob-pane">
+        <Head seal={seal} eyebrow={words.step.access} title={words.accessTitle} sub={words.accessHint} />
+        <AccessList
+          sites={draft.sites ?? []}
+          busy={!!state.work}
+          onAct={(origin, act) => dispatch({ type: "access", origin, act })}
           words={words}
         />
       </div>

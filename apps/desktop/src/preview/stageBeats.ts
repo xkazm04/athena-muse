@@ -2,7 +2,7 @@
 // `reduce`, one beat per state a reviewer must see (data/states.md), each with the seconds it takes
 // in the staged timings. No daemon: every state is the fixture's streams replayed.
 
-import type { DraftStep, TurnEvent } from "../lib/contract";
+import type { Draft, DraftStep, TurnEvent } from "../lib/contract";
 import { STAGED } from "../main/stage/fixture/staged";
 import { withStress } from "../main/stage/drawing/stress";
 import { EMPTY_FRAME, applyLocal, initialStage, reduce } from "../main/stage/store";
@@ -125,6 +125,16 @@ export function stageBeats(): Beat[] {
   }
   const scored = s;
 
+  // ADR 0014: the real sites the person confirmed on the sketch (invented addresses), after the keep.
+  const access: Draft = {
+    ...STAGED.saved,
+    step: "access",
+    sites: [
+      { origin: "https://portal.oakridge-primary.example", label: "Oakridge Primary parent portal", probe_url: "https://portal.oakridge-primary.example/attendance", state: "signed_in" },
+      { origin: "https://parents.brightside.example", label: "Brightside Parents", probe_url: "https://parents.brightside.example/billing", state: "open", tab: 2 },
+    ],
+  };
+  add({ id: "access", group: "access", label: "Kept: signing in to the real sites", state: reduce(scored, { type: "draft", draft: access }), wait: 6 });
   add({ id: "saved", group: "saved", label: "Kept: handed off to the Project", state: reduce(scored, { type: "draft", draft: STAGED.saved }), wait: 9 });
   const revised = reduce(scored, { type: "draft", draft: STAGED.revised });
   add({
@@ -156,5 +166,6 @@ export const STATES_MD: readonly { state: string; beat: string }[] = [
   { state: "rehearse: running, cards arriving", beat: "rehearse-running" },
   { state: "rehearse: short score", beat: "verdict-short" },
   { state: "verdict: score, her cards beside your marks", beat: "verdict-short" },
+  { state: "access: signing in to the real sites, one done, one in her browser", beat: "access" },
   { state: "saved: handed off to the Project", beat: "saved" },
 ];

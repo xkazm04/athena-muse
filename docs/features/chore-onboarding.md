@@ -1,6 +1,6 @@
 # Chore onboarding - describe a need, watch it drawn, test it, keep it
 
-Built 2026-10-29. Decisions: [ADR 0007](../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md) (and its amendment: `drop`, two views, comparison counts). Design history: `docs/concepts/chore-onboarding-v2/` in git history before the commit that added this page.
+Built 2026-10-29. Decisions: [ADR 0007](../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md) (and its amendment: `drop`, two views, comparison counts); the access step and a project's sites: [ADR 0014](../adr/0014-a-chores-onboarding-signs-in-to-its-real-sites-and-only-onboarding-grants-trust.md). Design history: `docs/concepts/chore-onboarding-v2/` in git history before the commit that added this page.
 
 ## What it does
 
@@ -9,8 +9,9 @@ Athena's questions while a sketch of the process (apps, steps, what waits for th
 they get) draws itself in the main window. Once the sketch is agreed, Athena writes a real chore with
 invented practice apps, previews the cards she expects to file, and the person's yes and no answers
 become the chore's answer key. A live test run on the practice apps is scored against that key; the
-person accepts it and the chore is saved as theirs, with a Project ready to use. "Not quite" returns
-to the sketch with the gaps named.
+person accepts it, signs in to each real site the chore needs in her browser (so next time she gets
+in on her own), and the chore is saved as theirs, with a Project ready to use. "Not quite" returns to
+the sketch with the gaps named.
 
 Doors: the first run's `ready` step, and "Describe a need" on Projects and on Chores. The main window
 shows one frame at a time with no page scroll; the history lives in her small window, because a draft
@@ -18,7 +19,7 @@ is a Project and every stage reply is an ordinary turn in it.
 
 ## How it works
 
-**Flow** (`DraftStep`, owned by the flow, not the model): `describe -> shape -> author -> preview -> rehearse -> verdict -> saved`. `shape` is re-entered from `author` (unrepairable), `preview` and `verdict` ("not quite").
+**Flow** (`DraftStep`, owned by the flow, not the model): `describe -> shape -> author -> preview -> rehearse -> verdict -> access -> saved`. `shape` is re-entered from `author` (unrepairable), `preview` and `verdict` ("not quite").
 
 | Step | What happens | Done when |
 |---|---|---|
@@ -28,13 +29,16 @@ is a Project and every stage reply is an ordinary turn in it.
 | preview | One call lists the cards she would file (`ExpectedCard`); the person marks each yes/no and may add "she must never" lines. | Every card marked. |
 | rehearse | `truth.json` is written from the marks; the bench runner plays the phases on a throwaway daemon and scores against the key. | The run ends. |
 | verdict | Score in plain words, her cards beside the marks. "This is it" or "Not quite". | The person. |
-| saved | The chore is copied to `<data_dir>/chores/<id>/`; the Project's brief and apps are set. | - |
+| access | At the keep the chore is copied to `<data_dir>/chores/<id>/` and the Project's brief is set; each real site the person confirmed on the sketch becomes one of the Project's sites (the only way her browser comes to trust one). Per site: "Sign in" opens it in her browser and hands the person the wheel; when the page moves on (or "I have signed in") she looks; "Skip for now" keeps it as signed out, a blocker on the overview. Skipped when the chore needs no real site. | Every site signed in or skipped. |
+| saved | The hand-off card: the Project with the chore in it. | - |
 
 **Rubric** (seven slots: `need`, `apps`, `inputs`, `steps`, `hand`, `output`, `never`). Coverage per
 slot is 0 / 0.5 / 1, computed from the sketch, never claimed by the model: 1 holds a node the person
 confirmed, 0.5 only Athena's proposals. Agreed when `need`, `apps`, `hand`, `output` are 1 and the rest
 0.5 or skipped with a stated default. At most 2 follow-ups per slot; the exit is visible from frame one.
 Since [ADR 0010](../adr/0010-one-shaping-conversation-two-rubrics.md) this is `CHORE_RUBRIC`, one of two rubrics on the same drafts machinery.
+
+**Real sites** ([ADR 0014](../adr/0014-a-chores-onboarding-signs-in-to-its-real-sites-and-only-onboarding-grants-trust.md)). An `app` node may carry a real website (`site`): Athena proposes it in pencil with the `sketch` tool, even on the person's own node; inking the node inks the site, rubbing out an agreed node's site removes only the site. Her practice apps stay invented and never reach access. The look that says "signed in" opens the site's address in a hidden tab and reads where it ended and whether a password field shows; the step never asks for or keeps a password. After onboarding, the Project's overview shows a lapsed site as a blocker with "Sign in again".
 
 **The key.** yes -> eligible, no -> trap, a never line -> forbidden. Athena never writes her own key.
 The sketch is an abstraction for the person's understanding, not the chore's source; the preview runs
@@ -50,7 +54,9 @@ proves better. Pencil (dashed violet) is her guess, ink is agreed, a pink edge i
 **Wire** (`src/athena/contracts.py` / `apps/desktop/src/lib/contract.ts`): `POST /drafts {need}`,
 `GET /drafts/{id}`, `POST /drafts/{id}/say` (NDJSON `TurnEvent` + `sketch` / `ask` / `coverage`),
 `/confirm`, `/drop`, `/write` (`AuthorEvent`), `/preview`, `PUT /drafts/{id}/key`, `/rehearse`
-(`RehearsalEvent`), `/verdict`, `DELETE /drafts/{id}`. Table `drafts`, erased with its space. `Surface`
+(`RehearsalEvent`), `/verdict`, `/access` (`AccessBody`: `sign_in`, `check`, `skip`), `DELETE /drafts/{id}`; a
+Project's sites at `GET /spaces/{id}/sites`, `POST /spaces/{id}/sites/check` and `/sites/sign_in`, with
+the `site` app event. Table `drafts`, erased with its space. `Surface`
 gains `design` and `rehearsal`; `ActionName` gains `sketch` and `ask` (auto). User chores carry
 `origin: "yours"` and never reach `playbooks/`.
 
@@ -78,6 +84,7 @@ Athena cannot write a chore.
 ```bash
 ATHENA_ENGINE=claude_code pnpm -C apps/desktop app   # then "Describe a need"
 SEAM_PORT=8767 python scripts/stage_seam.py drawing claude_code runs/seam-drawing   # the live seam; or orbit / scripted
+uv run python scripts/access_seam.py   # the access step and the overview's blocker on the built shell, simulated sites
 ```
 
 ## Known gaps (none blocks use)

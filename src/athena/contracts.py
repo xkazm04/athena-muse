@@ -23,6 +23,8 @@ CORE_ITEM = "core"  # path segment standing in for CORE where an empty segment c
 NAME_MAX = 60
 BRIEF_MAX = 1600
 APPS_MAX = 24
+SITES_MAX = 24  # a project's sites (ADR 0014)
+SITE_FRESH_S = 300  # a look at a site stands this long before the overview or a hand looks again
 SPACES_MAX = 100
 HUE_MAX = 359
 TEXT_MAX = 8000  # one person message
@@ -70,11 +72,26 @@ ActionName = Literal[
     "wheel_handoff",
 ]
 AppEventType = Literal[
-    "card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done", "settings", "wheel"
+    "card_filed",
+    "card_resolved",
+    "space_changed",
+    "active_space",
+    "engine",
+    "turn_done",
+    "settings",
+    "wheel",
+    "site",
 ]
 #: Her browser's answer when a hand did not run (ADR 0013).
 HandReason = Literal["no_browser", "no_tab", "moved", "refused", "timeout", "failed", "unknown_ref"]
 WheelState = Literal["back", "closed", "timeout"]
+#: A project's site (ADR 0014): what the last look found. `unknown` is "not looked yet, or could not
+#: look", never "fine".
+SiteAccess = Literal["signed_in", "signed_out", "unknown"]
+#: A site on a draft's access step: still to do, signed in (the look said so), or skipped by the person.
+AccessState = Literal["open", "signed_in", "skipped"]
+#: What the person does with one site on the access step.
+AccessAct = Literal["sign_in", "check", "skip"]
 
 # Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 ThemeChoice = Literal["auto", "dark", "light"]  # auto follows the system
@@ -102,8 +119,8 @@ CATALOG: dict[ActionName, ActionClass] = {
     "twin_send": "gated",
     "twin_note": "gated",
     # Her browser (ADR 0013). The class is the floor: a page hand on a tab whose site is not one of
-    # the project's apps files a card whatever its class says, and a signed card runs only on the
-    # tab and the page load it was asked on.
+    # the project's sites (ADR 0014: set up only by a chore's onboarding) files a card whatever its
+    # class says, and a signed card runs only on the tab and the page load it was asked on.
     "page_open": "auto",
     "page_read": "auto",
     "page_find": "auto",
@@ -130,7 +147,7 @@ ChoreOrigin = Literal["library", "yours"]  # the app's playbooks/ or the person'
 
 # --- drafts: a chore written in conversation (ADR 0007) ------------------------------------------
 
-DraftStep = Literal["describe", "shape", "author", "preview", "rehearse", "verdict", "saved"]
+DraftStep = Literal["describe", "shape", "author", "preview", "rehearse", "verdict", "access", "saved"]
 Slot = Literal["need", "apps", "inputs", "steps", "hand", "output", "never"]
 SketchKind = Literal["source", "app", "step", "gate", "output", "never"]
 NodeOrigin = Literal["you", "athena"]
@@ -429,6 +446,16 @@ class ChoreDetail(TypedDict):
 CoverageValue = float | Literal["skipped"]  # 0, 0.5 or 1; "skipped" = left open with a stated default
 
 
+class NodeSite(TypedDict):
+    """The real website an `app` node happens on (ADR 0014). Athena proposes it in pencil
+    (`confirmed: false`); the person confirms it in ink. Only confirmed sites go to the access step."""
+
+    origin: str  # scheme://host[:port]
+    url: str  # the address she looks at to see whether the person is signed in
+    label: str
+    confirmed: bool
+
+
 class SketchNode(TypedDict):
     id: str
     kind: SketchKind
@@ -438,6 +465,7 @@ class SketchNode(TypedDict):
     confirmed: bool
     detail: NotRequired[str]
     quote: NotRequired[str]  # on the person's nodes: their own words it was drawn from, verbatim
+    site: NotRequired[NodeSite]  # `app` nodes only: the real website, when she knows it
 
 
 # `from` is a Python keyword, so this one is spelled the functional way.
@@ -528,6 +556,17 @@ class DraftKey(TypedDict):
     never: list[NeverLine]
 
 
+class DraftSite(TypedDict):
+    """One real site on the draft's access step (ADR 0014)."""
+
+    origin: str
+    label: str
+    probe_url: str
+    state: AccessState
+    reason: NotRequired[str]  # plain words: what the last look found, when it was not signed in
+    tab: NotRequired[int]  # her browser's tab while the person signs in there
+
+
 class Draft(TypedDict):
     id: str  # drf_ + 12 hex
     space_id: str  # the draft's Project, made active when the draft starts
@@ -547,6 +586,7 @@ class Draft(TypedDict):
     verdict: NotRequired[DraftVerdict]
     note: NotRequired[str]  # the person's words with a "revise" verdict
     views: NotRequired[dict[StageView, int]]  # stage turns that counted, per view the person answered in
+    sites: NotRequired[list[DraftSite]]  # from the keep on: the real sites the access step signs in to
 
 
 class DraftAbandoned(TypedDict):
@@ -580,6 +620,22 @@ class KeyBody(TypedDict):
 class VerdictBody(TypedDict):
     verdict: DraftVerdict
     note: NotRequired[str]
+
+
+class AccessBody(TypedDict):
+    """POST /drafts/{id}/access, at step `access`; the reply is the Draft.
+
+    - `sign_in` opens the site's address in her browser, in front, and hands the person the wheel
+      (the tab is on the draft's site as `tab`). Signing in happens only on the site's own page.
+    - `check` looks at the site now: `signed_in` when the look says so, else the site stays `open`
+      with the reason in plain words.
+    - `skip` leaves the site `skipped`; the project keeps it as signed out, a blocker from day one.
+    When no site is `open`, the draft moves to `saved`. A `wheel` app event for the site's tab is the
+    desktop's cue to send `check`; nothing is checked on its own.
+    """
+
+    origin: str
+    act: AccessAct
 
 
 # --- the turn stream (NDJSON, one object per line) ------------------------------------------------
@@ -688,6 +744,37 @@ def tool_event(name: ActionName, label: str) -> dict[str, Any]:
     return {"type": "tool", "name": name, "label": label, "class": CATALOG[name]}
 
 
+class Site(TypedDict):
+    """One of a project's sites (ADR 0014): the browser's trust list. Written only by a chore's
+    onboarding (its access step); a look (the overview, a hand, "Sign in again") changes only
+    `access`, `checked_at` and `reason`. Erased with the project."""
+
+    origin: str
+    label: str
+    probe_url: str  # the address a look opens
+    access: SiteAccess
+    blocks: list[str]  # the kept chores that need it, by title
+    checked_at: NotRequired[str]  # when it was last looked at; omitted = never
+    reason: NotRequired[str]  # plain words: what the last look found
+
+
+class SiteList(TypedDict):
+    sites: list[Site]
+
+
+class SiteBody(TypedDict):
+    origin: str
+
+
+class SignInStarted(TypedDict):
+    """POST /spaces/{id}/sites/sign_in: the site is open in her browser, in front, and the person has
+    the wheel. The desktop sends `POST /spaces/{id}/sites/check` once the `wheel` event for this tab
+    arrives (or the person says they are done)."""
+
+    origin: str
+    tab: int
+
+
 class WheelNote(TypedDict):
     """The person was handed her browser's tab (`wheel_handoff`) and the page moved on (`back`), the
     tab was closed, or 30 minutes passed."""
@@ -700,7 +787,7 @@ class AppEvent(TypedDict):
     """One SSE message on `/events`. Payload keys by type:
     card_filed / card_resolved: `card`; space_changed: `space_id` (and `erased: true` on erase);
     active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`; settings: `look`;
-    wheel: `wheel`.
+    wheel: `wheel`; site: `space_id`, `site` (a look at one of the project's sites changed what it found).
     """
 
     type: AppEventType
@@ -711,6 +798,7 @@ class AppEvent(TypedDict):
     turn_id: NotRequired[str]
     look: NotRequired[Look]
     wheel: NotRequired[WheelNote]
+    site: NotRequired[Site]
 
 
 # --- twins (ADR 0008-0010) ------------------------------------------------------------------------
@@ -1329,6 +1417,10 @@ ROUTES = {
     "connector_disconnect": "/connectors/{kind}/disconnect",
     "connector_probe": "/connectors/{kind}/probe",
     "space_files": "/spaces/{id}/files",
+    "space_sites": "/spaces/{id}/sites",
+    "space_site_check": "/spaces/{id}/sites/check",
+    "space_site_sign_in": "/spaces/{id}/sites/sign_in",
+    "draft_access": "/drafts/{id}/access",
     "browser_next": "/browser/next",
     "browser_done": "/browser/done",
     "browser_note": "/browser/note",

@@ -17,8 +17,8 @@ from starlette.routing import BaseRoute, Route
 from athena import engine as engine_mod
 from athena import routes_turn
 from athena.app import Daemon
-from athena.contracts import KeyBody, StageView
-from athena.drafts import author, key, preview, rehearse, save, shape
+from athena.contracts import AccessAct, KeyBody, StageView
+from athena.drafts import access, author, key, preview, rehearse, save, shape
 from athena.engine import Engine, EngineError
 from athena.errors import ApiError
 from athena.keys import KeyStore
@@ -141,6 +141,16 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
             raise ApiError("bad_request", "send verdict, keep or revise, and a note as text if you have one")
         return JSONResponse(save.verdict(daemon, request.path_params["id"], word, note))
 
+    async def access_act(request: Request) -> Response:
+        body = await _body(request)
+        origin, what = body.get("origin"), body.get("act")
+        if not isinstance(origin, str) or what not in ("sign_in", "check", "skip"):
+            raise ApiError("bad_request", "send the site's origin and an act: sign_in, check or skip")
+        draft = await run_in_threadpool(
+            access.act, daemon, request.path_params["id"], origin, cast("AccessAct", what)
+        )
+        return JSONResponse(draft)
+
     return [
         Route("/drafts", drafts, methods=["POST"]),
         Route("/drafts/{id}", draft, methods=["GET", "DELETE"]),
@@ -152,4 +162,5 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route("/drafts/{id}/key", put_key, methods=["PUT"]),
         Route("/drafts/{id}/rehearse", run, methods=["POST"]),
         Route("/drafts/{id}/verdict", verdict, methods=["POST"]),
+        Route("/drafts/{id}/access", access_act, methods=["POST"]),
     ]

@@ -28,6 +28,7 @@ from athena.contracts import (
     SUGGESTIONS_MIN,
     Ask,
     Draft,
+    NodeSite,
     Sketch,
     SketchNode,
     SketchOp,
@@ -73,12 +74,23 @@ def _or(items: tuple[str, ...]) -> str:
 
 
 def sketch_tool(rubric: Rubric, subject: str) -> dict[str, Any]:
-    """The `sketch` tool over the rubric's kinds and places; `subject` is what the sketch draws."""
+    """The `sketch` tool over the rubric's kinds and places; `subject` is what the sketch draws. On a
+    rubric with `app` nodes it takes a node's real website too (ADR 0014)."""
+    sited = (
+        {
+            "site": "add or change, app nodes only: the real website's address where this happens, like "
+            "https://portal.example.org, when the person named it or it is certain; never invent one. "
+            "It stays your proposal until the person confirms it"
+        }
+        if "app" in rubric.kinds
+        else {}
+    )
     return _tool(
         "sketch",
         f"Change the sketch of {subject} at once: add a node, change one, remove a node or a link, "
         "or link two nodes. Places never move; a new node takes the next place.",
-        {
+        sited
+        | {
             "op": "add, change, remove or link",
             "id": "The node's id (add: optional, one is given if empty; change and remove: required)",
             "kind": f"{_or(rubric.kinds)} (add: required)",
@@ -231,7 +243,11 @@ class SketchDesign(ABC):
             for n in self.sketch["nodes"]:
                 whose = "the person's" if n["origin"] == "you" else "your proposal"
                 state = "confirmed" if n["confirmed"] else "not confirmed"
-                parts.append(f'- [{n["id"]}] {n["kind"]} in {n["slot"]}: "{n["label"]}" ({whose}, {state})')
+                line = f'- [{n["id"]}] {n["kind"]} in {n["slot"]}: "{n["label"]}" ({whose}, {state})'
+                if "site" in n:
+                    agreed = "confirmed" if n["site"]["confirmed"] else "your proposal"
+                    line += f"; website {n['site']['url']} ({agreed})"
+                parts.append(line)
             parts += [f"- link {e['from']} -> {e['to']}" for e in self.sketch["edges"]]
         else:
             parts.append("- (empty)")
@@ -312,7 +328,11 @@ class SketchDesign(ABC):
                 node, note = self._new_node(call)
                 ops: list[SketchOp] = [{"op": "add", "node": node}]
             elif op == "change":
-                fields = {k: _arg(call, k) for k in ("label", "detail", "kind", "slot") if _arg(call, k)}
+                fields: dict[str, Any] = {
+                    k: _arg(call, k) for k in ("label", "detail", "kind", "slot") if _arg(call, k)
+                }
+                if _arg(call, "site") and "app" in self.rubric.kinds:
+                    fields["site"] = {"url": _arg(call, "site")}
                 ops = [{"op": "change", "node": cast("SketchNode", {"id": _arg(call, "id"), **fields})}]
             elif op == "remove" and _arg(call, "id"):
                 ops = [{"op": "remove", "node": cast("SketchNode", {"id": _arg(call, "id")})}]
@@ -349,6 +369,9 @@ class SketchDesign(ABC):
         )
         if _arg(call, "detail"):
             node["detail"] = _arg(call, "detail")
+        if _arg(call, "site") and "app" in self.rubric.kinds:
+            # Always her pencil, even on the person's own node: they confirm the address on screen.
+            node["site"] = cast("NodeSite", {"url": _arg(call, "site"), "confirmed": False})
         if theirs:
             node["quote"] = _plain(quote).strip(_QUOTE_MARKS)
             return node, " It is in the person's own words, so it is theirs."

@@ -18,7 +18,7 @@ export const VIEW_LABEL: Record<StageView, string> = {
   orbit: "Orbit",
 };
 
-/** The rail's names for the draft's steps (the winners' seven). */
+/** The rail's names for the draft's steps (the winners' seven, and signing in, ADR 0014). */
 export const STEP_LABEL: Record<DraftStep, string> = {
   describe: "Describe",
   shape: "Shape",
@@ -26,6 +26,7 @@ export const STEP_LABEL: Record<DraftStep, string> = {
   preview: "Check",
   rehearse: "Test",
   verdict: "Verdict",
+  access: "Sign in",
   saved: "Keep",
 };
 
@@ -167,6 +168,27 @@ export const STAGE_WORDS = {
   keep: "This is it",
   revise: "Not quite",
   reviseNote: "What is not right? (optional)",
+
+  // a piece's real site (ADR 0014)
+  site: "The real site",
+  siteGuess: "her guess: ink it if it is right",
+
+  // signing in to the real sites (ADR 0014)
+  accessTitle: "Sign in to the sites she needs",
+  accessHint:
+    "Each one opens in her browser. You sign in on the site's own page; Athena never sees your password. Next time she gets in on her own.",
+  accessList: "The sites this chore needs",
+  signIn: "Sign in",
+  signInAgain: "Open it again",
+  signedInNow: "I have signed in",
+  skipSite: "Skip for now",
+  signInAfterAll: "Sign in after all",
+  toDo: "to do",
+  signedIn: "signed in",
+  skipped: "skipped",
+  skippedHint: "Until you sign in, the project shows this site as a blocker.",
+  signingIn: "Sign in on the page in her browser, then come back here.",
+  accessDone: "signed in or skipped",
 
   // saved
   savedTitle: "Handed off to a new Project",

@@ -173,6 +173,30 @@ describe("the Drawing view", () => {
     expect(dispatch).toHaveBeenLastCalledWith({ type: "verdict", verdict: "revise", note: "She missed the late fee" });
   });
 
+  it("signs in to each real site from the access drawer, over the dimmed drawing", () => {
+    const origin = "https://parents.brightside.example";
+    const draft = { ...STAGED.saved, step: "access" as const, sites: [{ origin, label: "Brightside Parents", probe_url: `${origin}/`, state: "open" as const }] };
+    const { dispatch, root } = draw(at({ draft }));
+    expect(root.dataset.dim).toBe("true");
+    const drawer = root.querySelector<HTMLElement>('[data-role="drawer"][data-step="access"]')!;
+    expect(drawer.querySelector('[data-role="access-check"]')).toBeNull(); // not signing in yet
+    fireEvent.click(drawer.querySelector('[data-role="access-sign-in"]')!);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "access", origin, act: "sign_in" });
+  });
+
+  it("shows a real site on a piece's card as her guess until the person inks it", () => {
+    const state = firstFrame();
+    const d = state.draft!;
+    const n3 = d.sketch.nodes.find((n) => n.id === "n3")!;
+    const sited = { ...n3, site: { origin: "https://parents.brightside.example", url: "https://parents.brightside.example/", label: n3.label, confirmed: false } };
+    const draft = { ...d, step: "shape" as const, sketch: { ...d.sketch, nodes: d.sketch.nodes.map((n) => (n.id === "n3" ? sited : n)) } };
+    const { dispatch, root } = draw({ ...state, draft, card: "n3" });
+    const card = root.querySelector<HTMLElement>('[data-role="piece-card"][data-node-id="n3"]')!;
+    expect(card.querySelector<HTMLElement>('[data-role="piece-site"]')!.dataset.state).toBe("pencil");
+    fireEvent.click(card.querySelector('[data-role="ink"]')!);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "ink", node_ids: ["n3"] });
+  });
+
   it("brings the person back to the sketch with the gaps named after not quite, and hands off once kept", () => {
     const { root, view } = draw(at({ draft: STAGED.revised }));
     expect(root.querySelector('[data-role="revisit"][data-why="revise"]')?.textContent).toContain(STAGED.revised.note!);

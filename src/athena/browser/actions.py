@@ -1,8 +1,11 @@
 """Her browser's actions (ADR 0013): the tools a model sees, the trust that decides card or no card,
 and the run of a signed card.
 
-Trust is per origin and per project: a site is trusted when it is one of the project's apps (the
-project's apps are the browser's trust list). The catalog's class is the floor and trust only
+Trust is per origin and per project: a site is trusted when it is one of the project's sites (ADR
+0014), which only a chore's onboarding sets up; the project's apps are a description and grant
+nothing. Before her browser opens a trusted site, the look (`sites.check`, cached) says whether the
+person is still signed in there; a site they are signed out of is refused with the way back in.
+The catalog's class is the floor and trust only
 tightens it: an AUTO hand runs at once on a trusted site and files a card on any other ("on first
 sight everything is gated"); a GATED hand always files a card. A card carries the tab, the page
 load and the address it was asked on, and the shell refuses to run it anywhere else.
@@ -17,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlsplit
 
+from athena.browser import sites
 from athena.contracts import CATALOG, ActionName, Card, tool_event
 from athena.errors import ApiError
 from athena.spaces import normalise_origin
@@ -84,7 +88,7 @@ TOOLS: dict[str, dict[str, Any]] = {
     "page_open": _tool(
         "page_open",
         "Open a web page in your browser, in a new tab. Runs at once on a site that is one of this "
-        "project's apps; any other site needs the person's signature.",
+        "project's sites; any other site needs the person's signature.",
         {"url": ("string", "The full address, like https://example.com/page")},
         ["url"],
     ),
@@ -286,18 +290,26 @@ def act(daemon: Daemon, space_id: str, raw_name: str, args: dict[str, Any]) -> D
     if name == "tabs_read":
         result = daemon.relay.call("tabs")
         return Dispatched(_said(result), [tool_event("tabs_read", "Looked at her browser's tabs")])
-    apps = daemon.spaces.get(space_id)["apps"]
+    daemon.spaces.get(space_id)  # an unknown project is refused before her browser is asked
     if name == "page_open":
         url = str(args.get("url", "")).strip()
         origin = origin_of(url)
         if not origin:
             return Dispatched("That is not a web address (http or https).")
-        if origin not in apps:
+        if not daemon.sites.trusted(space_id, origin):
             label = (
-                f"Open {_short(url, 120)} in her browser ({_site(origin)} is not one of this project's apps)"
+                f"Open {_short(url, 120)} in her browser ({_site(origin)} is not one of this project's sites)"
             )
             card = daemon.gate.file(space_id, "page_open", {"url": url, "origin": origin}, label)
             return _filed("page_open", label, card)
+        if daemon.relay.connected():
+            looked = sites.check(daemon, space_id, origin)
+            if looked["access"] == "signed_out":
+                return Dispatched(
+                    f"The person is not signed in to {_site(origin)} ({looked.get('reason', '')}). Nothing "
+                    "was opened. Ask them to use Sign in again on the project's overview.",
+                    [tool_event("page_open", f"Not signed in to {_site(origin)}")],
+                )
         result = daemon.relay.call("open", {"url": url}, timeout=OPEN_WAIT_S)
         tab = result.get("tab") or {}
         text = f"Tab {tab.get('id', '?')}: {tab.get('title', '')} {tab.get('url', url)}".strip()
@@ -320,7 +332,8 @@ def act(daemon: Daemon, space_id: str, raw_name: str, args: dict[str, Any]) -> D
         return Dispatched(_said(seen))
     origin = origin_of(str(page.get("url", "")))
     site = _site(origin)
-    if CATALOG[name] == "auto" and origin in apps:
+    trusted = daemon.sites.trusted(space_id, origin)
+    if CATALOG[name] == "auto" and trusted:
         result = daemon.relay.call(name, hand, tab=tab, load=page.get("load"), url=page.get("url"))
         line = tool_event(name, f"{name.removeprefix('page_').capitalize()} on {site}")
         if not result.get("ok"):
@@ -329,7 +342,7 @@ def act(daemon: Daemon, space_id: str, raw_name: str, args: dict[str, Any]) -> D
         return Dispatched(_fence(origin, output) if name in ("page_read", "page_find") else output, [line])
     label = _label(name, hand, site, daemon, space_id)
     if CATALOG[name] == "auto":
-        label += f" ({site} is not one of this project's apps)"
+        label += f" ({site} is not one of this project's sites)"
     card_args = {"tab": tab, "load": page.get("load"), "url": page.get("url"), "origin": origin, "args": hand}
     card = daemon.gate.file(space_id, name, card_args, label)
     return _filed(name, label, card)

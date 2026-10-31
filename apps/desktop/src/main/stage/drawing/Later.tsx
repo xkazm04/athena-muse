@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { Draft } from "../../../lib/contract";
 import { useClock, useDraftProject } from "../hooks";
 import {
+  AccessList,
   CheckCard,
   FiledCards,
   LineAdder,
@@ -264,6 +265,26 @@ export function VerdictDrawer({ draft, state, dispatch, words }: LaterProps) {
           words={words}
         />
       </footer>
+    </aside>
+  );
+}
+
+/** Signing in to the real sites the chore needs (ADR 0014), after the keep. */
+export function AccessDrawer({ draft, state, dispatch, words }: LaterProps) {
+  const ref = useRef<HTMLElement>(null);
+  const sites = draft.sites ?? [];
+  useFit(ref, [sites]);
+  return (
+    <aside className="dr-drawer" data-role="drawer" data-step="access" ref={ref} aria-label={words.accessTitle}>
+      <header className="dr-drawer__head">
+        <div className="dr-drawer__grow">
+          <h2>{words.accessTitle}</h2>
+          <p>{words.accessHint}</p>
+        </div>
+      </header>
+      <div className="dr-drawer__body">
+        <AccessList sites={sites} busy={!!state.work} onAct={(origin, act) => dispatch({ type: "access", origin, act })} words={words} />
+      </div>
     </aside>
   );
 }

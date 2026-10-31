@@ -1,5 +1,5 @@
-"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards, settings, drafts
-and twins."""
+"""One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards, settings, drafts,
+twins, files and sites."""
 
 from __future__ import annotations
 
@@ -52,6 +52,10 @@ CREATE TABLE IF NOT EXISTS files (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL,
   sha256 TEXT NOT NULL, origin TEXT NOT NULL, created TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS files_space ON files (space_id, sha256);
+CREATE TABLE IF NOT EXISTS sites (
+  space_id TEXT NOT NULL, origin TEXT NOT NULL, label TEXT NOT NULL, probe_url TEXT NOT NULL,
+  access TEXT NOT NULL, blocks TEXT NOT NULL, checked_at TEXT, reason TEXT, created TEXT NOT NULL,
+  PRIMARY KEY (space_id, origin));
 """ + "".join(
     # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON;
     # a preview's id is the hash of the voice it was written for.
@@ -96,6 +100,7 @@ _ADDED = (
     ("drafts", "views", "TEXT"),
     ("drafts", "ask", "TEXT"),
     ("drafts", "practice", "TEXT"),
+    ("drafts", "sites", "TEXT"),
     ("cards", "outcome", "TEXT"),
 )
 

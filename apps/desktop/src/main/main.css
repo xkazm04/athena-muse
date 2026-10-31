@@ -518,6 +518,30 @@ p.m-muted {
   border-color: color-mix(in srgb, var(--status-error) 30%, transparent);
 }
 
+/* ---- sites (ADR 0014): the blocker band and the list ---- */
+.m-blocker {
+  border-color: color-mix(in srgb, var(--status-warning) 45%, transparent);
+  background: color-mix(in srgb, var(--status-warning) 8%, transparent);
+}
+.m-blocker__list,
+.m-sites {
+  display: grid;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-blocker__row {
+  display: grid;
+  gap: var(--sp-1);
+}
+.m-site {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
 /* ---- memory ---- */
 .m-memory {
   display: grid;

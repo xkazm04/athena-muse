@@ -1,9 +1,12 @@
 """The verdict: `keep` copies the chore into the person's library and sets the Project's brief;
 `revise` returns the draft to `shape` with the person's note.
 
-A kept chore's practice apps are invented, so none is added to the Project's apps: an app there is a
-real address she may open. `revise` is taken at the preview, before the run and at the verdict, so
-"this isn't what I meant" has a way back to the sketch at each of them; the sketch stays as it was.
+A kept chore's practice apps are invented, so none is added to the Project's apps or sites. The real
+sites the person confirmed on the sketch go to the access step (ADR 0014, `access.begin`): `keep`
+moves the draft to `access`, or straight to `saved` when the chore needs no real site.
+
+`revise` is taken at the preview, before the run and at the verdict, so "this isn't what I meant" has
+a way back to the sketch at each of them; the sketch stays as it was.
 """
 
 from __future__ import annotations
@@ -14,6 +17,7 @@ from typing import Any, cast
 from athena.app import Daemon
 from athena.chores.spec import chore_ids, user_library_dir
 from athena.contracts import BRIEF_MAX, TEXT_MAX, Draft, DraftVerdict
+from athena.drafts import access
 from athena.drafts.author import chore_root, load_written, not_busy
 from athena.drafts.preview import cut
 from athena.errors import ApiError
@@ -56,5 +60,8 @@ def verdict(daemon: Daemon, draft_id: str, word: DraftVerdict, note: str | None)
     if promise:
         daemon.spaces.update(draft["space_id"], {"brief": cut(promise, BRIEF_MAX)})
         daemon.events.publish({"type": "space_changed", "space_id": draft["space_id"]})
-    stored["step"] = "saved"
+    title = " ".join(
+        str(chore.showcase.get("short_title") or chore.showcase.get("title") or chore.id).split()
+    )
+    access.begin(daemon, stored, title)  # the chore's real sites, if any: `access`, else `saved`
     return daemon.drafts.put(cast("Draft", stored))

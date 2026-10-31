@@ -12,6 +12,7 @@ from athena.contracts import (
     DETAIL_MAX,
     LABEL_MAX,
     SKETCH_NODES_MAX,
+    NodeSite,
     Sketch,
     SketchEdge,
     SketchKind,
@@ -20,6 +21,7 @@ from athena.contracts import (
     Slot,
 )
 from athena.drafts.rubric import CHORE_RUBRIC, Rubric
+from athena.errors import ApiError
 
 NODE_ID = re.compile(r"[A-Za-z0-9_-]{1,40}")
 
@@ -68,6 +70,24 @@ def _fits(node: SketchNode, rubric: Rubric) -> None:
         raise SketchError(f"a node in {node['slot']} is one of {', '.join(allowed)}, not {node['kind']}")
 
 
+SITE_KIND = "app"
+
+
+def _site(raw: Any, label: str) -> NodeSite:
+    """A node's real website (ADR 0014) from `{url, label?, confirmed?}`: http(s) only. The caller
+    decides `confirmed`; a model's proposal is always pencil."""
+    from athena.browser.sites import probe_address  # the browser package imports the spaces module
+
+    if not isinstance(raw, dict):
+        raise SketchError("a site is a web address")
+    try:
+        origin, url = probe_address(str(raw.get("url") or raw.get("origin") or ""))
+    except ApiError as e:
+        raise SketchError(e.reason) from None
+    named = raw.get("label") if isinstance(raw.get("label"), str) and raw["label"].strip() else label
+    return {"origin": origin, "url": url, "label": _label(named), "confirmed": raw.get("confirmed") is True}
+
+
 def _index(sketch: Sketch, node_id: Any) -> int:
     for i, node in enumerate(sketch["nodes"]):
         if node["id"] == node_id:
@@ -111,6 +131,10 @@ def _add(sketch: Sketch, raw: dict[str, Any], rubric: Rubric) -> SketchOp:
         node["detail"] = detail
     if node["origin"] == "you" and isinstance(raw.get("quote"), str) and raw["quote"].strip():
         node["quote"] = _detail(raw["quote"])  # the caller proved it is the person's words
+    if raw.get("site"):
+        if node["kind"] != SITE_KIND:
+            raise SketchError("only a place where it happens (an app) has a website")
+        node["site"] = _site(raw["site"], node["label"])
     sketch["nodes"].append(node)
     return {"op": "add", "node": copy.deepcopy(node)}
 
@@ -141,8 +165,21 @@ def _change(sketch: Sketch, raw: dict[str, Any], rubric: Rubric) -> SketchOp:
         else:
             node.pop("detail", None)
         changed = True
+    if "site" in raw:
+        # A site is her proposal on any app node, the person's own included: it stays pencil (the
+        # node keeps its ink) until the person confirms it.
+        if raw["site"]:
+            if node["kind"] != SITE_KIND:
+                raise SketchError("only a place where it happens (an app) has a website")
+            proposed = {**cast("dict[str, Any]", raw["site"]), "confirmed": False}
+            node["site"] = _site(proposed, node["label"])
+        else:
+            node.pop("site", None)
+        changed = True
+    if node["kind"] != SITE_KIND:
+        node.pop("site", None)
     if not changed:
-        raise SketchError("a change needs a new label, detail, kind or slot")
+        raise SketchError("a change needs a new label, detail, kind, slot or site")
     return {"op": "change", "node": copy.deepcopy(node)}
 
 
@@ -220,15 +257,20 @@ def apply(
 
 
 def drop(sketch: Sketch, node_ids: list[str]) -> tuple[Sketch, list[SketchOp]]:
-    """The person rubs out Athena's guesses: each id must be an unconfirmed `athena` node. Its links go
-    with it; answers the `remove` ops, links first. Any other id raises SketchError, sketch untouched."""
+    """The person rubs out Athena's guesses: an unconfirmed `athena` node goes with its links (the
+    `remove` ops, links first); on an agreed node, only her pencilled site goes (a `change`). Any other
+    id raises SketchError, sketch untouched."""
     out = copy.deepcopy(sketch)
     applied: list[SketchOp] = []
     for node_id in node_ids:
         node = out["nodes"][_index(out, node_id)]
-        if node["origin"] != "athena" or node["confirmed"]:
+        if node["origin"] == "athena" and not node["confirmed"]:
+            applied.extend(_remove_node(out, _index(out, node_id)))
+        elif "site" in node and not node["site"]["confirmed"]:
+            del node["site"]
+            applied.append({"op": "change", "node": copy.deepcopy(node)})
+        else:
             raise SketchError(f"{node_id!r} is agreed, not a guess; only her pencil can be rubbed out")
-        applied.extend(_remove_node(out, _index(out, node_id)))
     return out, applied
 
 
@@ -236,13 +278,17 @@ def confirm(sketch: Sketch, node_ids: list[str]) -> tuple[Sketch, list[SketchOp]
     """Marks Athena's proposals as the person's; answers the `change` ops it made.
 
     A confirmed node keeps `origin: "athena"` (she wrote it) with `confirmed: true` (the person
-    agreed). An unknown id raises SketchError; a node already confirmed makes no op.
+    agreed), and its site, if it has one, is confirmed with it. An unknown id raises SketchError; a
+    node already confirmed, with no pencilled site, makes no op.
     """
     out = copy.deepcopy(sketch)
     applied: list[SketchOp] = []
     for node_id in node_ids:
         node = out["nodes"][_index(out, node_id)]
-        if not node["confirmed"]:
+        site = node.get("site")
+        if not node["confirmed"] or (site is not None and not site["confirmed"]):
             node["confirmed"] = True
+            if site is not None:
+                site["confirmed"] = True
             applied.append({"op": "change", "node": copy.deepcopy(node)})
     return out, applied

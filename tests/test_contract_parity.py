@@ -36,7 +36,18 @@ def test_caps_match() -> None:
     drafts += ("ASK_TEXT_MAX", "SUGGESTIONS_MIN", "SUGGESTIONS_MAX")
     twins = ("TWINS_MAX", "SAMPLES_MAX", "BAR_MIN", "BAR_MAX", "BAR_DEFAULT", "RISKS_MAX")
     twins += ("POLL_SECONDS_DEFAULT", "DIAL_MIN", "DIAL_MAX", "THREADS_MAX", "SNIPPET_MAX", "GOALS_MAX")
-    for cap in ("NAME_MAX", "BRIEF_MAX", "APPS_MAX", "SPACES_MAX", "HUE_MAX", "TEXT_MAX", *drafts, *twins):
+    for cap in (
+        "NAME_MAX",
+        "BRIEF_MAX",
+        "APPS_MAX",
+        "SITES_MAX",
+        "SITE_FRESH_S",
+        "SPACES_MAX",
+        "HUE_MAX",
+        "TEXT_MAX",
+        *drafts,
+        *twins,
+    ):
         m = re.search(rf"export const {cap} = (\d+);", TS)
         assert m and int(m.group(1)) == getattr(contracts, cap), cap
 
@@ -65,7 +76,7 @@ def test_enums_match() -> None:
         "TwinTurnSide",
     )
     twins += ("TwinMessageKind", "PieceOpName", "SetupPanel", "FactSuggest", "ConnectState", "MissionSource")
-    browser = ("HandReason", "WheelState")
+    browser = ("HandReason", "WheelState", "SiteAccess", "AccessState", "AccessAct")
     for name in (
         *names,
         "Verdict",
@@ -89,7 +100,7 @@ def test_proof_op_matches() -> None:
 def test_list_envelopes_match() -> None:
     envelopes = (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards"))
     twins = (("ConnectionList", "connections"), ("ThreadList", "threads"), ("GoalList", "goals"))
-    envelopes += (("FileList", "files"),)
+    envelopes += (("FileList", "files"), ("SiteList", "sites"))
     for name, key in (*envelopes, ("ChoreList", "chores"), ("ExpectedList", "expected"), *twins):
         assert list(getattr(contracts, name).__annotations__) == [key], name
         assert re.search(rf"export interface {name} \{{\s*{key}: \w+\[\];\s*\}}", TS), name
@@ -189,3 +200,10 @@ def test_settings_match() -> None:
         assert _ts_union(name) == set(typing.get_args(getattr(contracts, name))), name
     for name in ("Look", "LookBody", "EngineOption", "SettingsView", "EngineChoiceBody", "AppEvent"):
         assert _ts_interface_keys(name) == _py_keys(name), name
+
+
+def test_site_shapes_match() -> None:
+    # ADR 0014: a project's sites and the access step, optional on one side exactly when on the other.
+    for name in ("NodeSite", "SketchNode", "DraftSite", "Draft", "AccessBody", "Site", "SiteBody"):
+        assert _ts_interface_keys(name) == _py_keys(name), name
+    assert _ts_interface_keys("SignInStarted") == _py_keys("SignInStarted")

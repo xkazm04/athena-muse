@@ -12,6 +12,7 @@ import {
   keyOf,
   missingFor,
   needMarks,
+  needsInk,
   overlayOf,
   runOf,
   scoreOf,
@@ -239,6 +240,7 @@ function fakeApi(over: Partial<StageApi> = {}): StageApi & { calls: { name: stri
     draftKey: rec("draftKey", never),
     draftRehearse: rec("draftRehearse", never),
     draftVerdict: rec("draftVerdict", never),
+    draftAccess: rec("draftAccess", never),
   };
   const wrapped = Object.fromEntries(
     Object.entries(over).map(([k, fn]) => [k, rec(k, fn as (...a: unknown[]) => unknown)]),
@@ -455,5 +457,70 @@ describe("the stage store", () => {
     expect(applyLocal(s, { type: "add_never", text: " PAY " })).toBe(s);
     expect(applyLocal(s, { type: "add_missing", text: "   " })).toBe(s);
     expect(applyLocal(at(after(2)), { type: "mark", expected_id: "e1", mark: "yes" }).marks).toEqual({});
+  });
+});
+
+// --- the access step (ADR 0014) -----------------------------------------------------------------
+
+const SCHOOL = "https://portal.maple-school.example";
+const CLUB = "https://billing.sunbeam-club.example";
+const ACCESS: Draft = {
+  ...STAGED.saved,
+  step: "access",
+  sites: [
+    { origin: SCHOOL, label: "The school portal", probe_url: `${SCHOOL}/attendance`, state: "open" },
+    { origin: CLUB, label: "The club's billing page", probe_url: `${CLUB}/`, state: "open" },
+  ],
+};
+const withSites = (...states: ("open" | "signed_in" | "skipped")[]): Draft => ({
+  ...ACCESS,
+  sites: ACCESS.sites!.map((s, i) => ({ ...s, state: states[i] ?? s.state })),
+});
+
+describe("the access step", () => {
+  it("waits on the person for each site still open, and inks a guessed site on an agreed piece", () => {
+    expect(sealOf(at(ACCESS), "idle")).toEqual({ state: "waiting", count: 2 });
+    expect(sealOf(at(withSites("signed_in", "open")), "idle")).toEqual({ state: "waiting", count: 1 });
+    const node = { ...AGREED.sketch.nodes[0]!, origin: "you" as const, confirmed: true };
+    expect(needsInk(node)).toBe(false);
+    expect(needsInk({ ...node, site: { origin: CLUB, url: CLUB, label: "Club", confirmed: false } })).toBe(true);
+    expect(needsInk({ ...node, site: { origin: CLUB, url: CLUB, label: "Club", confirmed: true } })).toBe(false);
+  });
+
+  it("sends sign in, check and skip and takes the daemon's draft; the last one saves", async () => {
+    let answer: Draft = withSites("open", "open");
+    const io = fakeApi({ draftAccess: () => Promise.resolve(answer) });
+    const store = createStageStore(io);
+    store.setState({ draft: ACCESS });
+    answer = { ...withSites("open", "open"), sites: [{ ...ACCESS.sites![0]!, tab: 3 }, ACCESS.sites![1]!] };
+    store.getState().dispatch({ type: "access", origin: SCHOOL, act: "sign_in" });
+    await flush();
+    expect(io.calls.map((c) => c.args[1])).toEqual([{ origin: SCHOOL, act: "sign_in" }]);
+    expect(store.getState().draft!.sites![0]!.tab).toBe(3);
+    answer = withSites("signed_in", "open");
+    store.getState().dispatch({ type: "access", origin: SCHOOL, act: "check" });
+    await flush();
+    answer = { ...withSites("signed_in", "skipped"), step: "saved" };
+    store.getState().dispatch({ type: "access", origin: CLUB, act: "skip" });
+    await flush();
+    expect(io.calls.map((c) => (c.args[1] as { act: string }).act)).toEqual(["sign_in", "check", "skip"]);
+    expect(store.getState().draft!.step).toBe("saved");
+    store.getState().dispatch({ type: "access", origin: CLUB, act: "check" }); // the step is over
+    store.getState().dispatch({ type: "access", origin: "https://nowhere.example", act: "check" });
+    await flush();
+    expect(io.calls).toHaveLength(3);
+  });
+
+  it("shows a refused act in plain words and reads the draft again", async () => {
+    const io = fakeApi({
+      draftAccess: () => Promise.reject(new DaemonError(400, "bad_request", "Her browser is not open; the desktop app runs it.")),
+      getDraft: () => Promise.resolve(ACCESS),
+    });
+    const store = createStageStore(io);
+    store.setState({ draft: ACCESS });
+    store.getState().dispatch({ type: "access", origin: SCHOOL, act: "check" });
+    await flush();
+    expect(store.getState().frame.problem).toContain("not open");
+    expect(io.calls.map((c) => c.name)).toEqual(["draftAccess", "getDraft"]);
   });
 });

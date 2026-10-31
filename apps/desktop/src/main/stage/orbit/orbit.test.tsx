@@ -314,6 +314,19 @@ describe("the Orbit view on the stage", () => {
     expect(dispatch).toHaveBeenCalledWith({ type: "verdict", verdict: "revise", note: "She missed the late fee" });
   });
 
+  it("signs in to the real sites after the keep: check the one in her browser, skip or sign in to another", () => {
+    const { view, dispatch } = show(at("access"));
+    const rows = view.querySelectorAll<HTMLElement>('[data-role="access-site"]');
+    expect([...rows].map((r) => r.dataset.state)).toEqual(["signed_in", "open"]);
+    expect(rows[0]!.querySelector("button")).toBeNull();
+    fireEvent.click(q(rows[1]!, '[data-role="access-check"]'));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "access", origin: "https://parents.brightside.example", act: "check" });
+    fireEvent.click(q(rows[1]!, '[data-role="access-skip"]'));
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "access", origin: "https://parents.brightside.example", act: "skip" });
+    expect(q(view, '[data-role="access-count"]').textContent).toContain("1 of 2");
+    expect(view.textContent).toContain("never sees your password");
+  });
+
   it("hands off to the Project when kept", () => {
     const { view } = show(at("saved"));
     expect(view.querySelector('[data-role="saved"]')).toBeTruthy();

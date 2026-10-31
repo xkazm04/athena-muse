@@ -8,6 +8,10 @@ real account.
     uv run python scripts/browser_seam.py --attach <data>  # drive an app already running on that data folder
     uv run python scripts/browser_seam.py --live-turn      # also one Claude Code turn with tools on
 
+The fixture becomes the project's site the only way a site is trusted (ADR 0014): a chore's
+onboarding, here `access_seam.onboard` (the daemon's own code on a stand-in engine, simulated), with
+the channel page as the address her look opens.
+
 The shell runs as a separate app identity (`ai.athena.meta.seam`), so it never shares a data folder,
 a browser profile or a port with the person's own Athena. Ports: fixture 8781, daemon 8782, Vite 1433.
 It ends both process trees and prints one JSON report; `--out` writes it to a file too.
@@ -31,6 +35,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
+from access_seam import onboard  # noqa: E402
 
 from athena.browser import fixture  # noqa: E402
 
@@ -146,12 +152,9 @@ def wait_wheel(seam: Seam, seen: list[dict[str, Any]], stop: threading.Event) ->
         return
 
 
-def drive(seam: Seam, live_turn: bool) -> dict[str, Any]:
+def drive(seam: Seam, live_turn: bool, sid: str) -> dict[str, Any]:
     results: dict[str, Any] = {}
     origin = seam.fixture
-    code, space = seam.http("POST", "/spaces", {"name": "Music channel (seam)", "apps": [origin]})
-    assert code == 201, space
-    sid = space["id"]
     _, lease = seam.http("POST", "/mcp/lease", {"space_id": sid})
     seam.lease, seam.mcp_url = lease["token"], lease["url"]
     init = seam.mcp(
@@ -442,7 +445,8 @@ def main(argv: list[str] | None = None) -> int:
                 time.sleep(0.5)
         time.sleep(3)
         print("engine:", engine, flush=True)
-        results = drive(seam, args.live_turn)
+        _, sid = onboard(data, fixture_url, f"{fixture_url}/channel")
+        results = drive(seam, args.live_turn, sid)
         results["engine"] = engine
         failed = [k for k, v in results.items() if isinstance(v, dict) and v.get("ok") is False]
         report = json.dumps(results, indent=2)

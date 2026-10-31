@@ -3,6 +3,7 @@
 // (parts.css); each view skins them under its own `[data-stage-view=...]` root.
 import "./parts.css";
 
+export { AccessList } from "./Access";
 export { Composer, Echo, EnoughButton, Question, ReplyNotice, RevisitBanner, StillNeeds, Suggestions } from "./Ask";
 export { CheckCard, LineAdder, RunTestButton } from "./Check";
 export { DESCRIBE_WORDS, Describe } from "./Describe";

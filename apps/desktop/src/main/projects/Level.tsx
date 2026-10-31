@@ -3,6 +3,7 @@ import { APPS_MAX, BRIEF_MAX, NAME_MAX, type SpaceSummary } from "../../lib/cont
 import { DaemonError } from "../../lib/daemon";
 import { hueColor } from "../../ui";
 import { reasonOf, useMain } from "../store";
+import { SiteBlockers, SitesSection, useSites } from "./Sites";
 
 const memoriesLine = (episodes: number, facts: number) =>
   `${episodes} ${episodes === 1 ? "episode" : "episodes"}, ${facts} ${facts === 1 ? "fact" : "facts"}`;
@@ -53,6 +54,7 @@ function LevelBody({ space }: { space: SpaceSummary }) {
   const brief = useDraft(space.brief);
   const [problem, setProblem] = useState("");
   const [saved, setSaved] = useState("");
+  const sites = useSites(space.id);
 
   const save = async (patch: { name?: string; brief?: string }, what: string) => {
     setProblem("");
@@ -84,6 +86,7 @@ function LevelBody({ space }: { space: SpaceSummary }) {
       <button type="button" className="btn btn-quiet m-back" onClick={() => navigate({ view: "projects" })}>
         All projects
       </button>
+      <SiteBlockers spaceId={space.id} sites={sites.sites} />
       <section className="plane m-section" style={{ ["--hue" as string]: hueColor(space.hue) }}>
         <label className="m-sr" htmlFor="level-name">
           Project name
@@ -145,6 +148,7 @@ function LevelBody({ space }: { space: SpaceSummary }) {
           </p>
         )}
       </section>
+      <SitesSection spaceId={space.id} sites={sites.sites} problem={sites.problem} />
       <Apps space={space} />
       <section className="plane m-section">
         <h2 className="m-h2">Memory</h2>
@@ -190,7 +194,7 @@ function Apps({ space }: { space: SpaceSummary }) {
   return (
     <section className="plane m-section">
       <h2 className="m-h2">Apps</h2>
-      <p className="m-muted">The web apps Athena may work with in this project.</p>
+      <p className="m-muted">The web apps this project is about. Naming one here does not let her browser in: that happens when a chore is onboarded.</p>
       {space.apps.length > 0 ? (
         <ul className="m-chips">
           {space.apps.map((a) => (

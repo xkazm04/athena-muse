@@ -48,6 +48,7 @@ describe("preview", () => {
       "preview-marked": '[data-role="missed"] li',
       "rehearse-running": '[data-role="filed"] li',
       "verdict-short": '[data-role="score"][data-short="true"]',
+      access: '[data-role="access-site"][data-state="open"] [data-role="access-check"]',
       saved: '[data-role="saved"]',
     };
     for (const row of STATES_MD) {

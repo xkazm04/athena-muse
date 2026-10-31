@@ -21,6 +21,8 @@ class FakeShell:
         self.calls: list[dict[str, Any]] = []
         self.refuse: dict[str, dict[str, Any]] = {}  # hand -> the answer to give instead
         self.download_bytes = b"RIFF simulated wav"
+        # url -> {"final": where the page ends after its redirects, "password": a password field shows}
+        self.pages: dict[str, dict[str, Any]] = {}
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._loop, daemon=True)
 
@@ -53,11 +55,14 @@ class FakeShell:
             return self.refuse[hand]
         if hand == "open":
             tab = len(self.tabs) + 1
+            page = self.pages.get(args["url"], {})
             self.tabs[tab] = {
-                "url": args["url"],
+                "url": page.get("final", args["url"]),
                 "title": "A page",
                 "load": 1,
                 "text": "Night Drive in Glass",
+                "password": page.get("password", False),
+                "hidden": bool(args.get("hidden")),
             }
             return {"ok": True, "output": f"opened tab {tab}", "tab": self.info(tab)}
         if hand == "tabs":
@@ -72,6 +77,12 @@ class FakeShell:
             return {"ok": True, "output": f"tab {tab}", "tab": now}
         if hand == "page_read":
             return {"ok": True, "output": self.tabs[tab]["text"], "tab": now}
+        if hand == "page_find" and args.get("role") == "password":
+            found = "ref_p_1  password  Password\n(showing 1 of 1)" if self.tabs[tab]["password"] else ""
+            return {"ok": True, "output": found or "nothing matched", "tab": now}
+        if hand == "close":
+            self.tabs[tab]["closed"] = True
+            return {"ok": True, "output": f"closed tab {tab}"}
         if hand == "page_find":
             return {"ok": True, "output": "ref_a_1  button  Comment\n(showing 1 of 1)", "tab": now}
         if hand == "page_click":
@@ -93,3 +104,10 @@ class FakeShell:
                 "measured": {"bytes": len(data), "parts": 1, "staged_ms": 1, "total_ms": 2},
             }
         return {"ok": True, "output": f"{hand} done", "tab": now}
+
+
+def trust(daemon: Any, space_id: str, origin: str = ORIGIN, access: str = "signed_in") -> None:
+    """Makes `origin` one of the project's sites, as a chore's onboarding would (ADR 0014), and
+    stores a fresh look at it, so no hand looks again before acting."""
+    daemon.sites.add(space_id, origin, "Fixture", f"{origin}/account", "A test chore")
+    daemon.sites.looked(space_id, origin, access, "set up by the test")

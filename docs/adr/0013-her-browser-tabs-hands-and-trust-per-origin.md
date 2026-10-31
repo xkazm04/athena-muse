@@ -1,6 +1,6 @@
 # 0013 - Her browser: tabs, hands, and trust per origin
 
-Status: accepted
+Status: accepted; point 3 amended by [0014](0014-a-chores-onboarding-signs-in-to-its-real-sites-and-only-onboarding-grants-trust.md) (trust reads the project's sites, set up only by a chore's onboarding, not its apps)
 Date: 2026-10-31
 
 ## Context

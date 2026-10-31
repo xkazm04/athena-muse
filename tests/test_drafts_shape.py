@@ -551,3 +551,39 @@ def test_a_proposal_never_carries_a_quote() -> None:
     node = {"id": "a", "kind": "app", "slot": "apps", "label": "Mail", "origin": "athena", "confirmed": False}
     sketch, _ = apply(empty(), [{"op": "add", "node": {**node, "quote": "my own words here"}}])  # type: ignore[typeddict-item]
     assert "quote" not in sketch["nodes"][0]
+
+
+def test_she_proposes_a_real_site_in_pencil_even_on_the_persons_own_app(daemon: Daemon) -> None:
+    # ADR 0014: the tool takes a site on the chore's rubric; a model never claims it confirmed.
+    assert "site" in shape.sketch_tool(shape.CHORE_RUBRIC, "x")["function"]["parameters"]["properties"]
+    draft_id = drafted(daemon)
+    engine = Stage(
+        (
+            "Drawn.",
+            [
+                sketch_call(
+                    1,
+                    op="add",
+                    slot="apps",
+                    kind="app",
+                    label="Portal",
+                    quote="the school portal has attendance",
+                    site="portal.maple-school.example/attendance",
+                ),
+                sketch_call(
+                    2, op="add", slot="steps", kind="step", label="Compare", site="https://x.example"
+                ),
+            ],
+        )
+    )
+    events = run(daemon, engine, draft_id)
+    [node] = [op["node"] for e in of(events, "sketch") for op in e["ops"]]
+    assert (node["origin"], node["confirmed"]) == ("you", True)
+    assert node["site"] == {
+        "origin": "https://portal.maple-school.example",
+        "url": "https://portal.maple-school.example/attendance",
+        "label": "Portal",
+        "confirmed": False,
+    }
+    stored = daemon.drafts.get(draft_id)
+    assert [n["kind"] for n in stored["sketch"]["nodes"]] == ["app"]  # a site on a step is refused

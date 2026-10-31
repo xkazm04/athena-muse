@@ -2,11 +2,11 @@
 // the work began, and these hooks re-render at the moment that changes what is shown. No timer here
 // changes the model.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Draft, SpaceSummary } from "../../lib/contract";
 import { useMain } from "../store";
 import { SLOW_MS, shownPhase } from "./select";
-import type { ReplyPhase, StageFrame, StageWork } from "./types";
+import type { ReplyPhase, StageAction, StageFrame, StageWork } from "./types";
 
 /** The reply's phase as shown: "slow" once a reply has been silent for 8 s. */
 export function useShownPhase(frame: StageFrame, work: StageWork | null, heardAt: number): ReplyPhase {
@@ -32,6 +32,22 @@ export function useClock(startedAt: number, running: boolean): number {
     return () => clearInterval(t);
   }, [running, startedAt]);
   return startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
+}
+
+/**
+ * The access step (ADR 0014): when her browser says the page of a site's tab moved on (the `wheel`
+ * event), she looks at that site again. Nothing is looked at on its own otherwise.
+ */
+export function useAccessWheel(draft: Draft | null, dispatch: (action: StageAction) => void): void {
+  const wheel = useMain((s) => s.wheel);
+  const seen = useRef(wheel?.n ?? 0);
+  useEffect(() => {
+    if (!wheel || wheel.n === seen.current) return;
+    seen.current = wheel.n;
+    if (draft?.step !== "access") return;
+    const site = draft.sites?.find((s) => s.tab === wheel.tab && s.state !== "signed_in");
+    if (site) dispatch({ type: "access", origin: site.origin, act: "check" });
+  }, [wheel, draft, dispatch]);
 }
 
 /** The draft's Project as the main window knows it, and the way to open it (the hand-off). */

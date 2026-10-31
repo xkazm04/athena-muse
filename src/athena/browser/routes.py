@@ -1,4 +1,5 @@
-"""Routes of her browser (ADR 0013): the shell's relay, the wheel's note, and a project's files.
+"""Routes of her browser (ADR 0013): the shell's relay, the wheel's note, a project's files, and its
+sites (ADR 0014: listed, looked at, signed in to again; never added here).
 
 The protocol is in contracts.py: `GET /browser/next` is a long-poll the shell repeats, each call is
 answered once with `POST /browser/done`, and a late or unknown answer is `accepted: false`.
@@ -14,7 +15,8 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from athena.app import Daemon
-from athena.contracts import WheelNote
+from athena.browser import sites
+from athena.contracts import SignInStarted, WheelNote
 from athena.errors import ApiError
 
 
@@ -66,9 +68,45 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
             raise ApiError("unknown_ref", "no such project")
         return JSONResponse({"files": daemon.files.list(space_id)})
 
+    def _space(request: Request) -> str:
+        space_id = str(request.path_params["id"])
+        if not space_id or not daemon.spaces.exists(space_id):
+            raise ApiError("unknown_ref", "no such project")
+        return space_id
+
+    async def _origin(request: Request, space_id: str) -> str:
+        origin = (await _body(request)).get("origin")
+        if not isinstance(origin, str):
+            raise ApiError("bad_request", "send the site's origin")
+        daemon.sites.get(space_id, origin)  # unknown_ref for a site the project does not have
+        return origin
+
+    async def site_list(request: Request) -> Response:
+        space_id = _space(request)
+        sites.refresh(daemon, space_id)  # stale sites are looked at again; a change arrives as `site`
+        return JSONResponse({"sites": daemon.sites.list(space_id)})
+
+    async def site_check(request: Request) -> Response:
+        space_id = _space(request)
+        origin = await _origin(request, space_id)
+        if not daemon.relay.connected():
+            raise ApiError("bad_request", "Her browser is not open; the desktop app runs it.")
+        site = await run_in_threadpool(lambda: sites.check(daemon, space_id, origin, force=True))
+        return JSONResponse(site)
+
+    async def site_sign_in(request: Request) -> Response:
+        space_id = _space(request)
+        origin = await _origin(request, space_id)
+        tab = await run_in_threadpool(sites.sign_in, daemon, space_id, origin)
+        started: SignInStarted = {"origin": origin, "tab": tab}
+        return JSONResponse(started)
+
     return [
         Route("/browser/next", next_call, methods=["GET"]),
         Route("/browser/done", done, methods=["POST"]),
         Route("/browser/note", note, methods=["POST"]),
         Route("/spaces/{id}/files", files, methods=["GET"]),
+        Route("/spaces/{id}/sites", site_list, methods=["GET"]),
+        Route("/spaces/{id}/sites/check", site_check, methods=["POST"]),
+        Route("/spaces/{id}/sites/sign_in", site_sign_in, methods=["POST"]),
     ]

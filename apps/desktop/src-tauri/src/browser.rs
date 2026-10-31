@@ -132,7 +132,8 @@ fn info(app: &AppHandle, browser: &Browser, tab: u32) -> Option<Value> {
     Some(json!({ "id": tab, "url": url, "title": t.title, "load": t.load }))
 }
 
-fn open(app: &AppHandle, browser: &Shared, url: &str) -> Value {
+/// `hidden`: a look at a site (ADR 0014) opens its page in a window nobody sees, and closes it after.
+fn open(app: &AppHandle, browser: &Shared, url: &str, hidden: bool) -> Value {
     let Ok(parsed) = tauri::Url::parse(url) else { return refused("refused", "that is not a web address") };
     if !matches!(parsed.scheme(), "http" | "https") {
         return refused("refused", "her browser opens http and https pages only");
@@ -154,6 +155,7 @@ fn open(app: &AppHandle, browser: &Shared, url: &str) -> Value {
         .title(format!("Her browser - {host}"))
         .inner_size(1180.0, 820.0)
         .focused(false)
+        .visible(!hidden)
         .initialization_script(script)
         .on_page_load(move |window, payload| {
             if let (PageLoadEvent::Finished, Some(tab)) = (payload.event(), tab_of(window.label())) {
@@ -405,7 +407,7 @@ fn dispatch(app: &AppHandle, browser: &Shared, conn: &DaemonInfo, call: &Value) 
     let hand = call["hand"].as_str().unwrap_or("");
     let args = &call["args"];
     match hand {
-        "open" => return open(app, browser, args["url"].as_str().unwrap_or("")),
+        "open" => return open(app, browser, args["url"].as_str().unwrap_or(""), args["hidden"] == json!(true)),
         "tabs" => return tabs(app, browser),
         _ => {}
     }

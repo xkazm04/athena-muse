@@ -12,6 +12,10 @@ export const CORE_ITEM = "core";
 export const NAME_MAX = 60;
 export const BRIEF_MAX = 1600;
 export const APPS_MAX = 24;
+/** A project's sites (ADR 0014). */
+export const SITES_MAX = 24;
+/** A look at a site stands this long (seconds) before the overview or a hand looks again. */
+export const SITE_FRESH_S = 300;
 export const SPACES_MAX = 100;
 export const HUE_MAX = 359;
 export const TEXT_MAX = 8000;
@@ -59,10 +63,17 @@ export type AppEventType =
   | "engine"
   | "turn_done"
   | "settings"
-  | "wheel";
+  | "wheel"
+  | "site";
 /** Her browser's answer when a hand did not run (ADR 0013). */
 export type HandReason = "no_browser" | "no_tab" | "moved" | "refused" | "timeout" | "failed" | "unknown_ref";
 export type WheelState = "back" | "closed" | "timeout";
+/** A project's site (ADR 0014): what the last look found. `unknown` is "not looked yet, or could not look", never "fine". */
+export type SiteAccess = "signed_in" | "signed_out" | "unknown";
+/** A site on a draft's access step: still to do, signed in (the look said so), or skipped by the person. */
+export type AccessState = "open" | "signed_in" | "skipped";
+/** What the person does with one site on the access step. */
+export type AccessAct = "sign_in" | "check" | "skip";
 
 // Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 /** `auto` follows the system. */
@@ -117,7 +128,7 @@ export type ChoreOrigin = "library" | "yours";
 
 // --- drafts: a chore written in conversation (ADR 0007) ------------------------------------------
 
-export type DraftStep = "describe" | "shape" | "author" | "preview" | "rehearse" | "verdict" | "saved";
+export type DraftStep = "describe" | "shape" | "author" | "preview" | "rehearse" | "verdict" | "access" | "saved";
 export type Slot = "need" | "apps" | "inputs" | "steps" | "hand" | "output" | "never";
 export type SketchKind = "source" | "app" | "step" | "gate" | "output" | "never";
 export type NodeOrigin = "you" | "athena";
@@ -186,6 +197,15 @@ export const DIAL_MAX = 5;
 /** 0, 0.5 or 1; "skipped" = left open with a stated default. Computed from the sketch, never claimed. */
 export type CoverageValue = 0 | 0.5 | 1 | "skipped";
 
+/** The real website an `app` node happens on (ADR 0014): her pencil until the person confirms it. */
+export interface NodeSite {
+  origin: string;
+  /** The address she looks at to see whether the person is signed in. */
+  url: string;
+  label: string;
+  confirmed: boolean;
+}
+
 export interface SketchNode {
   id: string;
   kind: SketchKind;
@@ -197,6 +217,8 @@ export interface SketchNode {
   detail?: string;
   /** On the person's nodes: their own words it was drawn from, verbatim. */
   quote?: string;
+  /** `app` nodes only: the real website, when she knows it. */
+  site?: NodeSite;
 }
 
 export interface SketchEdge {
@@ -277,6 +299,18 @@ export interface DraftKey {
   never: NeverLine[];
 }
 
+/** One real site on the draft's access step (ADR 0014). */
+export interface DraftSite {
+  origin: string;
+  label: string;
+  probe_url: string;
+  state: AccessState;
+  /** Plain words: what the last look found, when it was not signed in. */
+  reason?: string;
+  /** Her browser's tab while the person signs in there. */
+  tab?: number;
+}
+
 export interface Draft {
   id: string;
   space_id: string;
@@ -299,6 +333,8 @@ export interface Draft {
   note?: string;
   /** Stage turns that counted, per view the person answered in. */
   views?: Partial<Record<StageView, number>>;
+  /** From the keep on: the real sites the access step signs in to. */
+  sites?: DraftSite[];
 }
 
 /** DELETE /drafts/{id}: the draft is gone, its Project stays. */
@@ -336,6 +372,18 @@ export interface KeyBody {
 export interface VerdictBody {
   verdict: DraftVerdict;
   note?: string;
+}
+
+/**
+ * POST /drafts/{id}/access, at step `access`; the reply is the Draft. `sign_in` opens the site in her
+ * browser, in front, and hands the person the wheel (the tab is on the draft's site); `check` looks now
+ * (`signed_in`, or the site stays `open` with the reason); `skip` leaves it `skipped` (the project keeps
+ * it as signed out, a blocker from day one). With no site `open`, the draft moves to `saved`. A `wheel`
+ * app event for the site's tab is the desktop's cue to send `check`; nothing is checked on its own.
+ */
+export interface AccessBody {
+  origin: string;
+  act: AccessAct;
 }
 
 export type AuthorEvent =
@@ -608,6 +656,42 @@ export interface AppEvent {
   turn_id?: string;
   look?: Look;
   wheel?: WheelNote;
+  site?: Site;
+}
+
+/**
+ * One of a project's sites (ADR 0014): the browser's trust list. Written only by a chore's onboarding;
+ * a look changes only `access`, `checked_at` and `reason`. Erased with the project.
+ */
+export interface Site {
+  origin: string;
+  label: string;
+  /** The address a look opens. */
+  probe_url: string;
+  access: SiteAccess;
+  /** The kept chores that need it, by title. */
+  blocks: string[];
+  /** When it was last looked at; omitted = never. */
+  checked_at?: string;
+  /** Plain words: what the last look found. */
+  reason?: string;
+}
+
+export interface SiteList {
+  sites: Site[];
+}
+
+export interface SiteBody {
+  origin: string;
+}
+
+/**
+ * POST /spaces/{id}/sites/sign_in: the site is open in her browser, in front, and the person has the
+ * wheel. The desktop sends POST /spaces/{id}/sites/check once the `wheel` event for this tab arrives.
+ */
+export interface SignInStarted {
+  origin: string;
+  tab: number;
 }
 
 /** The person was handed her browser's tab and the page moved on, the tab closed, or 30 minutes passed. */
@@ -1212,6 +1296,10 @@ export const ROUTES = {
   connector_disconnect: "/connectors/{kind}/disconnect",
   connector_probe: "/connectors/{kind}/probe",
   space_files: "/spaces/{id}/files",
+  space_sites: "/spaces/{id}/sites",
+  space_site_check: "/spaces/{id}/sites/check",
+  space_site_sign_in: "/spaces/{id}/sites/sign_in",
+  draft_access: "/drafts/{id}/access",
   browser_next: "/browser/next",
   browser_done: "/browser/done",
   browser_note: "/browser/note",

@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../lib/api";
-import type { SpaceSummary } from "../../lib/contract";
+import type { Site, SpaceSummary } from "../../lib/contract";
 import { DaemonError } from "../../lib/daemon";
 import { Shell } from "../App";
 import { toHash, type Route } from "../route";
@@ -175,5 +175,77 @@ describe("orbits", () => {
   it("names a moon by its host's first letter", () => {
     expect(hostInitial("https://www.github.com")).toBe("G");
     expect(hostInitial("http://localhost:3000")).toBe("L");
+  });
+});
+
+// --- a project's sites on its overview (ADR 0014) ------------------------------------------------
+
+const CLUB = "https://billing.sunbeam-club.example";
+const SCHOOL = "https://portal.maple-school.example";
+const site = (over: Partial<Site> = {}): Site => ({
+  origin: CLUB,
+  label: "The club's billing page",
+  probe_url: `${CLUB}/account`,
+  access: "signed_in",
+  blocks: ["Club invoice check"],
+  checked_at: "2026-10-31T10:00:00Z",
+  ...over,
+});
+
+describe("the overview's blocker", () => {
+  const level = (sites: Site[]) => {
+    vi.mocked(api.spaceSites).mockResolvedValue(sites);
+    start([space()], { view: "project", id: "spc_a1" });
+  };
+  const band = () => document.querySelector<HTMLElement>('[data-role="blockers"]');
+
+  it("is clean when every site is signed in, and a site not looked at yet reads checking, never fine", async () => {
+    level([site(), site({ origin: SCHOOL, label: "The school portal", access: "unknown", checked_at: undefined })]);
+    await act(async () => undefined);
+    expect(api.spaceSites).toHaveBeenCalledWith("spc_a1");
+    expect(band()).toBeNull();
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-role="site"]')];
+    expect(rows.map((r) => r.dataset.access)).toEqual(["signed_in", "unknown"]);
+    expect(rows[1]!.textContent).toContain("checking");
+    expect(rows[1]!.textContent).not.toContain("signed in");
+  });
+
+  it("names a site the person is signed out of, what it blocks, and signs in again through her browser", async () => {
+    level([site({ access: "signed_out", reason: "billing.sunbeam-club.example showed its sign-in page." })]);
+    await act(async () => undefined);
+    const row = band()!.querySelector<HTMLElement>('[data-role="blocker"]')!;
+    expect(row.textContent).toContain("not signed in to The club's billing page");
+    expect(row.textContent).toContain("This blocks: Club invoice check.");
+    vi.mocked(api.siteSignIn).mockResolvedValue({ origin: CLUB, tab: 4 });
+    vi.mocked(api.siteCheck).mockResolvedValue(site());
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign in again" })));
+    expect(api.siteSignIn).toHaveBeenCalledWith("spc_a1", CLUB);
+    expect(screen.getByText(/Athena never sees your password/)).toBeTruthy();
+    // Another tab moving on is not this sign-in; this tab's page moving on is.
+    await act(async () => useMain.getState().handleEvent({ type: "wheel", wheel: { tab: 9, state: "back" } }));
+    expect(api.siteCheck).not.toHaveBeenCalled();
+    await act(async () => useMain.getState().handleEvent({ type: "wheel", wheel: { tab: 4, state: "back" } }));
+    expect(api.siteCheck).toHaveBeenCalledWith("spc_a1", CLUB);
+    expect(band()).toBeNull();
+  });
+
+  it("follows a look live: a lapse shows the band, and nowhere says the words the screen never uses", async () => {
+    level([site()]);
+    await act(async () => undefined);
+    expect(band()).toBeNull();
+    const lapsed = site({ access: "signed_out", reason: "billing.sunbeam-club.example asked for a password." });
+    await act(async () => useMain.getState().handleEvent({ type: "site", space_id: "spc_a1", site: lapsed }));
+    expect(band()).toBeTruthy();
+    const text = document.body.textContent!.toLowerCase();
+    for (const word of ["token", "cookie", "session", "oauth", "origin"]) expect(text, word).not.toContain(word);
+  });
+
+  it("says why a site could not be read, and Check again looks now", async () => {
+    level([site({ access: "unknown", reason: "Athena could not reach billing.sunbeam-club.example: no answer" })]);
+    await act(async () => undefined);
+    expect(document.querySelector('[data-role="site"]')!.textContent).toContain("could not check");
+    vi.mocked(api.siteCheck).mockRejectedValue(new DaemonError(400, "bad_request", "Her browser is not open; the desktop app runs it."));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Check again" })));
+    expect(screen.getByRole("alert").textContent).toBe("Her browser is not open; the desktop app runs it.");
   });
 });

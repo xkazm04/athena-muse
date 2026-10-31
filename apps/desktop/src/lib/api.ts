@@ -6,6 +6,7 @@ import {
   CORE,
   CORE_ITEM,
   ROUTES,
+  type AccessBody,
   type ActiveSpace,
   type AuthorEvent,
   type AutonomyBody,
@@ -52,6 +53,10 @@ import {
   type SamplesBody,
   type SayBody,
   type SettingsView,
+  type SignInStarted,
+  type Site,
+  type SiteBody,
+  type SiteList,
   type SpaceErased,
   type SpaceList,
   type SpaceSummary,
@@ -154,6 +159,17 @@ export const draftRehearse = (id: string, onEvent: (e: RehearsalEvent) => void, 
   streamNdjson<RehearsalEvent>("POST", path(ROUTES.draft_rehearse, { id }), undefined, onEvent, signal);
 export const draftVerdict = (id: string, body: VerdictBody) =>
   request<Draft>("POST", path(ROUTES.draft_verdict, { id }), body);
+/** The access step (ADR 0014): sign in to one real site, look at it now, or skip it. */
+export const draftAccess = (id: string, body: AccessBody) =>
+  request<Draft>("POST", path(ROUTES.draft_access, { id }), body);
+
+// A project's sites (ADR 0014): listed (stale ones are looked at again, changes arrive as `site`),
+// looked at now, or opened in her browser for the person to sign in again.
+export const spaceSites = async (id: string) => (await request<SiteList>("GET", path(ROUTES.space_sites, { id }))).sites;
+export const siteCheck = (id: string, origin: string) =>
+  request<Site>("POST", path(ROUTES.space_site_check, { id }), { origin } satisfies SiteBody);
+export const siteSignIn = (id: string, origin: string) =>
+  request<SignInStarted>("POST", path(ROUTES.space_site_sign_in, { id }), { origin } satisfies SiteBody);
 
 // Twins (ADR 0008-0010): every setup change answers the whole twin. `say` and `rehearse` stream NDJSON.
 export const twins = () => request<TwinPage>("GET", ROUTES.twins);

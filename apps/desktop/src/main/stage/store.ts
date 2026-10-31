@@ -8,7 +8,7 @@ import * as api from "../../lib/api";
 import type { AuthorEvent, Coverage, Draft, PracticeApp, RehearsalEvent, SayBody, StageView } from "../../lib/contract";
 import { DaemonError } from "../../lib/daemon";
 import { reasonOf } from "../store";
-import { DROP_MS, LINE_MAX, LINES_MAX, applyOps, allMarked, isAgreed, isPencil, keyOf, openSlots } from "./select";
+import { DROP_MS, LINE_MAX, LINES_MAX, applyOps, allMarked, isAgreed, isPencil, keyOf, needsInk, openSlots } from "./select";
 import type { Place, StageAction, StageEvent, StageFrame, StageState, StageWork } from "./types";
 
 export const VIEW_KEY = "athena.stage.view";
@@ -285,6 +285,7 @@ export type StageApi = Pick<
   | "draftKey"
   | "draftRehearse"
   | "draftVerdict"
+  | "draftAccess"
 >;
 
 export interface StageStore extends StageState {
@@ -444,7 +445,7 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
         }
         case "ink": {
           if (!d || d.step !== "shape") return;
-          const pencil = new Set(d.sketch.nodes.filter(isPencil).map((n) => n.id));
+          const pencil = new Set(d.sketch.nodes.filter(needsInk).map((n) => n.id));
           const ids = action.node_ids.filter((id) => pencil.has(id));
           if (!ids.length) return;
           if (await call("ink", action, () => io.draftConfirm(d.id, ids))) {
@@ -485,6 +486,11 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
           if (await call("verdict", action, () => io.draftVerdict(d.id, body)) && action.verdict === "revise") {
             set((x) => ({ frame: { ...x.frame, line: "", ask: null, lastOps: [] } }));
           }
+          return;
+        }
+        case "access": {
+          if (!d || d.step !== "access" || !d.sites?.some((x) => x.origin === action.origin)) return;
+          await call("access", action, () => io.draftAccess(d.id, { origin: action.origin, act: action.act }));
           return;
         }
         case "retry": {

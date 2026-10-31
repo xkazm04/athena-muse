@@ -630,6 +630,66 @@
   gap: var(--sp-2);
 }
 
+/* ---- signing in to the real sites (ADR 0014) ---- */
+.sp-access {
+  display: grid;
+  gap: var(--sp-3);
+}
+.sp-access__list {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sp-access__site {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  background: var(--card-bg);
+}
+.sp-access__site[data-state="signed_in"] {
+  border-color: color-mix(in srgb, var(--status-success) 45%, transparent);
+}
+.sp-access__label {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+.sp-access__host {
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.sp-access__note {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+.sp-access__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.sp-access__count {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+.sp-card__site {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.sp-card__site[data-state="pencil"] {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
 /* ---- saved ---- */
 .sp-saved {
   display: grid;

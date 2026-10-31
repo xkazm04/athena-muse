@@ -11,6 +11,7 @@ import {
   type EngineStatus,
   type LedgerPage,
   type SettingsView,
+  type Site,
   type SpaceCounts,
   type SpaceSummary,
 } from "../lib/contract";
@@ -52,6 +53,10 @@ interface Data {
   settingsProblem: string;
   /** "Show the welcome again" (portable ADR 0094): the first run is drawn again; no row changes. */
   welcome: boolean;
+  /** A project's sites (ADR 0014), by project id, as the daemon last answered or a `site` event said. */
+  sites: Record<string, Site[]>;
+  /** The last `wheel` event (her browser's tab moved on, closed, or timed out), numbered so a repeat is new. */
+  wheel: { tab: number; state: string; n: number } | null;
 }
 
 interface Actions {
@@ -78,6 +83,10 @@ interface Actions {
   /** A write's answer: the whole view, and its look painted. */
   putSettings: (view: SettingsView) => void;
   setWelcome: (shown: boolean) => void;
+  /** Reads a project's sites; the daemon looks again at stale ones and says so with `site` events. */
+  loadSites: (spaceId: string) => Promise<void>;
+  /** A site as a look or a sign-in answered it. */
+  putSite: (spaceId: string, site: Site) => void;
 }
 
 export type MainState = Data & Actions;
@@ -101,6 +110,8 @@ const initial = (): Data => ({
   settings: null,
   settingsProblem: "",
   welcome: false,
+  sites: {},
+  wheel: null,
 });
 
 const putSpace = (list: SpaceSummary[], s: SpaceSummary) =>
@@ -251,7 +262,26 @@ export const useMain = create<MainState>()((set, get) => ({
         void s.loadLedger();
         void s.loadCoreCounts();
         break;
+      case "site":
+        if (e.space_id !== undefined && e.site) s.putSite(e.space_id, e.site);
+        break;
+      case "wheel":
+        if (e.wheel) set({ wheel: { tab: e.wheel.tab, state: e.wheel.state, n: (s.wheel?.n ?? 0) + 1 } });
+        break;
     }
+  },
+
+  loadSites: async (spaceId) => {
+    const sites = await api.spaceSites(spaceId);
+    set({ sites: { ...get().sites, [spaceId]: sites } });
+  },
+
+  putSite: (spaceId, site) => {
+    const list = get().sites[spaceId] ?? [];
+    const next = list.some((x) => x.origin === site.origin)
+      ? list.map((x) => (x.origin === site.origin ? site : x))
+      : [...list, site];
+    set({ sites: { ...get().sites, [spaceId]: next } });
   },
 
   clearNotice: () => set({ notice: "" }),

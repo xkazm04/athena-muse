@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { StageView } from "../lib/contract";
 import { STAGED } from "../main/stage/fixture/staged";
 import { StageScreen } from "../main/stage/Stage";
+import { STEPS } from "../main/stage/select";
 import { applyLocal, withPlace } from "../main/stage/store";
 import type { StageAction, StageState } from "../main/stage/types";
 import { STAGE_WORDS } from "../main/stage/words";
@@ -77,7 +78,7 @@ export function StageSection() {
         <label className="pv-pick">
           <span className="m-sr">Go to a state</span>
           <select className="field" value={beat.id} onChange={(e) => go(beats.findIndex((b) => b.id === e.target.value))}>
-            {(["describe", "shape", "author", "preview", "rehearse", "verdict", "saved"] as const).map((g) => (
+            {STEPS.map((g) => (
               <optgroup key={g} label={STAGE_WORDS.step[g]}>
                 {beats
                   .filter((b) => b.group === g)

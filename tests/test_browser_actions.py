@@ -12,7 +12,7 @@ from athena.browser import actions
 from athena.engine import ToolCall
 from athena.errors import ApiError
 from athena.turn import dispatch, execute
-from browser_kit import ORIGIN, FakeShell
+from browser_kit import ORIGIN, FakeShell, trust
 
 
 @pytest.fixture
@@ -23,8 +23,11 @@ def disk(tmp_path: Path) -> Iterator[Daemon]:
     d.store.close()
 
 
-def _space(d: Daemon, apps: list[str]) -> str:
-    return d.spaces.create({"name": "Channel", "apps": apps})["id"]
+def _space(d: Daemon, sites: list[str]) -> str:
+    space: str = d.spaces.create({"name": "Channel"})["id"]
+    for origin in sites:
+        trust(d, space, origin)
+    return space
 
 
 def call(d: Daemon, space: str, name: str, **args: object) -> actions.Dispatched:
@@ -52,7 +55,7 @@ def test_a_read_on_a_trusted_site_runs_and_is_fenced_as_page_data(disk: Daemon) 
         assert bound["load"] == 1 and bound["url"] == f"{ORIGIN}/channel"
 
 
-def test_any_hand_on_a_site_outside_the_projects_apps_files_a_card(disk: Daemon) -> None:
+def test_any_hand_on_a_site_outside_the_projects_sites_files_a_card(disk: Daemon) -> None:
     space = _space(disk, ["https://example.com"])
     with FakeShell(disk.relay) as shell:
         opened = call(disk, space, "page_open", url=f"{ORIGIN}/channel")
@@ -60,7 +63,7 @@ def test_any_hand_on_a_site_outside_the_projects_apps_files_a_card(disk: Daemon)
         assert not any(c["hand"] == "open" for c in shell.calls)
         disk.gate.resolve(opened.card["id"], "approve")
         read = call(disk, space, "page_read", tab=1)
-        assert read.card is not None and "not one of this project's apps" in read.card["label"]
+        assert read.card is not None and "not one of this project's sites" in read.card["label"]
 
 
 def test_an_act_is_a_card_that_runs_once_on_the_page_it_was_asked_on(disk: Daemon) -> None:

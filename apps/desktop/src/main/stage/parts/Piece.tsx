@@ -3,7 +3,7 @@
 
 import type { ReactNode } from "react";
 import type { DraftStep, SketchKind, SketchNode } from "../../../lib/contract";
-import { isPencil, type NeedMark } from "../select";
+import { needsInk, type NeedMark } from "../select";
 import type { StageWords } from "../words";
 
 // The winners' glyphs (A/1), as paths on a 24-unit grid, drawn with the current colour.
@@ -91,7 +91,7 @@ export interface PieceCardProps {
 
 /** A piece's card: what it is, whose idea, and (for her pencil) ink it or rub it out. */
 export function PieceCard({ node, step, busy = false, onInk, onDrop, onClose, words }: PieceCardProps) {
-  const pencil = isPencil(node);
+  const pencil = needsInk(node);
   const shaping = step === "shape";
   const who = node.origin === "you" ? words.youWrote : node.confirmed ? words.herInked : words.herGuess;
   return (
@@ -107,6 +107,12 @@ export function PieceCard({ node, step, busy = false, onInk, onDrop, onClose, wo
       <KindLabel kind={node.kind} words={words} />
       <p className="sp-card__label">{node.label}</p>
       {node.detail && <p className="sp-card__detail">{node.detail}</p>}
+      {node.site && (
+        <p className="sp-card__site" data-role="piece-site" data-state={node.site.confirmed ? "ink" : "pencil"}>
+          {words.site}: {node.site.origin.replace(/^https?:\/\//, "")}
+          {!node.site.confirmed && ` (${words.siteGuess})`}
+        </p>
+      )}
       <p className="sp-card__who" data-origin={node.origin}>
         <i aria-hidden="true" />
         {who}

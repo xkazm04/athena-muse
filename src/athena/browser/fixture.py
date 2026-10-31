@@ -10,7 +10,12 @@ They reproduce the hard parts of the business channel's acceptance without the o
   choice (Private / Unlisted / Public). The page hashes the file it was given (SHA-256) and posts the
   digest to the journal, so a test knows the bytes arrived whole.
 - `/captcha`: a "verify you are human" step that only a person passes (the wheel's test).
-- `/state`: the journal as JSON (comments, uploads, saves, downloads).
+- `/account`: a members' page (ADR 0014's look). Without a valid mark in the browser it redirects to
+  `/signin?next=/account`, a page with a password field; `POST /signin` sets the mark (a random value
+  the server remembers) and returns to `next`. `/account?away=1` sends a visitor who is not signed in
+  to the sign-in page on another host (`localhost` instead of `127.0.0.1`).
+- `/expire`: forgets every mark, so the next visit to `/account` asks to sign in again (a lapse).
+- `/state`: the journal as JSON (comments, uploads, saves, downloads, sign-ins, lapses).
 
 Every page says on screen that it is a simulated test page.
 
@@ -24,9 +29,11 @@ import html
 import io
 import json
 import random
+import secrets
 import struct
 import threading
 import wave
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -41,6 +48,7 @@ TRACKS = (
     ("t3", "Low Tide Choir", "4:05"),
 )
 MB_MAX = 200
+MARK = "athena_fixture_member"
 
 
 def _page(title: str, body: str) -> bytes:
@@ -144,6 +152,9 @@ class Journal:
             "saves": [],
             "downloads": 0,
             "verified": 0,
+            "marks": [],
+            "signins": 0,
+            "expired": 0,
         }
 
     def add(self, key: str, item: Any) -> None:
@@ -176,6 +187,16 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(body)
 
+        def _redirect(self, location: str) -> None:
+            self.send_response(302)
+            self.send_header("Location", location)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def _mark(self) -> str:
+            jar = SimpleCookie(self.headers.get("Cookie") or "")
+            return jar[MARK].value if MARK in jar else ""
+
         def _body(self) -> bytes:
             return self.rfile.read(int(self.headers.get("Content-Length") or 0))
 
@@ -192,6 +213,7 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
                         ("/downloads", "Downloads"),
                         ("/studio", "Studio upload"),
                         ("/captcha", "About page behind a check"),
+                        ("/account", "A members' page behind a sign-in"),
                     )
                 )
                 self._send(200, _page("Athena fixture", f"<h1>Athena fixture</h1><ul>{links}</ul>"))
@@ -252,6 +274,33 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
             elif path == "/about":
                 body = "<h1>Mira Vale - About (simulated)</h1><p>Business email: mira.vale@example.com</p>"
                 self._send(200, _page("About - simulated", body))
+            elif path == "/account":
+                if self._mark() in journal.snapshot()["marks"]:
+                    body = (
+                        "<h1>Your account (simulated)</h1><p>Signed in as Mira Vale.</p>"
+                        '<p><a href="/channel">Your channel</a></p>'
+                    )
+                    self._send(200, _page("Your account - simulated", body))
+                else:
+                    port = str(self.headers.get("Host") or "").rsplit(":", 1)[-1]
+                    host = f"http://localhost:{port}" if query.get("away") else ""
+                    self._redirect(f"{host}/signin?next=/account")
+            elif path == "/signin":
+                nxt = html.escape((query.get("next") or ["/account"])[0], quote=True)
+                body = (
+                    "<h1>Sign in (simulated)</h1>"
+                    f'<form method="post" action="/signin"><input type="hidden" name="next" value="{nxt}">'
+                    '<label>Email <input type="email" name="email" value="mira.vale@example.com"></label> '
+                    '<label>Password <input type="password" name="password" value="simulated"></label> '
+                    '<button type="submit">Sign in</button></form>'
+                    "<p>Test page: the fields are filled in already; press Sign in.</p>"
+                )
+                self._send(200, _page("Sign in - simulated", body))
+            elif path == "/expire":
+                with journal.lock:
+                    journal.state["marks"] = []
+                    journal.state["expired"] += 1
+                self._send(200, json.dumps({"expired": True}).encode(), "application/json")
             elif path == "/state":
                 self._send(200, json.dumps(journal.snapshot()).encode(), "application/json")
             else:
@@ -267,6 +316,18 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
                     journal.add("comments", {"video": video, "text": text})
                 self.send_response(303)
                 self.send_header("Location", f"/watch?v={video}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+            elif path == "/signin":
+                form = parse_qs(self._body().decode("utf-8"))
+                nxt = (form.get("next") or ["/account"])[0]
+                mark = secrets.token_hex(12)
+                with journal.lock:
+                    journal.state["marks"].append(mark)
+                    journal.state["signins"] += 1
+                self.send_response(303)
+                self.send_header("Set-Cookie", f"{MARK}={mark}; Path=/; HttpOnly; SameSite=Lax")
+                self.send_header("Location", nxt if nxt.startswith("/") else "/account")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
             elif path in ("/uploaded", "/studio/save"):

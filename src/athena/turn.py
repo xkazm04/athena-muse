@@ -90,7 +90,9 @@ TOOLS: dict[ActionName, dict[str, Any]] = {
     ),
     "add_app": _tool(
         "add_app",
-        "Add a web app to this project by its origin. Needs the person's signature.",
+        "Name a web app this project is about, by its address. It describes the project only: her "
+        "browser trusts a site only once a chore's onboarding signs the person in there. Needs the "
+        "person's signature.",
         {"origin": "The app's address, like https://example.com"},
         ["origin"],
     ),
@@ -140,6 +142,11 @@ def _frame(daemon: Daemon, space_id: str, text: str) -> str:
         if space["apps"]:
             hosts = [urlsplit(a).netloc or a for a in space["apps"]]
             parts.append("Apps in this project: " + ", ".join(hosts))
+        sites = daemon.sites.list(space_id)
+        if sites:  # ADR 0014: the sites her browser opens on its own here, and what the last look found
+            said = {"signed_in": "signed in", "signed_out": "not signed in", "unknown": "not checked yet"}
+            listed = [f"{urlsplit(s['origin']).netloc} ({said[s['access']]})" for s in sites]
+            parts.append("Sites your browser opens on its own here: " + ", ".join(listed))
     if kept:
         parts.append("### Kept for this project" if space_id else "### Kept")
         parts.extend(f"- [{r['id']}] {r['line']}" for r in kept)
