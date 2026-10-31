@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import * as api from "../../lib/api";
 import type { Connection, EngineId, Look, SettingsView } from "../../lib/contract";
 import { MOTION_CHOICES, THEME_CHOICES, TYPE_SCALES, applyLook } from "../../ui/look";
+import { toggleAthena } from "../../lib/windows";
+import { SettingGlyph } from "../shell/glyphs";
 import { MuseKey } from "./MuseKey";
 import { reasonOf, useMain } from "../store";
 import {
@@ -99,6 +101,7 @@ function Badge({ fact }: { fact: Fact }) {
   const tone = fact.standing ? STANDING_TONE[fact.standing] : undefined;
   return (
     <span className="badge" data-tone={tone}>
+      <i className="m-chores__dot" aria-hidden="true" />
       {fact.word}
     </span>
   );
@@ -109,13 +112,15 @@ function Overview({ facts }: { facts: Record<Item, Fact> }) {
   return (
     <>
       <header className="m-settings__head">
-        <h1 className="m-title">Settings</h1>
+        <p className="eyebrow">Settings</p>
+        <h1 className="marquee">How Athena is set up</h1>
         <p className="m-lead">The engine she thinks with, how she looks, and where it all lives.</p>
       </header>
       <ul className="m-settings__tiles" aria-label="Settings">
         {ITEMS.map((item) => (
           <li key={item}>
-            <a className="m-settings__tile" href={`#settings/${item}`}>
+            <a className="m-settings__tile" href={`#settings/${item}`} title={facts[item].line}>
+              <SettingGlyph item={item} />
               <span className="m-settings__name">{ITEM_NAME[item]}</span>
               <Badge fact={facts[item]} />
               <span className="m-settings__line">{facts[item].line}</span>
@@ -123,17 +128,29 @@ function Overview({ facts }: { facts: Record<Item, Fact> }) {
           </li>
         ))}
       </ul>
-      <section className="plane m-section" aria-labelledby="st-welcome">
-        <h2 id="st-welcome" className="m-h2">
-          The welcome
-        </h2>
-        <p className="m-muted">Read the first run again. Nothing already set is changed.</p>
-        <div className="m-row">
+      <div className="m-settings__elsewhere">
+        <section aria-labelledby="st-welcome">
+          <h2 id="st-welcome">The welcome</h2>
+          <p>Read the first run again. Nothing already set is changed.</p>
           <button type="button" className="btn btn-quiet" onClick={() => setWelcome(true)}>
             Show the welcome again
           </button>
-        </div>
-      </section>
+        </section>
+        <section aria-labelledby="st-twins">
+          <h2 id="st-twins">Twins</h2>
+          <p>A twin speaks through the accounts connected here, behind its own send rule.</p>
+          <a className="btn" href="#twins">
+            Open Twins
+          </a>
+        </section>
+        <section aria-labelledby="st-her">
+          <h2 id="st-her">Her window</h2>
+          <p>Ctrl+Shift+Space shows and hides her, from anywhere.</p>
+          <button type="button" className="btn" onClick={() => void toggleAthena()}>
+            Open her window
+          </button>
+        </section>
+      </div>
     </>
   );
 }
@@ -188,20 +205,26 @@ function Level({
   const writes = useWrites(view);
   return (
     <>
-      <button type="button" className="btn btn-quiet m-back" onClick={() => navigate({ view: "settings", item: null })}>
+      <button type="button" className="m-crumb" onClick={() => navigate({ view: "settings", item: null })}>
         Back to all settings
       </button>
-      <header className="m-settings__head">
-        <p className="eyebrow">
+      <div className="m-settings__level">
+        <div className="m-settings__art">
+          <SettingGlyph item={item} size={168} />
           <Badge fact={fact} />
-        </p>
-        <h1 className="m-title">{ITEM_NAME[item]}</h1>
-        <p className="m-lead">{fact.line}</p>
-      </header>
-      {item === "engine" && <EngineLevel view={view} writes={writes} />}
-      {item === "look" && <LookLevel view={view} writes={writes} />}
-      {item === "accounts" && <AccountsLevel accounts={accounts} />}
-      {item === "data" && <DataLevel view={view} />}
+        </div>
+        <div className="m-settings__body">
+          <header className="m-settings__head">
+            <p className="eyebrow">Settings</p>
+            <h1 className="marquee m-settings__marquee">{ITEM_NAME[item]}</h1>
+            <p className="m-lead">{fact.line}</p>
+          </header>
+          {item === "engine" && <EngineLevel view={view} writes={writes} />}
+          {item === "look" && <LookLevel view={view} writes={writes} />}
+          {item === "accounts" && <AccountsLevel accounts={accounts} />}
+          {item === "data" && <DataLevel view={view} />}
+        </div>
+      </div>
     </>
   );
 }

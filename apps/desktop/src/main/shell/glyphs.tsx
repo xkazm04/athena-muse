@@ -66,10 +66,52 @@ const DRAWINGS: Record<PlaceKey, ReactNode> = {
   ),
 };
 
+/** Settings' instruments, the variant's mind glyphs: the engine's cut stone, the look's half-lit sun,
+ * the accounts' two rings and a key, the data's drum. */
+export const SETTING_DRAWINGS: Record<"engine" | "look" | "accounts" | "data", ReactNode> = {
+  engine: DRAWINGS.settings,
+  look: (
+    <g fill="none" strokeLinecap="round">
+      <circle cx="60" cy="42" r="28" fill={tint(10)} stroke="var(--focus)" strokeWidth="2" />
+      <path d="M60 14 A28 28 0 0 1 60 70 Z" fill="var(--card-bg)" stroke="var(--accent)" strokeWidth="2" />
+      <path
+        d="M60 4v6M60 74v6M18 42h6M96 42h6M30 12l4 4M86 68l4 4M90 12l-4 4M34 68l-4 4"
+        stroke="var(--accent)"
+        strokeOpacity=".6"
+        strokeWidth="2"
+      />
+    </g>
+  ),
+  accounts: (
+    <>
+      <circle cx="46" cy="42" r="20" fill="none" stroke="var(--muted-foreground)" strokeWidth="3" />
+      <circle cx="72" cy="42" r="20" fill="none" stroke="var(--accent)" strokeWidth="3" />
+      <path d="M80 60 l10 16 M86 70 l6-4 M90 76 l6-4" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="38" cy="26" r="4.5" fill="var(--status-warning)" />
+    </>
+  ),
+  data: (
+    <g fill="none">
+      <ellipse cx="60" cy="20" rx="34" ry="10" fill={tint(14)} stroke="var(--focus)" strokeWidth="2" />
+      <path d="M26 20v42c0 6 15 11 34 11s34-5 34-11V20" stroke="var(--accent)" strokeWidth="2" />
+      <path d="M26 41c0 6 15 11 34 11s34-5 34-11M26 62c0 6 15 11 34 11" stroke="var(--accent)" strokeOpacity=".5" strokeWidth="1.6" />
+      <circle cx="88" cy="58" r="3" fill="var(--status-success)" />
+    </g>
+  ),
+};
+
 export function Glyph({ place, size = 108 }: { place: PlaceKey; size?: number }) {
   return (
     <svg className="m-glyph" viewBox="0 0 120 90" width={size} height={(size * 3) / 4} aria-hidden="true" focusable="false">
       <g className="m-glyph__float">{DRAWINGS[place]}</g>
+    </svg>
+  );
+}
+
+export function SettingGlyph({ item, size = 104 }: { item: keyof typeof SETTING_DRAWINGS; size?: number }) {
+  return (
+    <svg className="m-glyph" viewBox="0 0 120 90" width={size} height={(size * 3) / 4} aria-hidden="true" focusable="false">
+      <g className="m-glyph__float">{SETTING_DRAWINGS[item]}</g>
     </svg>
   );
 }
