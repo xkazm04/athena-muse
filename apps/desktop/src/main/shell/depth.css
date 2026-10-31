@@ -1,0 +1,352 @@
+/* The main window's frame (ADR 0016), after the variant: the bar, the depth rail, the dock and the
+ * body between them. The window never scrolls; a body that is longer than its depth scrolls inside.
+ * Type sizes come only from the --fs-* tokens (main.css.test checks this file too). */
+
+.m-shell {
+  --bar-h: 44px;
+  --dock-h: 76px;
+  --rail-w: 52px;
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--bar-h) auto minmax(0, 1fr) auto;
+  height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+.m-shell > .backdrop {
+  position: fixed;
+  z-index: -1;
+}
+
+/* ---- the bar: rise, the mark, the trail ---- */
+.m-bar {
+  grid-row: 1;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-sm);
+}
+.m-bar__rise,
+.m-bar__brand,
+.m-bar__crumb button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) ease,
+    background var(--dur-fast) ease;
+}
+.m-bar__rise {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: var(--sp-1) 10px;
+  border: 1px solid var(--border-emphasis);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+  color: var(--accent-text);
+  white-space: nowrap;
+  animation: m-bar-in var(--dur-base) var(--ease-settle) both;
+}
+.m-bar__rise svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-bar__rise b {
+  color: var(--foreground);
+}
+.m-bar__rise:hover {
+  background: var(--wash);
+}
+.m-bar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  padding: var(--sp-1);
+  border-radius: var(--r-interactive);
+  font-weight: 600;
+}
+.m-mark rect {
+  fill: var(--primary);
+}
+.m-mark g {
+  fill: none;
+  stroke: var(--primary-fg);
+  stroke-width: 2.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-bar__crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+}
+.m-bar__crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  animation: m-bar-in var(--dur-base) var(--ease-settle) both;
+}
+.m-bar__crumb b,
+.m-bar__crumb button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m-bar__crumb b {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.m-bar__crumb button {
+  padding: var(--sp-1) 6px;
+  margin: calc(-1 * var(--sp-1)) -6px;
+  border-radius: var(--r-interactive);
+}
+.m-bar__crumb button:hover {
+  color: var(--accent-text);
+}
+.m-bar__trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  margin-left: auto;
+  color: var(--muted-foreground);
+}
+.m-subbar {
+  display: flex;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-2);
+}
+
+/* ---- the rail: how deep you are ---- */
+.m-rail {
+  --rail-top: 96px;
+  --rail-bottom: calc(var(--dock-h) + 44px);
+  --rail-h: calc(100vh - var(--rail-top) - var(--rail-bottom));
+  position: absolute;
+  z-index: 2;
+  left: 18px;
+  top: var(--rail-top);
+  bottom: var(--rail-bottom);
+  width: 14px;
+  pointer-events: none;
+}
+.m-shell[data-depth="0"] .m-rail {
+  --rail-bottom: 120px;
+}
+.m-rail__line {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 2px;
+  height: 100%;
+  margin-left: 6px;
+  background: var(--border-default);
+}
+.m-rail__line i {
+  position: relative;
+  display: block;
+  width: 10px;
+  height: 2px;
+  margin-left: -4px;
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+.m-rail__line i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-settle);
+}
+.m-rail__line i[data-reached="true"]::after {
+  opacity: 1;
+}
+.m-rail__line b {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--glow);
+  transform: translateY(calc(var(--rail-h) * var(--rail-at, 0)));
+  transition: transform var(--dur-base) var(--ease-settle);
+}
+.m-rail[data-depth="1"] b {
+  --rail-at: 0.3333;
+}
+.m-rail[data-depth="2"] b {
+  --rail-at: 0.6667;
+}
+.m-rail[data-depth="3"] b {
+  --rail-at: 1;
+}
+
+/* ---- the body between bar and dock ---- */
+.m-shell > .m-notice {
+  grid-row: 2;
+}
+.m-depth {
+  grid-row: 3;
+  position: relative;
+  min-height: 0;
+  padding-left: var(--rail-w);
+  overflow: hidden auto;
+}
+.m-depth > .m-content {
+  min-height: 100%;
+}
+/* the stage and the twins keep their own frames; here they fill the body instead of the window */
+.m-depth > .st-stage,
+.m-depth > .tw-frame {
+  height: 100%;
+}
+.m-depth:has(> .st-stage),
+.m-depth:has(> .tw-frame) {
+  overflow: hidden;
+}
+
+/* ---- the dock: her pill, the places ---- */
+.m-dock {
+  grid-row: 4;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  min-height: var(--dock-h);
+  padding: 10px 18px 14px;
+}
+.m-dock__athena,
+.m-dock__place {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) ease,
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
+}
+.m-dock__athena {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 8px;
+  border-color: var(--border-emphasis);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--card-bg) 82%, transparent);
+  text-align: left;
+  animation: m-dock-in var(--dur-base) var(--ease-settle) both;
+}
+.m-dock__athena:hover {
+  border-color: var(--accent);
+}
+.m-dock__athena > span:last-child {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.m-dock__athena b {
+  font-size: var(--fs-md);
+}
+.m-dock__athena small {
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+.m-dock__athena em {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--role-human);
+  border-radius: var(--r-pill);
+  color: var(--role-human);
+  font-size: var(--fs-xs);
+  font-style: normal;
+}
+.m-dock__athena .seal__count {
+  display: none;
+}
+.m-dock__places {
+  display: flex;
+  gap: var(--sp-1);
+  margin-left: auto;
+}
+.m-dock__place {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-pill);
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+}
+.m-dock__place:hover {
+  color: var(--foreground);
+  background: var(--wash);
+}
+.m-dock__place[aria-current="page"] {
+  color: var(--accent-text);
+  border-color: var(--border-emphasis);
+}
+
+@keyframes m-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-height: 740px) {
+  .m-shell {
+    --dock-h: 64px;
+  }
+  .m-dock {
+    padding-block: 8px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-bar__rise,
+  .m-bar__crumb,
+  .m-dock__athena {
+    animation: none;
+  }
+  .m-rail__line b,
+  .m-rail__line i::after {
+    transition: none;
+  }
+}

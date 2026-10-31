@@ -217,8 +217,10 @@
 
 /* Scale tokens: the same in both themes. 12 px is the smallest type size that exists. */
 :root {
-  --font-sans: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-sans);
+  /* the variant's faces (ADR 0016): the system face for every word in the main window, Outfit only for
+   * the display lines of her window */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-display: "Outfit", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
 
   --fs-xs: 12px;
@@ -230,6 +232,10 @@
   /* the marquee: one line of large, light words (her state, the first act) */
   --fs-display: 48px;
   --fw-display: 300;
+  /* the surface's marquee grows with the window, like the variant's */
+  --fs-surface: clamp(40px, 6vw, 76px);
+  /* a depth's title: heavy, beside its one-line summary */
+  --fs-title: 40px;
   --tracking-display: -0.025em;
   /* eyebrows: small uppercase words in the interface blue above a title */
   --tracking-eyebrow: 0.14em;

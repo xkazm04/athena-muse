@@ -1,0 +1,41 @@
+# 0016 - The app wears the variant's layout, not only its tokens
+
+Status: accepted
+Date: 2026-10-31
+
+## Context
+
+ADR 0011 took the winning theme variant's tokens, radii, type and water, and kept this app's own
+layouts: a top nav bar, a card grid on Chores, an orbit field on Projects. It named the variant's
+home surface, depth rail, dock and breadcrumb "no counterpart". The owner opened the app and did not
+see one module that looked like the variant. The variant's look is its layout as much as its colours:
+a surface with her seal and an ask, depths reached by tiles, a bar that says where you are, a rail
+that says how deep, a dock with her pill and the places, and tables with eyebrow heads instead of
+cards.
+
+## Decision
+
+Every surface of the main window wears the variant's layout. The variant's modules are another
+app's; each of this app's surfaces takes the one closest to it:
+
+| Variant screen | Here | Route |
+|---|---|---|
+| bar: "Rise to", the mark, the trail | `shell/Depth.tsx` `Crumbs` (rises one level; the project pill and the engine lamp trail it) | every route |
+| depth rail with a bead at the current depth | `Rail`: surface 0, a place 1, one thing in it 2, a page under that 3 | every route |
+| dock: her pill bottom left, places bottom right, the current one outlined | `Dock`: her seal, name and state (pink when something waits), Projects, Chores, Twins, Athena, Settings | every route below the surface |
+
+The body face is the system face (Segoe UI), as the variant set it; Outfit stays for the display lines
+of her window. A depth's title is heavy (`.title-depth`, 40 px); the surface's marquee grows with the
+window (`.marquee--surface`).
+
+Behaviour, routes, data roles and copy do not change except where a layout needs a word the old one
+did not (the trail, the dock's state). The type floor (12 px), tokens-only sizes and a reduced-motion
+block per stylesheet hold; the new sheets are under the same test as `main.css`.
+
+## Consequences
+
+- The window never scrolls: the body between the bar and the dock scrolls inside when a page is
+  longer than its depth.
+- The stage and the twins pages keep their own frames inside the body; their fidelity checks see the
+  shell around them and the system face.
+- Supersedes ADR 0011's "no counterpart" row; its tokens stand.

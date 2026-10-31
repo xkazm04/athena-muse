@@ -120,7 +120,7 @@ describe("live events", () => {
 
     vi.mocked(api.cards).mockImplementation(async (state) => (state === "waiting" ? [card()] : []));
     await act(async () => emit({ type: "card_filed", card: card() }));
-    expect(document.querySelector(".m-top .seal")?.getAttribute("data-state")).toBe("waiting");
+    expect(document.querySelector(".m-dock .seal")?.getAttribute("data-state")).toBe("waiting");
 
     await act(async () => emit({ type: "engine", status: noKey }));
     expect(screen.getByText("Simulated")).toBeTruthy();

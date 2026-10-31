@@ -1,6 +1,6 @@
 # 0011 - Loop Tide follows the winning theme variant
 
-Status: accepted
+Status: accepted; its "no counterpart" row is superseded by [0016](0016-the-app-wears-the-variants-layout.md)
 Date: 2026-10-31
 
 ## Context

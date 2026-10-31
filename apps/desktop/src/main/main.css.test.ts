@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const css = readFileSync(join(here, "main.css"), "utf8");
+/** The main window's other sheets (ADR 0016) hold to the same rules as main.css. */
+const SHEETS = ["shell/depth.css"];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -37,5 +39,16 @@ describe("main window type sizes", () => {
 
   it("stills its own motion under reduced motion", () => {
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  it.each(SHEETS)("%s: sizes from --fs-* tokens only, none under 12 px, and a reduced-motion block", (name) => {
+    const sheet = readFileSync(join(here, name), "utf8");
+    const sizes = [...sheet.matchAll(/font-size:\s*([^;]+);/g)].map((m) => m[1]!.trim());
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const s of sizes) expect(s).toMatch(/^var\(--fs-(xs|sm|md|lg|xl|2xl)\)$/);
+    for (const m of sheet.matchAll(/\bfont:\s*([^;]+);/g)) {
+      if (m[1]!.trim() !== "inherit") expect(m[1]).toMatch(/var\(--fs-/);
+    }
+    expect(sheet).toContain("@media (prefers-reduced-motion: reduce)");
   });
 });

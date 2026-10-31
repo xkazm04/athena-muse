@@ -132,14 +132,29 @@ body.her {
   text-transform: uppercase;
 }
 
-/* the marquee: large, light words; the first act and her state */
+/* the marquee: large, light words in the system face; the first act and her state */
 .marquee {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: var(--fs-display);
   font-weight: var(--fw-display);
   line-height: 1.04;
   letter-spacing: var(--tracking-display);
+}
+
+/* the surface's marquee: the same words, grown with the window (ADR 0016) */
+.marquee--surface {
+  font-size: var(--fs-surface);
+  line-height: 1.02;
+  min-height: 1.1em;
+}
+/* a depth's title: heavy, beside its one-line summary (ADR 0016) */
+.title-depth {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 /* the person's own colour, for what is waiting on them */

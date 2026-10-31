@@ -4,6 +4,8 @@
 import { CORE, CORE_ITEM } from "../lib/contract";
 
 export type Route =
+  /** The surface (ADR 0016): her seal, her state, the ask, and a tile per depth. The default landing. */
+  | { view: "home" }
   | { view: "projects" }
   | { view: "project"; id: string }
   | { view: "core" }
@@ -29,6 +31,7 @@ export type Route =
 /** `id` is a space id or CORE (""). */
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  if (parts.length === 0 || parts[0] === "home") return { view: "home" };
   if (parts[0] === "athena") return { view: "athena" };
   if (parts[0] === "chores") return parts[1] ? { view: "chore", id: parts[1] } : { view: "chores" };
   if (parts[0] === "stage") return { view: "stage", id: parts[1] && parts[1] !== STAGE_NEW ? parts[1] : null };
@@ -65,6 +68,8 @@ const ref = (id: string) => (id === CORE ? CORE_ITEM : encodeURIComponent(id));
 
 export function toHash(route: Route): string {
   switch (route.view) {
+    case "home":
+      return "#home";
     case "athena":
       return "#athena";
     case "chores":

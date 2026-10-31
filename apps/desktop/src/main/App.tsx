@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import * as api from "../lib/api";
 import { getConnection, UNREACHABLE } from "../lib/daemon";
-import { toggleAthena } from "../lib/windows";
 import { Backdrop, Seal } from "../theme";
-import { ProjectPill, useAppEvents } from "../ui";
+import { useAppEvents } from "../ui";
 import { AthenaView } from "./athena/AthenaView";
 import { ChoreScene } from "./chores/ChoreScene";
 import { Chores } from "./chores/Chores";
@@ -15,6 +14,7 @@ import { isTwinRoute } from "./route";
 import { SettingsView } from "./settings/Settings";
 import { Stage } from "./stage/Stage";
 import { TwinsView } from "./twins/Twins";
+import { DepthFrame } from "./shell/Depth";
 import { reasonOf, useMain } from "./store";
 
 type Boot = { phase: "waking" } | { phase: "down"; reason: string } | { phase: "up"; firstRun: boolean };
@@ -93,10 +93,8 @@ function Centered({ children }: { children: ReactNode }) {
 
 export function Shell() {
   const route = useMain((s) => s.route);
-  const notice = useMain((s) => s.notice);
   const syncRoute = useMain((s) => s.syncRoute);
   const handleEvent = useMain((s) => s.handleEvent);
-  const clearNotice = useMain((s) => s.clearNotice);
   const navigate = useMain((s) => s.navigate);
 
   useAppEvents(handleEvent);
@@ -108,39 +106,27 @@ export function Shell() {
   }, [syncRoute]);
 
   if (route.view === "stage") {
-    // The stage owns the window: one frame, its own header, no page scroll (onboarding v2).
+    // The stage keeps its own frame (no page scroll, onboarding v2) inside the shell's body.
     return (
-      <div className="m-shell">
-        <Backdrop />
+      <DepthFrame route={route}>
         <Stage id={route.id} />
-      </div>
+      </DepthFrame>
     );
   }
 
   if (isTwinRoute(route)) {
-    // The twins page fills the window under the header; a twin's setup owns it, like the stage.
+    // The twins page fills the body; a twin's setup keeps its own header, like the stage.
     return (
-      <div className="m-shell">
-        <Backdrop />
-        <TwinsView route={route} top={(extra) => <MainTop extra={extra} />} navigate={navigate} />
-      </div>
+      <DepthFrame route={route}>
+        <TwinsView route={route} top={(extra) => (extra ? <div className="m-subbar">{extra}</div> : null)} navigate={navigate} />
+      </DepthFrame>
     );
   }
 
   return (
-    <div className="m-shell">
-      <Backdrop />
-      <MainTop />
-      {notice && (
-        <div className="plane m-notice" role="alert">
-          <span>{notice}</span>
-          <button type="button" className="btn btn-quiet" onClick={clearNotice}>
-            Dismiss
-          </button>
-        </div>
-      )}
-      <main className="m-content">
-        {route.view === "projects" && <Field />}
+    <DepthFrame route={route}>
+      <main className={route.view === "home" ? "m-content m-content--surface" : "m-content"}>
+        {(route.view === "home" || route.view === "projects") && <Field />}
         {route.view === "project" && <Level id={route.id} />}
         {route.view === "core" && <CoreLevel />}
         {route.view === "memory" && <Memory id={route.id} />}
@@ -149,65 +135,7 @@ export function Shell() {
         {route.view === "chore" && <ChoreScene id={route.id} />}
         {route.view === "settings" && <SettingsView item={route.item} />}
       </main>
-    </div>
+    </DepthFrame>
   );
 }
 
-/** The main window's header: her seal, the project pill, the engine lamp, the places, her window. */
-export function MainTop({ extra }: { extra?: ReactNode }) {
-  const engine = useMain((s) => s.engine);
-  const spaces = useMain((s) => s.spaces);
-  const active = useMain((s) => s.active);
-  const waiting = useMain((s) => s.waiting.length);
-  const route = useMain((s) => s.route);
-  const setActive = useMain((s) => s.setActive);
-  const onAthena = route.view === "athena";
-  const onChores = route.view === "chores" || route.view === "chore";
-  const onTwins = isTwinRoute(route);
-  const onSettings = route.view === "settings";
-  const here = (on: boolean) => (on ? "page" : undefined);
-
-  return (
-    <header className="m-top">
-      <Seal
-        state={waiting > 0 ? "waiting" : "rest"}
-        size={36}
-        count={waiting}
-        label={waiting > 0 ? `${waiting} waiting on you` : "Athena"}
-      />
-      <span className="m-wordmark">Athena</span>
-      <ProjectPill spaces={spaces} activeId={active} onSelect={(id) => void setActive(id)} />
-      {engine &&
-        (engine.simulated ? (
-          <span className="badge m-lamp" data-tone="warning" title="No Muse key; replies are simulated">
-            Simulated
-          </span>
-        ) : (
-          <span className="badge m-lamp" data-tone="success" title={engine.model}>
-            Muse
-          </span>
-        ))}
-      {extra}
-      <nav className="m-nav" aria-label="Main">
-        <a href="#projects" className="m-nav__link" aria-current={here(!onAthena && !onChores && !onTwins && !onSettings)}>
-          Projects
-        </a>
-        <a href="#chores" className="m-nav__link" aria-current={here(onChores)}>
-          Chores
-        </a>
-        <a href="#twins" className="m-nav__link" aria-current={here(onTwins)}>
-          Twins
-        </a>
-        <a href="#athena" className="m-nav__link" aria-current={here(onAthena)}>
-          Athena
-        </a>
-        <a href="#settings" className="m-nav__link" aria-current={here(onSettings)}>
-          Settings
-        </a>
-      </nav>
-      <button type="button" className="btn btn-primary m-talk" onClick={() => void toggleAthena()}>
-        Talk to Athena
-      </button>
-    </header>
-  );
-}
