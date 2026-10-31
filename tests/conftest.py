@@ -31,6 +31,13 @@ def _no_engine_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _no_cli_on_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No CLI engine is installed in a test: with nothing chosen the default would otherwise start the
+    developer's own `claude` (ADR 0012). A test that wants one puts it on the path itself."""
+    monkeypatch.setattr("athena.engine.cli.which", lambda _name: None)
+
+
+@pytest.fixture(autouse=True)
 def _no_twin_poll(monkeypatch: pytest.MonkeyPatch) -> None:
     """The twins' poller never runs in a test: a test works a mission by calling it."""
     monkeypatch.setenv("ATHENA_TWIN_POLL", "0")

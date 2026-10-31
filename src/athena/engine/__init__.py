@@ -86,20 +86,42 @@ def _known(raw: str) -> EngineId | None:
 
 
 def decide(keys: KeyStore, stored: str = "") -> tuple[EngineId, EngineSource]:
-    """The one place the engine is chosen, and who chose it (ADR 0006, ADR 0012).
+    """The one place the engine is chosen, and who chose it (ADR 0006, ADR 0012 as amended).
 
-    `ATHENA_ENGINE` wins. Else the choice stored in Settings (`stored`), except `muse` without a key,
-    which runs simulated as it always has. Else `muse` with a key, else `scripted`."""
+    Settings is the place to change the engine: the stored choice wins whenever it can run (a key
+    for `muse`, the program on PATH for a CLI). Else `ATHENA_ENGINE`, for the bench, the seams and
+    a fresh data folder. Else the default: `muse` with a key, else the first installed CLI wrapper
+    (Claude Code, then Muse Code), else `scripted`, labelled simulated."""
+    chosen = _known(stored)
+    if chosen is not None and runnable(chosen, keys):
+        return chosen, "setting"
     raw = os.environ.get("ATHENA_ENGINE", "").strip()
     if raw:
         pinned = _known(raw)
         if pinned is None:
             raise EngineError("ATHENA_ENGINE must be one of muse, muse_code, claude_code or scripted")
         return pinned, "env"
-    chosen = _known(stored)
-    if chosen is not None and (chosen != "muse" or keys.get()):
-        return chosen, "setting"
-    return ("muse" if keys.get() else "scripted"), "default"
+    return fallback(keys), "default"
+
+
+def runnable(engine_id: EngineId, keys: KeyStore) -> bool:
+    """Whether an engine can run here, read without calling it: a key for Muse, a program on PATH
+    for a CLI wrapper. Signed in or not is the probe's to say."""
+    from athena.engine.cli import which
+
+    if engine_id == "muse":
+        return bool(keys.get())
+    if engine_id in PROGRAMS:
+        return which(PROGRAMS[engine_id]) is not None
+    return True
+
+
+def fallback(keys: KeyStore) -> EngineId:
+    """The engine with nothing chosen: Muse with a key, else an installed CLI, else simulated."""
+    for engine_id in ("muse", "claude_code", "muse_code"):
+        if runnable(engine_id, keys):
+            return engine_id
+    return "scripted"
 
 
 def choose(keys: KeyStore, stored: str = "") -> EngineId:

@@ -25,9 +25,10 @@ and the stored choice is shown again.
   `type_scale`, `motion`, `engine`, beside the existing `active_space_id`. Routes in
   `src/athena/routes_settings.py`: `GET /settings` (a `SettingsView`), `POST /settings/look` (any of
   the three, all or none), `POST /settings/engine` (one engine). Each write answers the whole view.
-- **Engine.** `engine.decide(keys, stored)` (`src/athena/engine/__init__.py`): `ATHENA_ENGINE`
-  first, then the stored choice, then Muse with a key, else Simulated. A stored Muse choice with no
-  key runs simulated. `engine.options(keys)` says, without calling anything, whether each engine
+- **Engine.** `engine.decide(keys, stored)` (`src/athena/engine/__init__.py`, ADR 0012 as amended):
+  the stored choice first, whenever it can run; then `ATHENA_ENGINE`; then Muse with a key, else the
+  first installed CLI wrapper (Claude Code, then Muse Code), else Simulated. A choice that cannot run
+  falls through, and Settings names both engines. The Meta key section lives on the Engine level only. `engine.options(keys)` says, without calling anything, whether each engine
   can run: a key on file, a program on PATH. The engine is built per request, so a choice reaches
   the next turn with no restart; choosing announces the `engine` event so both windows' lamps follow.
 - **Look.** `ui/look.ts` paints `data-theme` (through the theme's `applyTheme`), `data-type-scale`
@@ -42,13 +43,13 @@ and the stored choice is shown again.
 - `tests/test_settings.py` (18 cases, through the real app): defaults, a look written and heard as
   an event, partial writes, every bad look refused whole, unknown stored rows read as defaults,
   engine readiness per engine, a choice moving `/engine` and the next build, refusals (no key, not
-  installed, unknown, `ATHENA_ENGINE` set), a key saved making Muse choosable, the data folder and a
+  installed, unknown), a choice beating `ATHENA_ENGINE`, a choice that cannot run falling through to the default, a key saved making Muse choosable, the data folder and a
   look surviving a reopen. `tests/test_contract_parity.py::test_settings_match` covers every new
   enum and shape. `tests/test_engine_choice.py` checks every route hands over the stored choice.
 - Desktop: `main/settings/model.test.ts` (the facts), `main/settings/settings.test.tsx` (the
   overview, a refused read, the welcome, an unknown item, the look painted before the write and
   settling back on refusal, a look from the other window, engine options, choice, refusal and the
-  `ATHENA_ENGINE` block, accounts, data), `ui/look.test.ts` (the attributes, large sizes checked
+  choice open while `ATHENA_ENGINE` is set, accounts, data), `ui/look.test.ts` (the attributes, large sizes checked
   against `tokens.css`, the calm rule), `main/settings/settings.css.test.ts`, her window wearing the
   look (`athena/App.test.tsx`), and the three API paths (`lib/api.test.ts`).
 - Not yet seen in a running Tauri window; the gates above are the evidence.

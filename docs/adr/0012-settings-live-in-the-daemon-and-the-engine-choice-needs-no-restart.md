@@ -82,3 +82,21 @@ architecture.
   loopback). Caching the look per window would remove the flash; it is not done.
 - `--fs-*` overrides for large text live outside `tokens.css`; a re-theme that changes those sizes
   fails `look.test.ts` until `look.css` follows.
+
+## Amendment (2026-10-31, owner)
+
+Settings is the place to change the engine, and the CLI wrappers are the alternative to the Muse API,
+as in athena-portable (its ADR 0007). Decision 4 is replaced:
+
+- `engine.decide(keys, stored)`: the stored choice wins whenever it can run (a key for Muse, the
+  program on PATH for Claude Code or Muse Code; source `setting`). Else `ATHENA_ENGINE` (source
+  `env`), which keeps the bench, the seams and a fresh data folder working. Else the default (source
+  `default`): Muse with a key, else the first installed CLI wrapper (Claude Code, then Muse Code),
+  else Simulated.
+- A choice is never refused because `ATHENA_ENGINE` is set; it is refused only when the engine cannot
+  run here. A stored choice that stops running (the key removed, the program uninstalled) falls
+  through to the next rule, and Settings names both: the chosen one and the one running instead.
+- "Ready" stays "installed": no per-engine sign-in probe.
+- The Muse key section lives in Settings only (the Engine level); the Athena page no longer carries it.
+- The look is not cached per window; the first-frame default stays (owner).
+- The tests stub `which` to find no CLI, so a developer's own `claude` never runs in a test.

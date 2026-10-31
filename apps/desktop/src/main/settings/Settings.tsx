@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import * as api from "../../lib/api";
 import type { Connection, EngineId, Look, SettingsView } from "../../lib/contract";
 import { MOTION_CHOICES, THEME_CHOICES, TYPE_SCALES, applyLook } from "../../ui/look";
-import { Connection as MuseKey } from "../athena/AthenaView";
+import { MuseKey } from "./MuseKey";
 import { reasonOf, useMain } from "../store";
 import {
   ENGINE_HINT,
@@ -289,9 +289,7 @@ function EngineLevel({ view, writes }: { view: SettingsView | null; writes: Writ
         />
         <Refused what="The engine" reason={writes.refusals.engine} />
         <p className="m-muted">
-          {view.source === "env"
-            ? "ATHENA_ENGINE is set in this computer's environment, so it decides; unset it to choose here."
-            : "A choice reaches her next turn; nothing restarts, and nothing she remembers is dropped."}
+          A choice reaches her next turn; nothing restarts, and nothing she remembers is dropped.
         </p>
       </section>
       <MuseKey />

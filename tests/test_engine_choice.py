@@ -47,6 +47,9 @@ def keys(with_key: bool) -> KeyStore:
     [
         ("", False, (), ScriptedEngine),
         ("", True, (), MuseEngine),
+        ("", True, ("claude", "muse"), MuseEngine),
+        ("", False, ("claude", "muse"), ClaudeCodeEngine),
+        ("", False, ("muse",), MuseCodeEngine),
         ("scripted", True, (), ScriptedEngine),
         ("muse", True, (), MuseEngine),
         ("muse", False, (), "no Meta key"),

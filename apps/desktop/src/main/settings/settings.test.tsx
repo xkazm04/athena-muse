@@ -89,7 +89,7 @@ describe("the overview", () => {
     expect(root().getAttribute("data-type-scale")).toBe("large");
     expect(root().getAttribute("data-motion")).toBe("calm");
     const tiles = screen.getByRole("list", { name: "Settings" });
-    expect(tiles.textContent).toContain("Muse runs her turns.");
+    expect(tiles.textContent).toContain("Muse runs her turns");
     expect(tiles.textContent).toContain("1 of 2 connected.");
     expect(tiles.textContent).toContain("light theme");
     expect(screen.getByRole("link", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
@@ -175,10 +175,11 @@ describe("the engine", () => {
     expect(screen.getByText("Claude Code is not installed")).toBeTruthy();
   });
 
-  it("blocks every choice while ATHENA_ENGINE decides", async () => {
+  it("lets Settings choose even while ATHENA_ENGINE sets the engine", async () => {
     await open("#settings/engine", settings({ engine: "claude_code", source: "env" }));
-    for (const r of screen.getAllByRole("radio")) expect((r as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/unset it to choose here/)).toBeTruthy();
+    const simulated = screen.getAllByRole("radio").find((r) => /Simulated/.test(r.textContent ?? ""));
+    expect((simulated as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText(/set by ATHENA_ENGINE until you choose here/)).toBeTruthy();
   });
 });
 

@@ -66,15 +66,6 @@ def routes(daemon: Daemon, keys: KeyStore, announce: Callable[[], EngineStatus])
         wanted = (await _body(request)).get("engine")
         if wanted not in ENGINE_IDS:
             raise ApiError("bad_request", f"engine must be one of {', '.join(ENGINE_IDS)}")
-        try:
-            _, source = engine_mod.decide(keys)
-        except EngineError as e:
-            raise ApiError("engine_unavailable", e.reason) from e
-        if source == "env":
-            raise ApiError(
-                "engine_unavailable",
-                "ATHENA_ENGINE is set on this computer and decides the engine; unset it to choose here",
-            )
         option = next(o for o in engine_mod.options(keys) if o["id"] == wanted)
         if option["readiness"] in ("no_key", "not_installed"):
             raise ApiError("engine_unavailable", option.get("reason", "that engine cannot run here"))

@@ -37,10 +37,16 @@ describe("the engine fact", () => {
     expect(gone.line).toBe("Muse Code is chosen. Muse Code is not installed: put `muse` on PATH.");
   });
 
-  it("names ATHENA_ENGINE when the environment decides, and blocks every choice then", () => {
+  it("names ATHENA_ENGINE when nothing is chosen, and still lets Settings choose", () => {
     const pinned = view({ engine: "claude_code", source: "env" });
-    expect(engineFact(pinned).line).toMatch(/set by ATHENA_ENGINE/);
-    expect(engineBlocked(pinned, "scripted")).toMatch(/ATHENA_ENGINE/);
+    expect(engineFact(pinned).line).toMatch(/set by ATHENA_ENGINE until you choose here/);
+    expect(engineBlocked(pinned, "scripted")).toBeUndefined();
+  });
+
+  it("says when the chosen engine cannot run and which one runs instead", () => {
+    const fell = view({ engine: "claude_code", source: "default", choice: "muse" });
+    expect(engineFact(fell).standing).toBe("missing");
+    expect(engineFact(fell).line).toMatch(/^Muse is chosen but cannot run here\..*Claude Code runs her turns until it can\.$/);
   });
 
   it("blocks an engine with its own reason, and leaves the simulated one open", () => {

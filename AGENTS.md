@@ -27,8 +27,10 @@ uv run python -m athena.bench <id> [--engine claude_code|muse_code|muse|scripted
 
 `senses build` writes `senses/sensed.json` (fixture builds are byte-identical), `prove` writes
 `senses/proofs.json`; the bench writes `playbooks/<id>/bench.json` and a full report under `runs/`.
-`ATHENA_ENGINE` picks Athena's engine anywhere (ADR 0006): Claude Code in development, Muse Code
-before a submission, the Muse API for the submission itself.
+Settings picks Athena's engine in the app; with nothing chosen there, `ATHENA_ENGINE` picks it; with
+neither, Muse with a key, else an installed CLI wrapper (Claude Code, then Muse Code), else simulated
+(ADR 0006, ADR 0012). Claude Code in development, Muse Code before a submission, the Muse API for
+the submission itself.
 
 The gates are declared in `.ai/manifest.yaml` `capabilities`. Run them before claiming anything
 works; report output faithfully. Architecture: [ADR 0002](docs/adr/0002-two-windows-over-one-loopback-daemon.md).

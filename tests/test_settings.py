@@ -11,7 +11,6 @@ from starlette.testclient import TestClient
 
 from athena.app import Daemon
 from athena.engine import build_engine, decide
-from athena.engine.scripted import ScriptedEngine
 from athena.keys import KeyStore
 from athena.server import create_app
 from athena.settings import DEFAULT_LOOK, ENGINE_KEY, THEME_KEY
@@ -141,26 +140,28 @@ def test_an_engine_that_cannot_run_is_refused(
     assert daemon.settings.engine_choice() == ""
 
 
-def test_athena_engine_pins_the_engine_and_refuses_a_choice(
+def test_a_choice_in_settings_beats_athena_engine(
     client: TestClient, daemon: Daemon, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    daemon.settings.set(ENGINE_KEY, "scripted")
     monkeypatch.setenv("ATHENA_ENGINE", "claude_code")
     on_path(monkeypatch, "claude")
     view = client.get("/settings").json()
-    assert view["engine"] == "claude_code" and view["source"] == "env" and view["choice"] == "scripted"
+    assert view["engine"] == "claude_code" and view["source"] == "env"
     r = client.post("/settings/engine", json={"engine": "scripted"})
-    assert r.json()["error"] == "engine_unavailable" and "ATHENA_ENGINE" in r.json()["reason"]
+    assert r.status_code == 200
+    assert r.json()["engine"] == "scripted" and r.json()["source"] == "setting"
+    assert daemon.settings.engine_choice() == "scripted"
 
 
-def test_a_muse_choice_without_a_key_runs_simulated_as_before() -> None:
+def test_a_choice_that_cannot_run_falls_through_to_the_default(monkeypatch: pytest.MonkeyPatch) -> None:
     keys = KeyStore(None)
     assert decide(keys, "muse") == ("scripted", "default")
+    on_path(monkeypatch, "claude")
+    assert decide(keys, "muse") == ("claude_code", "default")
+    monkeypatch.setenv("ATHENA_ENGINE", "muse_code")
+    assert decide(keys, "muse") == ("muse_code", "env")
     keys.save("sk-test")
     assert decide(keys, "muse") == ("muse", "setting")
-    assert decide(keys, "scripted") == ("scripted", "setting")
-    assert decide(keys, "") == ("muse", "default")
-    assert isinstance(build_engine(KeyStore(None), stored="scripted"), ScriptedEngine)
 
 
 def test_a_key_saved_through_the_engine_routes_makes_muse_choosable(client: TestClient) -> None:

@@ -101,7 +101,6 @@ export function optionOf(view: SettingsView, id: EngineId): EngineOption | undef
 
 /** Why an engine cannot be picked here, shown on the control; `undefined` when it can. */
 export function engineBlocked(view: SettingsView, id: EngineId): string | undefined {
-  if (view.source === "env") return "ATHENA_ENGINE is set on this computer and decides the engine.";
   const option = optionOf(view, id);
   if (option && (option.readiness === "no_key" || option.readiness === "not_installed")) return option.reason;
   return undefined;
@@ -116,18 +115,24 @@ export function engineFact(view: SettingsView | null): Fact {
   const label = ENGINE_LABEL[view.engine];
   const option = optionOf(view, view.engine);
   const blocked = option && option.readiness !== "ready" && option.readiness !== "simulated";
-  if (view.source === "env") {
-    return blocked
-      ? fact("missing", `ATHENA_ENGINE sets ${label}. ${said(option?.reason)}`)
-      : fact("done", `${label}, set by ATHENA_ENGINE on this computer.`);
+  if (view.choice && view.choice !== view.engine) {
+    const chosen = optionOf(view, view.choice);
+    return fact(
+      "missing",
+      `${ENGINE_LABEL[view.choice]} is chosen but cannot run here. ${said(chosen?.reason)} ${label} runs her turns until it can.`,
+    );
   }
   if (view.engine === "scripted") {
-    if (view.choice === "muse") return fact("missing", "Muse is chosen, but there is no Meta key: replies are simulated.");
     return view.source === "setting"
       ? fact("todo", "Simulated is chosen: no model runs, and every reply says so.")
-      : fact("todo", "No engine yet: replies are simulated until you add a Meta key or choose one.");
+      : fact("todo", "No engine yet: replies are simulated until you add a Meta key or install Claude Code or Muse Code.");
   }
-  if (blocked) return fact("missing", `${label} is chosen. ${said(option?.reason)}`);
+  if (blocked) {
+    const who = view.source === "env" ? `ATHENA_ENGINE sets ${label}.` : `${label} is chosen.`;
+    return fact("missing", `${who} ${said(option?.reason)}`);
+  }
+  if (view.source === "env") return fact("done", `${label} runs her turns, set by ATHENA_ENGINE until you choose here.`);
+  if (view.source === "default") return fact("done", `${label} runs her turns, picked because nothing is chosen yet.`);
   return fact("done", `${label} runs her turns.`);
 }
 
