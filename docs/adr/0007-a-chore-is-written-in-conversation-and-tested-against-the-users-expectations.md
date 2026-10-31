@@ -5,7 +5,7 @@ Date: 2026-10-28
 
 ## Context
 
-The four chores in `playbooks/` were written by hand ([ADR 0005](0005-chores-are-data-rehearsed-on-a-bench.md)). A person with a need none of them covers had no way in. [Chore onboarding v2](../concepts/chore-onboarding-v2/README.md) designs the way in: the person describes the need in the main window, Athena asks one question at a time while a sketch of the process draws itself, then writes a real chore, previews the cards she expects to file, and runs a test that the person judges. Two things must not happen. A model must not decide that the conversation is complete, and Athena must not write her own answer key.
+The four chores in `playbooks/` were written by hand ([ADR 0005](0005-chores-are-data-rehearsed-on-a-bench.md)). A person with a need none of them covers had no way in. [Chore onboarding v2](../features/chore-onboarding.md) designs the way in: the person describes the need in the main window, Athena asks one question at a time while a sketch of the process draws itself, then writes a real chore, previews the cards she expects to file, and runs a test that the person judges. Two things must not happen. A model must not decide that the conversation is complete, and Athena must not write her own answer key.
 
 ## Decision
 

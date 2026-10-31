@@ -16,7 +16,7 @@ builder: the `always` set for the side it touched (Python or desktop); when a ga
 none
 
 ## Repo law
-Read AGENTS.md first. Built core: ADRs 0002-0007; the plan of record (built): docs/concepts/chore-onboarding-v2/README.md; the stage's two views share one store and parts under apps/desktop/src/main/stage/, and each view's CSS is scoped under its own `[data-stage-view]` root. The wire contract types every response envelope, not just items (parity test). The Director commits the wire contract and compilable stubs before any parallel package. No secrets, no machine paths. Meta API facts are tagged measured / press / unverified.
+Read AGENTS.md first. Built core: ADRs 0002-0007; built features: docs/features/ (a concept moves there once built, its design history stays in git); the stage's two views share one store and parts under apps/desktop/src/main/stage/, and each view's CSS is scoped under its own `[data-stage-view]` root. The wire contract types every response envelope, not just items (parity test). The Director commits the wire contract and compilable stubs before any parallel package. No secrets, no machine paths. Meta API facts are tagged measured / press / unverified.
 
 A stream route's contract names its protocol, not just its event types: event order, where the stream ends, and what a follow-up call (a mark, a retry) does to it. A parallel UI built against types alone guessed it wrong (twin-module WP5: rehearsal assumed to pause per draft).
 

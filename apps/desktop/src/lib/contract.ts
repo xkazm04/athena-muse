@@ -514,7 +514,7 @@ export interface AppEvent {
 }
 
 // --- twins (ADR 0008-0010) ------------------------------------------------------------------------
-// Field names follow docs/concepts/twin-module/prototypes/shared/SCHEMA.md. The daemon computes every
+// Field names follow docs/features/twins/reference/shared/SCHEMA.md. The daemon computes every
 // derived number; an unmeasured figure is an omitted key and reads "-", never 0. Percents are 0-100.
 
 /** One part of a twin, on its place in the document. Origin is computed as a sketch node's is. */

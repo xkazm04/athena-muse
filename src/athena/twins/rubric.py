@@ -22,7 +22,7 @@ KINDS = ("line", "name", "purpose", "gmail", "notion")
 
 TWIN_RUBRIC = Rubric(
     places=PLACES,
-    # As the prototype's `places` (docs/concepts/twin-module/prototypes/shared/src/twin.src.mjs).
+    # As the prototype's `places` (docs/features/twins/reference/shared/src/twin.src.mjs).
     required={
         "who": 1,
         "channels": 1,

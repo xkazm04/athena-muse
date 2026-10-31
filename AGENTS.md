@@ -2,10 +2,10 @@
 
 ## What this is
 
-Athena on Muse, for the Meta hackathon. The plan of record is
-`docs/concepts/chore-onboarding-v2/README.md` (built 2026-10-29: describe a need, watch it sketched in
-two views, test it against your own expectations; ADR 0007). Blue Hour's key paste and probe stand;
-the rest of `docs/concepts/blue-hour-onboarding/` is superseded. Next designed: `docs/concepts/business-channel/`; Twins (`docs/concepts/twin-module/`) are built (ADRs 0008-0010); the run on real accounts waits for the owner.
+Athena on Muse, for the Meta hackathon. What is built lives in `docs/features/` (chore onboarding,
+ADR 0007; Twins, ADRs 0008-0010, whose real-account run waits for the owner). Concepts in
+`docs/concepts/` are designs not yet built: `blue-hour-onboarding/` (parked; its key paste and
+probe stand) and `business-channel/` (next, phased). A concept moves to `docs/features/` once built.
 Chores are data under `playbooks/<id>/`, rehearsed on a headless bench (ADR 0005).
 
 ## Commands

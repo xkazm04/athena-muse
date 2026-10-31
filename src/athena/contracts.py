@@ -617,7 +617,7 @@ class AppEvent(TypedDict):
 
 
 # --- twins (ADR 0008-0010) ------------------------------------------------------------------------
-# Field names follow docs/concepts/twin-module/prototypes/shared/SCHEMA.md. The daemon computes every
+# Field names follow docs/features/twins/reference/shared/SCHEMA.md. The daemon computes every
 # derived number (`readiness`, `coverage`, `ready`, `open_missions`, `waiting_count`, the stats); an
 # unmeasured figure is an omitted key and reads "-", never 0. Percent values are whole numbers 0-100.
 

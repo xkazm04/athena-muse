@@ -1,4 +1,4 @@
-// Every state the twins page must show (prototypes/shared/states.md), built from the generated fixture
+// Every state the twins page must show (docs/features/twins/reference/shared/states.md), built from the generated fixture
 // through the store's own reducers, so the preview, the fidelity harness and the tests draw exactly what
 // the routes would answer. Invented data; the screen says so.
 

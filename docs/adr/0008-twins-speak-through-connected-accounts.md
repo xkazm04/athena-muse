@@ -5,7 +5,7 @@ Date: 2026-10-29
 
 ## Context
 
-A twin is a clone that speaks for the person: it reads a conversation, drafts the next message in their voice and, when allowed, sends it ([Twin module](../concepts/twin-module/README.md)). It needs the person's Gmail to read threads and send, and their Notion to read what it may know, file outcomes and rehearse on a practice page.
+A twin is a clone that speaks for the person: it reads a conversation, drafts the next message in their voice and, when allowed, sends it ([Twin module](../features/twins/README.md)). It needs the person's Gmail to read threads and send, and their Notion to read what it may know, file outcomes and rehearse on a practice page.
 
 The scout (2026-10-29) found that this repository has no connectors, no twin and no delegated mail. The [business channel](../concepts/business-channel/README.md) plan held the opposite doctrine: apps are reached the way the owner reaches them, through her browser and an app's own MCP, never through per-service connectors. That plan also had Twins reach the mailbox through the browser.
 

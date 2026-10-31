@@ -18,7 +18,7 @@ overview's stats moved. Meanwhile the poller reads the task inbox on the fake No
 second mission from a line written there (and reports one it cannot place). At each step it checks
 there is no page scroll and no console error; at the end, what the daemon received (the fake's
 journal), that the engine asked for answered every call, and it ends both process trees.
-Screenshots at 1280x800 go to docs/concepts/twin-module/shots/live/.
+Screenshots at 1280x800 go to docs/features/twins/shots/.
 
 No mission is started on the daemon's route: the page starts it. Playwright for Python is found beside
 the system python when the project's environment has none.
@@ -44,7 +44,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 REPO = Path(__file__).resolve().parents[1]
-SHOTS = REPO / "docs/concepts/twin-module/shots/live"
+SHOTS = REPO / "docs/features/twins/shots"
 VITE_PORT = 5192  # the port this seam serves the desktop on, unless --page-port says another
 TOKEN = "seam"
 ENGINE = "scripted"

@@ -5,7 +5,7 @@ Date: 2026-10-29
 
 ## Context
 
-A twin is set up in conversation with Athena: one question at a time, her proposals in pencil, the person's words in ink, and a document that fills in without moving what is already placed ([Twin module](../concepts/twin-module/README.md), Passport). That is the conversation [ADR 0007](0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md) built for chores, and its rules took a design contest and a build to settle:
+A twin is set up in conversation with Athena: one question at a time, her proposals in pencil, the person's words in ink, and a document that fills in without moving what is already placed ([Twin module](../features/twins/README.md), Passport). That is the conversation [ADR 0007](0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md) built for chores, and its rules took a design contest and a build to settle:
 - the flow computes coverage and the model never claims it;
 - origin is proved by a verbatim quote;
 - one question per reply, with capped follow-ups;

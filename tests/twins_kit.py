@@ -33,7 +33,7 @@ __all__ = [
     "url",
 ]
 
-PROTOTYPE = Path(__file__).resolve().parents[1] / "docs/concepts/twin-module/prototypes/shared/twin-data.json"
+PROTOTYPE = Path(__file__).resolve().parents[1] / "docs/features/twins/reference/shared/twin-data.json"
 NEED = (
     "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps "
     "each conversation going until we agree."

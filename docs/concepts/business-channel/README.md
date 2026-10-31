@@ -1,6 +1,6 @@
 # A business run through Athena - the AI-music channel, and the gaps it finds
 
-Status: **designed, not built** (2026-10-28). A plan and a gap map. Nothing here is built until [Chore onboarding v2](../chore-onboarding-v2/README.md) has shipped. The phases below then run in order.
+Status: **designed, not built** (2026-10-28). A plan and a gap map. Nothing here is built until [Chore onboarding v2](../../features/chore-onboarding.md) has shipped. The phases below then run in order.
 
 Purpose: one real business is walked through Athena step by step, and every step she cannot take today becomes a named feature. The business is a YouTube channel that publishes music videos for good Suno tracks by creators nobody has heard of. It is a real need, and it exercises everything a long-running Project has to do: delegated correspondence, recurring web checks, the owner's judgement, files moving both ways, a peer app doing heavy work, a gated publish, and a report of where things stand.
 

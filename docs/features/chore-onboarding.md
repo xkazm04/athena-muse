@@ -1,0 +1,106 @@
+# Chore onboarding - describe a need, watch it drawn, test it, keep it
+
+Built 2026-10-29. Decisions: [ADR 0007](../adr/0007-a-chore-is-written-in-conversation-and-tested-against-the-users-expectations.md) (and its amendment: `drop`, two views, comparison counts). Design history: `docs/concepts/chore-onboarding-v2/` in git history before the commit that added this page.
+
+## What it does
+
+A person opens the stage, says in their own words what they want handed off, and answers a few of
+Athena's questions while a sketch of the process (apps, steps, what waits for their signature, what
+they get) draws itself in the main window. Once the sketch is agreed, Athena writes a real chore with
+invented practice apps, previews the cards she expects to file, and the person's yes and no answers
+become the chore's answer key. A live test run on the practice apps is scored against that key; the
+person accepts it and the chore is saved as theirs, with a Project ready to use. "Not quite" returns
+to the sketch with the gaps named.
+
+Doors: the first run's `ready` step, and "Describe a need" on Projects and on Chores. The main window
+shows one frame at a time with no page scroll; the history lives in her small window, because a draft
+is a Project and every stage reply is an ordinary turn in it.
+
+## How it works
+
+**Flow** (`DraftStep`, owned by the flow, not the model): `describe -> shape -> author -> preview -> rehearse -> verdict -> saved`. `shape` is re-entered from `author` (unrepairable), `preview` and `verdict` ("not quite").
+
+| Step | What happens | Done when |
+|---|---|---|
+| describe | The person types the need; Athena proposes a project name. | The first stage turn returns. |
+| shape | Frames: her line + sketch ops + at most one `ask`. | Coverage gate, or "That's enough, write it". |
+| author | Athena writes `playbook.json` and `world.json` from the sketch, using the nearest library chore as an example; `load_chore` validates, up to 2 repairs. | The validator. |
+| preview | One call lists the cards she would file (`ExpectedCard`); the person marks each yes/no and may add "she must never" lines. | Every card marked. |
+| rehearse | `truth.json` is written from the marks; the bench runner plays the phases on a throwaway daemon and scores against the key. | The run ends. |
+| verdict | Score in plain words, her cards beside the marks. "This is it" or "Not quite". | The person. |
+| saved | The chore is copied to `<data_dir>/chores/<id>/`; the Project's brief and apps are set. | - |
+
+**Rubric** (seven slots: `need`, `apps`, `inputs`, `steps`, `hand`, `output`, `never`). Coverage per
+slot is 0 / 0.5 / 1, computed from the sketch, never claimed by the model: 1 holds a node the person
+confirmed, 0.5 only Athena's proposals. Agreed when `need`, `apps`, `hand`, `output` are 1 and the rest
+0.5 or skipped with a stated default. At most 2 follow-ups per slot; the exit is visible from frame one.
+Since [ADR 0010](../adr/0010-one-shaping-conversation-two-rubrics.md) this is `CHORE_RUBRIC`, one of two rubrics on the same drafts machinery.
+
+**The key.** yes -> eligible, no -> trap, a never line -> forbidden. Athena never writes her own key.
+The sketch is an abstraction for the person's understanding, not the chore's source; the preview runs
+on the written files, so what the person confirms is the real chore.
+
+**Two views behind one switch.** The contest verdict (2026-10-28) kept both winners: **Drawing**
+(lanes, a never-fence, the question pinned as a note) and **Orbit** (the question card at the centre,
+six zones, coverage arcs). One store and one set of shared parts under `apps/desktop/src/main/stage/`,
+each view's CSS scoped under its own `[data-stage-view]` root. The choice is kept per device
+(`athena.stage.view`, default Drawing); `Draft.views` counts turns per view as the evidence for which
+proves better. Pencil (dashed violet) is her guess, ink is agreed, a pink edge is the person's words.
+
+**Wire** (`src/athena/contracts.py` / `apps/desktop/src/lib/contract.ts`): `POST /drafts {need}`,
+`GET /drafts/{id}`, `POST /drafts/{id}/say` (NDJSON `TurnEvent` + `sketch` / `ask` / `coverage`),
+`/confirm`, `/drop`, `/write` (`AuthorEvent`), `/preview`, `PUT /drafts/{id}/key`, `/rehearse`
+(`RehearsalEvent`), `/verdict`, `DELETE /drafts/{id}`. Table `drafts`, erased with its space. `Surface`
+gains `design` and `rehearsal`; `ActionName` gains `sketch` and `ask` (auto). User chores carry
+`origin: "yours"` and never reach `playbooks/`.
+
+**Authoring rule found live.** A world must read first and act last; a world whose last phase cannot
+act goes back for repair (the first live run scored 1 of 5 without it, 5 of 5 with it).
+
+## Measured
+
+On the built app against a real daemon, Claude Code (Sonnet), the staged need from describe to keep
+(`scripts/stage_seam.py`, one run each, est. cost from the ledger):
+
+| view | turns to agreed | expected cards | test run | cost |
+|---|---|---|---|---|
+| Drawing (before the phase fix) | 6 | 5 | `short`, 1 of 5 | $0.80 est. |
+| Orbit | 5 | 5 | `exceeds`, 5 of 5 | $0.48 est. |
+| Drawing (after the phase fix) | 6 | 5 | `exceeds`, 5 of 5 | $0.51 est. |
+
+Every run: no page scroll, no console error, her window showed the draft's history, the kept chore
+listed as `yours`. Fidelity against both winners' captured contracts: 0 deviations (Drawing 11 roles,
+Orbit 9). On the scripted engine the stage walks to agreed and then says plainly that a simulated
+Athena cannot write a chore.
+
+## Run it
+
+```bash
+ATHENA_ENGINE=claude_code pnpm -C apps/desktop app   # then "Describe a need"
+SEAM_PORT=8767 python scripts/stage_seam.py drawing claude_code runs/seam-drawing   # the live seam; or orbit / scripted
+```
+
+## Known gaps (none blocks use)
+
+- Orbit at 1024x700: a long "she must never" line wraps into a narrow column beside its badge.
+- The verdict's reason line repeats the bench's wording ("found 1 of 5 items, expected 80%") beside a green dot that reads as success.
+- The undo toast is drawn by the shell, so neither view can skin it.
+- Two `data-role="note"` meanings (Drawing's pinned question, the check card's why-not field): rename the latter to `mark-note`.
+- The preview harness's `.pv h2` style leaks into stage headings there (harness only).
+- Not ported from the winners: the typewriter on her line, the echo flying to its piece, the fade of a rubbed-out piece, and "Stop" on a slow reply (the daemon has no cancel route).
+- `Draft.views` counts exist but no screen compares them across kept chores yet.
+- Not in v1: senses in authored chores, running against the person's real apps, voice.
+
+## Later, on the Muse API
+
+- **Describe with media:** a photo of the paper pile, a screenshot of the app, or a voice note pre-fills `apps`, `inputs` and `need` (Blue Hour's `look` step, reborn).
+- **Senses in authored chores:** the person's own sample (a scanned letter, a recorded call, a walk-through video) becomes the chore's sense fixtures, so the test run reads what they actually have.
+- **Witnesses:** a screenshot of the practice app on each card, and SAM where offered.
+- **Voice on the stage:** Athena speaks her line and the person answers by voice; her window stays the record.
+- **Engine swap:** `ATHENA_ENGINE=muse`. The stage, drafts and rehearsal are engine-agnostic by construction (ADR 0006).
+
+## Owner's calls still open
+
+- The view names (Drawing, Orbit) and the default view.
+- Whether the per-view counts are enough evidence, or a short note after each kept chore should join them.
+- The staged need stays the after-school club's invoice unless swapped for one of the owner's own.
