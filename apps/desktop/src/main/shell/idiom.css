@@ -1,0 +1,372 @@
+/* A depth's parts (ADR 0016), after the variant: the title row, area tabs with counts, toggle chips
+ * with a coloured dot, a segmented order, the "shown" line, and the table with eyebrow heads, light
+ * row rules and figures to the right. Every place composes these; sizes from --fs-* tokens only. */
+
+.m-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+/* ---- the title row: a heavy title, its one-line summary, one primary action at the right ---- */
+.m-depth-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2) 20px;
+  margin-bottom: var(--sp-5);
+}
+.m-depth-head__totals {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--fs-md);
+}
+.m-depth-head__act {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+.m-depth-head--marquee {
+  display: grid;
+  gap: var(--sp-1);
+}
+
+/* ---- area tabs: a glyph, a word, and the count riding the top edge ---- */
+.m-areas {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding-top: var(--sp-3);
+}
+.m-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 20px 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-card);
+  background: var(--card-bg);
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) ease,
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
+}
+.m-area:hover:not(:disabled) {
+  color: var(--foreground);
+  border-color: var(--border-emphasis);
+  background: var(--hover-wash);
+}
+.m-area[aria-current="page"] {
+  color: var(--foreground);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.m-area:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.m-area__glyph {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-area[aria-current="page"] .m-area__glyph {
+  color: var(--accent-text);
+}
+.m-area__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.m-area__count {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  min-width: 28px;
+  padding: 1px var(--sp-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transform: translate(-50%, -50%);
+}
+.m-area[aria-current="page"] .m-area__count {
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+/* ---- the filter bar: toggle chips at the left, the segmented order at the right ---- */
+.m-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-5);
+  margin: 20px 0 var(--sp-2);
+}
+.m-jobs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.m-chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  background: var(--card-bg);
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
+}
+.m-chip-toggle:hover {
+  border-color: var(--border-emphasis);
+}
+.m-chip-toggle[aria-pressed="true"] {
+  background: var(--card-raised);
+  border-color: var(--tone, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--tone, var(--accent));
+  font-weight: 600;
+}
+.m-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--tone, var(--accent));
+}
+.m-segmented {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  background: var(--recessed);
+}
+.m-segmented button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) ease,
+    color var(--dur-fast) ease;
+}
+.m-segmented button[aria-pressed="true"],
+.m-segmented button[aria-selected="true"] {
+  background: var(--card-raised);
+  color: var(--foreground);
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+}
+.m-shown {
+  margin: var(--sp-4) 0 var(--sp-1);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}
+
+/* ---- the table: eyebrow heads, light rules, figures to the right ---- */
+.m-ledger {
+  overflow-x: auto;
+}
+.m-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.m-grid th {
+  padding: 10px var(--sp-3);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.m-grid td {
+  height: 52px;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  transition: background var(--dur-fast) ease;
+}
+.m-grid tbody tr:hover td {
+  background: var(--hover-wash);
+}
+.m-grid .m-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.m-grid tbody tr[aria-selected="true"] td {
+  background: var(--card-raised);
+}
+.m-grid tbody tr[aria-selected="true"] td:first-child {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.m-grid caption {
+  caption-side: bottom;
+}
+/* a row's name: the button that opens it, in the row's own words */
+.m-rowname {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.m-rowname:hover {
+  color: var(--accent-text);
+}
+.m-job {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  color: var(--foreground);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.m-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+.m-figure__n {
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.m-figure__per {
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}
+
+/* ---- a page inside a depth: the way back, and figures as cards (the variant's topic page) ---- */
+.m-crumb {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-3) 6px var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-interactive);
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+.m-crumb:hover {
+  background: var(--hover-wash);
+}
+.m-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.m-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-card);
+  background: var(--card-bg);
+}
+.m-kpi dt,
+.m-kpi__label {
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.m-kpi dd,
+.m-kpi__n {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a short window: the tabs and the title row give up some air so the table stays in view */
+@media (max-height: 740px), (max-width: 1100px) {
+  .m-depth-head {
+    margin-bottom: var(--sp-3);
+  }
+  .m-area {
+    padding: 16px 4px 8px;
+    gap: 4px;
+  }
+  .m-area__glyph {
+    width: 28px;
+    height: 28px;
+  }
+  .m-filterbar {
+    margin-top: var(--sp-3);
+  }
+  .m-shown {
+    margin-top: var(--sp-2);
+  }
+  .m-grid td {
+    height: 46px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-area,
+  .m-chip-toggle,
+  .m-segmented button,
+  .m-grid td {
+    transition: none;
+  }
+}

@@ -6,6 +6,50 @@ import type { BenchWord, ChoreSummary, EngineId, FeaturedStatus, ProofOp, SenseN
 /** A `.badge` data-tone. `undefined` is the plain, muted badge. */
 export type Tone = "success" | "info" | "warning" | "error" | undefined;
 
+/** The library's areas, as `playbooks/taxonomy.json` names them (a test holds the two equal). `short`
+ * is the tab's word; the full label is its tooltip. */
+export const AREAS = [
+  { id: "health", label: "Health & clinics", short: "Health" },
+  { id: "freight", label: "Freight & trade", short: "Freight" },
+  { id: "commerce", label: "Commerce & payments", short: "Commerce" },
+  { id: "employment", label: "Employment & payroll", short: "Employment" },
+  { id: "consumer", label: "Consumer & money", short: "Consumer" },
+  { id: "benefits", label: "Benefits & aid", short: "Benefits" },
+  { id: "housing", label: "Housing & vehicles", short: "Housing" },
+  { id: "public", label: "Public funding & compliance", short: "Public funding" },
+  { id: "construction", label: "Construction & trades", short: "Construction" },
+  { id: "family", label: "Family & estate", short: "Family" },
+] as const;
+
+/** The jobs a chore does, as `playbooks/taxonomy.json` names them, with the dot each wears. */
+export const JOBS = [
+  { id: "recover", label: "Recover money", tone: "var(--status-success)" },
+  { id: "claim", label: "Claim a benefit", tone: "var(--status-info)" },
+  { id: "contest", label: "Win a dispute", tone: "var(--status-warning)" },
+  { id: "comply", label: "Stay compliant", tone: "var(--role-agent)" },
+] as const;
+
+export const jobOf = (id: string) => JOBS.find((j) => j.id === id);
+export const areaOf = (id: string) => AREAS.find((a) => a.id === id);
+
+/** The catalogue's orders: the arrangement below, the most money found on the bench, the most found. */
+export type Order = "fit" | "value" | "found";
+export const ORDER_WORD: Record<Order, { word: string; hint: string }> = {
+  fit: { word: "Proven first", hint: "Proven on Meta first, then rehearsed, failing and not proven; featured before the rest." },
+  value: { word: "Most found", hint: "The money its latest bench run found on invented cases, highest first; not rehearsed last." },
+  found: { word: "Best recall", hint: "The share of eligible items its latest bench run found, highest first; not rehearsed last." },
+};
+
+/** The chores in one order; `fit` is `arrange` (featured first). */
+export function ordered(chores: ChoreSummary[], order: Order): ChoreSummary[] {
+  const { featured, others } = arrange(chores);
+  const fit = [...featured, ...others];
+  if (order === "fit") return fit;
+  const key = (c: ChoreSummary) =>
+    !c.bench ? -1 : order === "value" ? c.bench.value_found_usd : c.bench.eligible ? c.bench.found / c.bench.eligible : 0;
+  return fit.map((c, i) => ({ c, i })).sort((a, b) => key(b.c) - key(a.c) || a.i - b.i).map((x) => x.c);
+}
+
 export const SENSE_WORD: Record<SenseName, string> = {
   paper: "Paper",
   call: "Call",

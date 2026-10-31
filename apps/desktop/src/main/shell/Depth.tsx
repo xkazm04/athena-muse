@@ -12,6 +12,7 @@ import { isTwinRoute, type Route } from "../route";
 import { useMain } from "../store";
 import { useTwins } from "../twins/store";
 import "./depth.css";
+import "./idiom.css";
 
 /** The five places, in the dock's order and the surface's. */
 export const PLACES = [
@@ -118,7 +119,7 @@ function useNames(): Names {
   const twins = useTwins((s) => s.page?.twins);
   return {
     space: (id) => spaces.find((s) => s.id === id)?.name ?? "A project",
-    chore: (id) => chores.find((c) => c.id === id)?.short_title ?? "A chore",
+    chore: (id) => (Array.isArray(chores) ? chores : []).find((c) => c.id === id)?.short_title ?? "A chore",
     twin: (id) => twins?.find((t) => t.id === id)?.name ?? "A twin",
   };
 }

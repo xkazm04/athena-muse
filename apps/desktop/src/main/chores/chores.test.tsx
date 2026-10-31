@@ -6,11 +6,24 @@ import { Shell } from "../App";
 import { parseHash, toHash, type Route } from "../route";
 import { resetMain, useMain } from "../store";
 import { ChoreDetailView } from "./ChoreScene";
-import { Catalogue, ChoreTile } from "./Chores";
+import { Catalogue, ChoreRow, totals } from "./Chores";
 import { FIXTURE_CHORES, fixtureBench, fixtureChore, fixtureDetail } from "./fixtures";
-import { arrange, backendLines, passTone, STATUS, usd, VERDICT } from "./words";
+import { AREAS, JOBS, arrange, backendLines, ordered, passTone, STATUS, usd, VERDICT } from "./words";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 vi.mock("../../lib/api");
+
+/** A row is a table row: render it inside one. */
+function row(chore: Parameters<typeof ChoreRow>[0]["chore"], onOpen: (id: string) => void = () => undefined) {
+  return render(
+    <table>
+      <tbody>
+        <ChoreRow chore={chore} onOpen={onOpen} />
+      </tbody>
+    </table>,
+  );
+}
 vi.mock("../../lib/windows");
 vi.mock("../../theme/Backdrop", () => ({ Backdrop: () => null }));
 vi.mock("../../lib/daemon", async (importOriginal) => ({
@@ -68,7 +81,7 @@ describe("catalogue order and colour", () => {
   it("never gives a rehearsed chore the success colour, whatever its bench says", () => {
     for (const verdict of ["exceeds", "meets", "short"] as const) {
       const chore = fixtureChore({ featured: "rehearsed", bench: fixtureBench({ verdict }) });
-      const { container } = render(<ChoreTile chore={chore} onOpen={() => undefined} />);
+      const { container } = row(chore);
       expect(container.querySelector('[data-tone="success"]')).toBeNull();
       cleanup();
     }
@@ -80,31 +93,69 @@ describe("catalogue order and colour", () => {
   });
 
   it("a proven chore says so in green", () => {
-    render(<ChoreTile chore={fixtureChore({ featured: "proven" })} onOpen={() => undefined} />);
+    row(fixtureChore({ featured: "proven" }));
     expect(screen.getByText("Proven on Meta").getAttribute("data-tone")).toBe("success");
   });
 });
 
-describe("tile", () => {
-  it("shows short title, promise with its tooltip, senses, status and the bench verdict", () => {
+describe("row", () => {
+  it("shows short title, promise as its tooltip, senses, job, status, the bench verdict and what it found", () => {
     const onOpen = vi.fn();
     const chore = fixtureChore({ senses: ["paper", "call"] });
-    render(<ChoreTile chore={chore} onOpen={onOpen} />);
-    expect(screen.getByText(chore.short_title)).toBeTruthy();
-    expect(screen.getByText(chore.promise).getAttribute("title")).toBe(chore.promise);
-    expect(screen.getByText("Paper")).toBeTruthy();
-    expect(screen.getByText("Call")).toBeTruthy();
+    row(chore, onOpen);
+    const name = screen.getByRole("button", { name: chore.short_title });
+    expect(name.getAttribute("title")).toBe(chore.promise);
+    expect(screen.getByText("Paper · Call")).toBeTruthy();
+    expect(screen.getByText("Win a dispute")).toBeTruthy();
     expect(screen.getByText("Rehearsed on fixtures")).toBeTruthy();
     expect(screen.getByText("Exceeds the bar")).toBeTruthy();
     expect(screen.getByText("found 10 of 12, Claude Code")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button"));
+    expect(screen.getByText("$2,880")).toBeTruthy();
+    fireEvent.click(name);
     expect(onOpen).toHaveBeenCalledWith("paper-flip-through");
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByText("Win a dispute"));
+    expect(onOpen).toHaveBeenCalledTimes(2);
   });
 
-  it("a tile with no bench run says it is not rehearsed", () => {
-    render(<ChoreTile chore={fixtureChore({ bench: undefined, featured: "unproven" })} onOpen={() => undefined} />);
+  it("a row with no bench run says it is not rehearsed", () => {
+    row(fixtureChore({ bench: undefined, featured: "unproven" }));
     expect(screen.getByText("Not rehearsed yet")).toBeTruthy();
     expect(screen.getByText("Not proven yet")).toBeTruthy();
+  });
+});
+
+describe("catalogue filters and order", () => {
+  it("names the library's areas and jobs as playbooks/taxonomy.json does", () => {
+    const path = resolve(process.cwd(), "../../playbooks/taxonomy.json");
+    const taxonomy = JSON.parse(readFileSync(path, "utf8")) as { categories: { id: string; label: string }[]; jobs: { id: string; label: string }[] };
+    expect(AREAS.map(({ id, label }) => ({ id, label }))).toEqual(taxonomy.categories);
+    expect(JOBS.map(({ id, label }) => ({ id, label }))).toEqual(taxonomy.jobs);
+  });
+
+  it("counts each area, narrows by area and by job, and says what is shown", () => {
+    render(<Catalogue chores={FIXTURE_CHORES} load="ready" onOpen={() => undefined} />);
+    expect(screen.getByRole("button", { name: "All areas, 4" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("button", { name: "Freight & trade, 0" })).toHaveProperty("disabled", true);
+    const health = FIXTURE_CHORES.filter((c) => c.category === "health").length;
+    fireEvent.click(screen.getByRole("button", { name: `Health & clinics, ${health}` }));
+    expect(screen.getByText(`${health} chores in Health & clinics`)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "All areas, 4" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stay compliant" }));
+    const comply = FIXTURE_CHORES.filter((c) => c.job === "comply");
+    expect(screen.getAllByRole("row").length - 1).toBe(comply.length);
+  });
+
+  it("orders by the money and the share found on the bench, the unrehearsed last", () => {
+    const by = (o: "value" | "found") => ordered(FIXTURE_CHORES, o).map((c) => c.id);
+    expect(by("value").at(-1)).toBe("renovation-witness");
+    expect(by("found").at(-1)).toBe("renovation-witness");
+    const values = ordered(FIXTURE_CHORES, "value").filter((c) => c.bench).map((c) => c.bench!.value_found_usd);
+    expect(values).toEqual([...values].sort((a, b) => b - a));
+  });
+
+  it("totals the library beside the title", () => {
+    expect(totals(FIXTURE_CHORES)).toMatch(/^4 chores · 1 proven on Meta · \$[\d,.]+ found in bench runs on invented cases$/);
   });
 });
 

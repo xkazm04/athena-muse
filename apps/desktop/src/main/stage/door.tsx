@@ -5,9 +5,11 @@ import { toHash } from "../route";
 
 export const DESCRIBE_A_NEED = "Describe a need";
 
-export function DescribeDoor({ push = false }: { push?: boolean }) {
+/** `primary`: the depth's one primary action (the Chores title row, ADR 0016). */
+export function DescribeDoor({ push = false, primary = false }: { push?: boolean; primary?: boolean }) {
+  const className = ["btn", primary && "btn-primary", push && "m-push"].filter(Boolean).join(" ");
   return (
-    <a href={toHash({ view: "stage", id: null })} className={push ? "btn m-push" : "btn"} data-role="describe-door">
+    <a href={toHash({ view: "stage", id: null })} className={className} data-role="describe-door">
       {DESCRIBE_A_NEED}
     </a>
   );

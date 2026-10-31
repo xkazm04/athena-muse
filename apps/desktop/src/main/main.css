@@ -561,72 +561,36 @@ p.m-muted {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- chores ---- */
+/* ---- chores: the variant's table (ADR 0016; the parts are in shell/idiom.css) ---- */
 .m-chores {
-  display: grid;
-  gap: var(--sp-4);
-  max-width: 1080px;
+  max-width: 1240px;
   margin: 0 auto;
 }
-.m-chores__band {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--sp-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.m-chores__table th:nth-child(2) {
+  width: 15%;
 }
-.m-chores__band > li {
-  display: grid;
+.m-chores__table th:nth-child(3) {
+  width: 17%;
 }
-.m-chores__tile {
-  display: grid;
-  align-content: start;
-  gap: var(--sp-2);
-  min-width: 0;
-  min-height: 168px;
-  padding: var(--sp-4);
-  border: 1px solid var(--border-default);
-  border-radius: var(--r-card);
-  background: var(--card-bg);
-  box-shadow: var(--shadow-1);
-  color: var(--foreground);
-  font: inherit;
-  text-align: left;
+.m-chores__table th:nth-child(4) {
+  width: 27%;
+}
+.m-chores__table th:nth-child(5) {
+  width: 13%;
+}
+.m-chores__table tbody tr {
   cursor: pointer;
-  transition:
-    border-color var(--dur-fast) ease,
-    transform var(--dur-fast) ease;
 }
-.m-chores__tile:hover,
-.m-chores__tile:focus-visible {
-  border-color: var(--border-emphasis);
-  transform: translateY(-2px);
+.m-chores__senses {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
 }
-.m-chores__ghost {
-  background: var(--recessed);
-  box-shadow: none;
-  cursor: default;
-}
-.m-chores__name {
-  font-size: var(--fs-md);
-  font-weight: 600;
-  line-height: var(--lh-tight);
-}
-.m-chores__promise {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.m-chores__senses,
 .m-chores__bench {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
-}
-.m-chores__status {
-  justify-self: start;
 }
 .m-chores__dot {
   flex: none;
@@ -635,32 +599,75 @@ p.m-muted {
   border-radius: 50%;
   background: currentColor;
 }
-.m-chores__list {
+.m-chores__ghosts {
   display: grid;
   gap: var(--sp-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  margin-top: var(--sp-5);
 }
-.m-chores__row {
-  display: grid;
-  gap: var(--sp-1);
-  width: 100%;
-  min-width: 0;
-  padding: var(--sp-2) var(--sp-3);
-  border: 0;
-  border-radius: var(--r-md);
+.m-chores__ghost {
+  height: 44px;
+  border-radius: var(--r-interactive);
   background: var(--recessed);
+}
+/* one chore, after the variant's topic page: the chore and its bench side by side, the proofs below */
+.m-chore {
+  display: grid;
+  gap: var(--sp-4);
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.m-chore__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+  gap: var(--sp-6);
+  align-items: start;
+}
+.m-chore__about,
+.m-chore__bench-sec {
+  display: grid;
+  gap: var(--sp-3);
+}
+.m-chore__title {
+  margin: 0;
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.m-chore__promise {
   color: var(--foreground);
-  font: inherit;
-  text-align: left;
+}
+.m-chore__about .m-chore__facts {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.m-chore__brief {
+  color: var(--muted-foreground);
+}
+.m-chore__brief summary {
+  color: var(--accent-text);
+  font-weight: 600;
   cursor: pointer;
 }
-.m-chores__row:hover {
-  background: var(--hover-wash);
+.m-chore__brief[open] summary {
+  margin-bottom: var(--sp-2);
 }
-.m-chore {
-  max-width: 1080px;
+.m-chore__brief p {
+  margin: 0 0 var(--sp-2);
+}
+.m-chore__proofs th:nth-child(1) {
+  width: 80px;
+}
+.m-chore__proofs th:nth-child(2) {
+  width: 170px;
+}
+.m-chore__proofs th:nth-child(4),
+.m-chore__proofs th:nth-child(5),
+.m-chore__proofs th:nth-child(6) {
+  width: 104px;
+}
+.m-chore__proofs th:nth-child(7),
+.m-chore__proofs th:nth-child(8) {
+  width: 96px;
 }
 .m-chore__facts {
   display: grid;
@@ -682,18 +689,19 @@ p.m-muted {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.m-chore__brief {
-  display: grid;
-  gap: var(--sp-2);
-}
 .m-chore__brief ul,
 .m-chore__reasons {
   margin: 0;
   padding-left: var(--sp-5);
 }
-.m-table td.m-chore__question {
-  min-width: 240px;
+.m-grid td.m-chore__question {
   white-space: normal;
+}
+@media (max-width: 1100px) {
+  .m-chore__hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-4);
+  }
 }
 .m-chore__note summary {
   color: var(--accent-text);
@@ -739,12 +747,5 @@ p.m-muted {
   .m-planet:hover,
   .m-planet:focus-visible {
     transform: translate(-50%, -50%);
-  }
-  .m-chores__tile {
-    transition: none;
-  }
-  .m-chores__tile:hover,
-  .m-chores__tile:focus-visible {
-    transform: none;
   }
 }

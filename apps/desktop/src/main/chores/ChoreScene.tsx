@@ -8,10 +8,12 @@ import {
   SENSE_WORD,
   STATUS,
   VERDICT,
+  areaOf,
   backendLines,
   benchCommand,
   count,
   figure,
+  jobOf,
   minutes,
   passTone,
   usd,
@@ -38,10 +40,17 @@ export function ChoreScene({ id }: { id: string }) {
     void load();
   }, [load]);
 
+  // the bar's trail names the chore from the library; a chore opened by its address reads it once
+  const libraryLoad = useMain((s) => s.choresLoad);
+  const loadChores = useMain((s) => s.loadChores);
+  useEffect(() => {
+    if (libraryLoad === "idle") void loadChores();
+  }, [libraryLoad, loadChores]);
+
   return (
-    <div className="m-level m-chore">
-      <button type="button" className="btn btn-quiet m-back" onClick={() => navigate({ view: "chores" })}>
-        All chores
+    <div className="m-chore">
+      <button type="button" className="m-crumb" onClick={() => navigate({ view: "chores" })}>
+        <span aria-hidden="true">&larr;</span> All chores
       </button>
       {problem && (
         <div className="plane m-problem" role="alert">
@@ -61,51 +70,57 @@ export function ChoreScene({ id }: { id: string }) {
   );
 }
 
-/** Pure: the preview renders it with fixtures. */
+/** Pure: the preview renders it with fixtures. After the variant's topic page (ADR 0016): the chore at
+ * the left, its bench at the right, the proofs in a table under both. */
 export function ChoreDetailView({ detail }: { detail: ChoreDetail }) {
   const { chore } = detail;
   const status = STATUS[chore.featured];
+  const area = areaOf(chore.category);
+  const job = jobOf(chore.job);
   return (
     <>
-      <section className="plane m-section">
-        <p className="m-eyebrow">Chore</p>
-        <h1 className="m-title">{chore.title}</h1>
-        <p className="m-lead">{chore.promise}</p>
-        <div className="m-row">
-          {chore.senses.map((s) => (
-            <span key={s} className="badge">
-              {SENSE_WORD[s]}
+      <div className="m-chore__hero">
+        <section className="m-chore__about">
+          <p className="eyebrow">{[area?.label ?? "Chore", job?.label].filter(Boolean).join(" · ")}</p>
+          <h1 className="m-chore__title">{chore.title}</h1>
+          <p className="m-lead m-chore__promise">{chore.promise}</p>
+          <div className="m-row">
+            {chore.senses.map((s) => (
+              <span key={s} className="badge">
+                {SENSE_WORD[s]}
+              </span>
+            ))}
+            <span className="badge" data-tone={status.tone}>
+              <i className="m-chores__dot" aria-hidden="true" />
+              {status.word}
             </span>
-          ))}
-          <span className="badge" data-tone={status.tone}>
-            <i className="m-chores__dot" aria-hidden="true" />
-            {status.word}
-          </span>
-        </div>
-        <dl className="m-chore__facts">
-          <div>
-            <dt>For</dt>
-            <dd>{detail.persona}</dd>
           </div>
-          <div>
-            <dt>Works in</dt>
-            <dd>
-              <ul className="m-chips">
-                {detail.apps.map((a) => (
-                  <li key={a.app_id} className="badge">
-                    {a.name}
-                  </li>
-                ))}
-              </ul>
-            </dd>
-          </div>
-        </dl>
-        <div className="m-chore__brief">
-          <Brief text={detail.brief} />
-        </div>
-      </section>
+          <dl className="m-chore__facts">
+            <div>
+              <dt>For</dt>
+              <dd>{detail.persona}</dd>
+            </div>
+            <div>
+              <dt>Works in</dt>
+              <dd>
+                <ul className="m-chips">
+                  {detail.apps.map((a) => (
+                    <li key={a.app_id} className="badge">
+                      {a.name}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          </dl>
+          <details className="m-chore__brief">
+            <summary>The whole brief</summary>
+            <Brief text={detail.brief} />
+          </details>
+        </section>
+        <Bench id={chore.id} bench={chore.bench} />
+      </div>
       <Proofs proofs={detail.proofs} backends={detail.backends} featured={chore.featured} />
-      <Bench id={chore.id} bench={chore.bench} />
     </>
   );
 }
@@ -121,7 +136,7 @@ function Proofs({
 }) {
   const lines = backendLines(backends);
   return (
-    <section className="plane m-section" aria-labelledby="chore-proofs">
+    <section className="m-section m-chore__proofs-sec" aria-labelledby="chore-proofs">
       <h2 id="chore-proofs" className="m-h2">
         Proofs
       </h2>
@@ -129,8 +144,8 @@ function Proofs({
       {proofs.length === 0 ? (
         <p className="m-muted">No proofs measured yet.</p>
       ) : (
-        <div className="m-table-wrap">
-          <table className="m-table m-chore__proofs">
+        <div className="m-ledger">
+          <table className="m-grid m-chore__proofs">
             <thead>
               <tr>
                 <th scope="col">Sense</th>
@@ -188,7 +203,7 @@ function Proofs({
 function Bench({ id, bench }: { id: string; bench?: BenchSummary }) {
   if (!bench) {
     return (
-      <section className="plane m-section" aria-labelledby="chore-bench">
+      <section className="m-section m-chore__bench-sec" aria-labelledby="chore-bench">
         <h2 id="chore-bench" className="m-h2">
           Bench
         </h2>
@@ -200,13 +215,24 @@ function Bench({ id, bench }: { id: string; bench?: BenchSummary }) {
   }
   const verdict = VERDICT[bench.verdict];
   return (
-    <section className="plane m-section" aria-labelledby="chore-bench">
+    <section className="m-section m-chore__bench-sec" aria-labelledby="chore-bench">
       <h2 id="chore-bench" className="m-h2">
         Bench
         <span className="badge" data-tone={verdict.tone}>
           {verdict.word}
         </span>
       </h2>
+      <dl className="m-kpis">
+        <Fact term="Found" kpi>
+          {bench.found} of {bench.eligible}
+        </Fact>
+        <Fact term="Value found" kpi>
+          {usd(bench.value_found_usd)} of {usd(bench.value_total_usd)}
+        </Fact>
+        <Fact term="Time" kpi>
+          {minutes(bench.minutes)}
+        </Fact>
+      </dl>
       {bench.reasons.length > 0 && (
         <ul className="m-chore__reasons">
           {bench.reasons.map((r, i) => (
@@ -215,17 +241,10 @@ function Bench({ id, bench }: { id: string; bench?: BenchSummary }) {
         </ul>
       )}
       <dl className="m-chore__facts m-chore__bench">
-        <Fact term="Found">
-          {bench.found} of {bench.eligible}
-        </Fact>
-        <Fact term="Value found">
-          {usd(bench.value_found_usd)} of {usd(bench.value_total_usd)}
-        </Fact>
         <Fact term="False claims">{bench.false_claims}</Fact>
         <Fact term="Duplicates">{bench.duplicates}</Fact>
         <Fact term="Traps filed">{bench.traps_filed}</Fact>
         <Fact term="Turns">{count(bench.turns, "turn", "turns")}</Fact>
-        <Fact term="Time">{minutes(bench.minutes)}</Fact>
         <Fact term="Cost">{bench.cost_usd === undefined ? "unpriced" : `est. ${usd(bench.cost_usd)}`}</Fact>
       </dl>
       <p className="m-muted">
@@ -235,9 +254,9 @@ function Bench({ id, bench }: { id: string; bench?: BenchSummary }) {
   );
 }
 
-function Fact({ term, children }: { term: string; children: ReactNode }) {
+function Fact({ term, children, kpi = false }: { term: string; children: ReactNode; kpi?: boolean }) {
   return (
-    <div>
+    <div className={kpi ? "m-kpi" : undefined}>
       <dt>{term}</dt>
       <dd>{children}</dd>
     </div>
