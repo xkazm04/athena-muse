@@ -14,7 +14,7 @@ import { isTwinRoute } from "./route";
 import { SettingsView } from "./settings/Settings";
 import { Stage } from "./stage/Stage";
 import { TwinsView } from "./twins/Twins";
-import { DepthFrame } from "./shell/Depth";
+import { DepthFrame, InBar } from "./shell/Depth";
 import { Surface } from "./shell/Surface";
 import { reasonOf, useMain } from "./store";
 
@@ -119,7 +119,7 @@ export function Shell() {
     // The twins page fills the body; a twin's setup keeps its own header, like the stage.
     return (
       <DepthFrame route={route}>
-        <TwinsView route={route} top={(extra) => (extra ? <div className="m-subbar">{extra}</div> : null)} navigate={navigate} />
+        <TwinsView route={route} top={(extra) => (extra ? <InBar>{extra}</InBar> : null)} navigate={navigate} />
       </DepthFrame>
     );
   }

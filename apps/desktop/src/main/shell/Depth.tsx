@@ -3,7 +3,8 @@
 // deep you are, and a dock at the bottom holds her pill and the five places. The surface (home) has
 // no dock: its tiles are the places.
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { CORE } from "../../lib/contract";
 import { toggleAthena } from "../../lib/windows";
 import { Backdrop, Seal } from "../../theme";
@@ -192,12 +193,22 @@ export function Crumbs({ route, extra }: { route: Route; extra?: ReactNode }) {
         ))}
       </nav>
       <div className="m-bar__trailing">
+        <span id={BAR_SLOT} className="m-bar__slot" />
         {extra}
         <ProjectPill spaces={spaces} activeId={active} onSelect={(id) => void setActive(id)} />
         <Lamp />
       </div>
     </header>
   );
+}
+
+const BAR_SLOT = "m-bar-slot";
+
+/** Puts a page's own label (the twins' "Invented example") in the bar, beside the engine lamp. */
+export function InBar({ children }: { children: ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => setSlot(document.getElementById(BAR_SLOT)), []);
+  return slot ? createPortal(children, slot) : null;
 }
 
 /** The depth rail down the left: four marks, the reached ones lit, a bead at the current depth. */

@@ -142,7 +142,7 @@ export function Overview({ state, open, now, go, onRetry, onExample, onLive, onS
     <div className="ov" data-mode={mode}>
       <div className="ov__top">
         <div className="ov__title">
-          <h1>{w.title}</h1>
+          <h1 className="title-depth">{w.title}</h1>
           <p>{w.lead}</p>
         </div>
         <Stats stats={stats} rows={rows} mode={mode} before={state.before} />

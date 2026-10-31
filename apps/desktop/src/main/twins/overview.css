@@ -6,56 +6,62 @@
   gap: var(--sp-3);
 }
 /* ---------- title and stats ---------- */
+/* ADR 0016: the variant's depth head - a heavy title with its line beside it and the one primary
+ * action at the right - over a row of figure cards */
 [data-twins-view="passport"] .ov__top {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  grid-template-areas: "title stats" "new stats";
-  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title new" "stats stats";
   column-gap: var(--sp-4);
-  row-gap: var(--sp-2);
+  row-gap: var(--sp-4);
 }
 [data-twins-view="passport"] .ov__title {
   grid-area: title;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2) 20px;
+  min-width: 0;
 }
 [data-twins-view="passport"] .ov__title h1 {
   margin: 0;
-  font-size: var(--fs-xl);
-  font-weight: 600;
-  line-height: 1.1;
 }
 [data-twins-view="passport"] .ov__title p {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--muted-foreground);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-md);
   line-height: 1.4;
 }
 [data-twins-view="passport"] .ov__new {
   grid-area: new;
-  justify-self: start;
-  align-self: end;
-  min-height: 32px;
+  justify-self: end;
+  align-self: center;
+  min-height: 36px;
 }
 [data-twins-view="passport"] .ui-stats {
   grid-area: stats;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--sp-2);
+  gap: 10px;
 }
 [data-twins-view="passport"] .ui-stat {
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: var(--sp-1);
   min-width: 0;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--card-bg) 84%, transparent);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-card);
+  background: var(--card-bg);
 }
 [data-twins-view="passport"] .ui-stat__l {
   color: var(--muted-foreground);
   font-size: var(--fs-xs);
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 [data-twins-view="passport"] .ui-stat__v {
@@ -843,11 +849,13 @@
   max-width: 560px;
 }
 /* ---------- the ledger ---------- */
+/* the variant's table: no box, eyebrow heads over a rule, light rules between rows */
 [data-twins-view="passport"] .ledger {
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
 }
 [data-twins-view="passport"] .lg__row {
   display: grid;
@@ -874,10 +882,11 @@
   }
 }
 [data-twins-view="passport"] .lg__head {
-  padding-block: 7px;
+  padding-block: 10px;
   border-top: 0;
-  color: var(--muted);
-  font-size: var(--fs-xs);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -998,11 +1007,8 @@
 }
 /* ---------- 1024 wide, 700 tall ---------- */
 @media (max-width: 1180px) {
-  [data-twins-view="passport"] .ov__top {
-    grid-template-columns: 150px minmax(0, 1fr);
-  }
   [data-twins-view="passport"] .ov__title p {
-    display: none;
+    font-size: var(--fs-sm);
   }
   [data-twins-view="passport"] .shelf {
     grid-template-columns: minmax(0, 1fr) 272px;
@@ -1023,6 +1029,15 @@
   }
 }
 @media (max-height: 760px) {
+  [data-twins-view="passport"] .ov__top {
+    row-gap: var(--sp-2);
+  }
+  [data-twins-view="passport"] .ui-stat {
+    padding: var(--sp-2) var(--sp-3);
+  }
+  [data-twins-view="passport"] .ui-stat__u {
+    display: none;
+  }
   [data-twins-view="passport"] .booklet {
     gap: 4px;
     padding-block: var(--sp-2);

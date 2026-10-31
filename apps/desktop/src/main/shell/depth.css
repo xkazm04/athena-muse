@@ -129,11 +129,6 @@
   margin-left: auto;
   color: var(--muted-foreground);
 }
-.m-subbar {
-  display: flex;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-4) var(--sp-2);
-}
 
 /* ---- the rail: how deep you are ---- */
 .m-rail {

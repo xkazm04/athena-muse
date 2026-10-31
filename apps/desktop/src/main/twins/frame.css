@@ -23,17 +23,19 @@
 [data-twins-view="passport"] button {
   font-family: inherit;
 }
+/* inside the app's frame (ADR 0016) the setup's own row carries only what the bar does not: what is
+ * being set up, the simulated label, her window and the way back; no rule, the water shows through */
 [data-twins-view="passport"] .tw-top {
   position: relative;
   z-index: var(--tw-z-30);
-  height: 56px;
+  height: 48px;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   padding: 0 var(--sp-4);
-  border-bottom: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--background) 72%, transparent);
-  backdrop-filter: blur(12px);
+}
+[data-twins-view="passport"] .tw-top .tw-brand {
+  display: none;
 }
 [data-twins-view="passport"] .tw-brand {
   display: inline-flex;
