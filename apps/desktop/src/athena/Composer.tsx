@@ -1,4 +1,4 @@
-import { forwardRef, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { TEXT_MAX } from "../lib/contract";
 import { useHer } from "./store";
 
@@ -14,6 +14,15 @@ export const Composer = forwardRef<HTMLTextAreaElement>(function Composer(_, out
   const send = useHer((s) => s.send);
   const stop = useHer((s) => s.stop);
   const inner = useRef<HTMLTextAreaElement | null>(null);
+  const handed = useHer((s) => s.handed);
+  const takeHanded = useHer((s) => s.takeHanded);
+
+  // Words handed over from the surface while she was busy wait here, unsent, for the person.
+  useEffect(() => {
+    if (!handed) return;
+    setText(handed);
+    takeHanded();
+  }, [handed, takeHanded]);
 
   const setRef = (el: HTMLTextAreaElement | null) => {
     inner.current = el;

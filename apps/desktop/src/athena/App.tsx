@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MouseEvent } from "react";
-import { hideThisWindow, isTauri, startDrag } from "../lib/windows";
+import { hideThisWindow, isTauri, onHanded, startDrag } from "../lib/windows";
 import { Seal } from "../theme";
 import { ProjectPill, useAppEvents } from "../ui";
 import { Composer } from "./Composer";
@@ -62,6 +62,18 @@ export function App() {
   useEffect(() => {
     void boot();
   }, [boot]);
+
+  // The surface's ask (ADR 0016): the main window hands words over and shows this window.
+  const hand = useHer((s) => s.hand);
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let live = true;
+    void onHanded((text) => void hand(text)).then((fn) => (live ? (off = fn) : fn()));
+    return () => {
+      live = false;
+      off?.();
+    };
+  }, [hand]);
 
   // When she is shown (the shortcut, or a click on her), the person can type at once.
   useEffect(() => {

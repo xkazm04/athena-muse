@@ -47,8 +47,16 @@ export interface HerState {
   /** The signed flourish is showing. */
   signed: boolean;
 
+  /** Words the surface handed over while a reply was still being written; the composer takes them. */
+  handed: string;
+
   boot(): Promise<void>;
   send(text: string): Promise<void>;
+  /** Words from the surface's ask (ADR 0016): sent as the next turn, or left in the composer when a
+   *  reply is still being written. */
+  hand(text: string): Promise<void>;
+  /** The composer took the handed words. */
+  takeHanded(): void;
   retry(): Promise<void>;
   stop(): void;
   select(spaceId: string): Promise<void>;
@@ -70,6 +78,7 @@ const initial = {
   live: null,
   pendingId: undefined,
   signed: false,
+  handed: "",
 };
 
 const reason = (e: unknown, fallback: string): string => (e instanceof DaemonError ? e.reason : fallback);
@@ -218,6 +227,17 @@ export const useHer = create<HerState>()((set, get) => {
       // A failed turn keeps its note and "Try again" on screen; anything else reloads so ids are true.
       if (get().live?.error) return;
       if (await loadConversation(spaceId)) set({ live: null, sent: "" });
+    },
+
+    async hand(raw) {
+      const text = raw.trim();
+      if (!text) return;
+      if (get().streaming || get().status !== "ready") set({ handed: text });
+      else await get().send(text);
+    },
+
+    takeHanded() {
+      set({ handed: "" });
     },
 
     async retry() {

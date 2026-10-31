@@ -15,6 +15,7 @@ import { SettingsView } from "./settings/Settings";
 import { Stage } from "./stage/Stage";
 import { TwinsView } from "./twins/Twins";
 import { DepthFrame } from "./shell/Depth";
+import { Surface } from "./shell/Surface";
 import { reasonOf, useMain } from "./store";
 
 type Boot = { phase: "waking" } | { phase: "down"; reason: string } | { phase: "up"; firstRun: boolean };
@@ -126,7 +127,8 @@ export function Shell() {
   return (
     <DepthFrame route={route}>
       <main className={route.view === "home" ? "m-content m-content--surface" : "m-content"}>
-        {(route.view === "home" || route.view === "projects") && <Field />}
+        {route.view === "home" && <Surface />}
+        {route.view === "projects" && <Field />}
         {route.view === "project" && <Level id={route.id} />}
         {route.view === "core" && <CoreLevel />}
         {route.view === "memory" && <Memory id={route.id} />}

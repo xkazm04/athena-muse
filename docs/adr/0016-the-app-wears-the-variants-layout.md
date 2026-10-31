@@ -23,6 +23,7 @@ app's; each of this app's surfaces takes the one closest to it:
 | bar: "Rise to", the mark, the trail | `shell/Depth.tsx` `Crumbs` (rises one level; the project pill and the engine lamp trail it) | every route |
 | depth rail with a bead at the current depth | `Rail`: surface 0, a place 1, one thing in it 2, a page under that 3 | every route |
 | dock: her pill bottom left, places bottom right, the current one outlined | `Dock`: her seal, name and state (pink when something waits), Projects, Chores, Twins, Athena, Settings | every route below the surface |
+| surface (home): the seal large, an eyebrow state, a light marquee, "Ask her" with "Hand it to her", a tile per depth with a line-art glyph and a status line | `shell/Surface.tsx`: her seal (the owner's drawing, at size), the ask hands the words to her window (`handToAthena`, a Tauri event her window takes as the next turn, or keeps in its composer while she writes), tiles for the five places with lines from the stores | `#home`, the default landing |
 
 The body face is the system face (Segoe UI), as the variant set it; Outfit stays for the display lines
 of her window. A depth's title is heavy (`.title-depth`, 40 px); the surface's marquee grows with the

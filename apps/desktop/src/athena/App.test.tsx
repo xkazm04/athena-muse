@@ -33,10 +33,15 @@ vi.mock("../lib/daemon", async (importOriginal) => {
   };
 });
 
+let handOver: (text: string) => void = () => undefined;
 vi.mock("../lib/windows", () => ({
   isTauri: () => false,
   hideThisWindow: vi.fn().mockResolvedValue(undefined),
   startDrag: vi.fn().mockResolvedValue(undefined),
+  onHanded: vi.fn(async (fn: (text: string) => void) => {
+    handOver = fn;
+    return () => undefined;
+  }),
 }));
 
 const m = vi.mocked(api);
@@ -99,6 +104,18 @@ async function boot() {
 }
 
 describe("her window", () => {
+  it("takes the surface's handed words as a turn, and keeps them in the composer while she writes", async () => {
+    await boot();
+    const stream = heldStream();
+    await act(async () => handOver("  Appeal my mother's plan denial  "));
+    expect(run).toHaveBeenCalledWith({ text: "Appeal my mother's plan denial", space_id: "spc_1" }, expect.any(Function), expect.any(AbortSignal));
+    await act(async () => handOver("And the pharmacy bill"));
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(composer().value).toBe("And the pharmacy bill");
+    await stream.emit({ type: "done", turn_id: "turn_1", waiting: false });
+    await stream.end();
+  });
+
   it("sends, streams the reply in place, and the reloaded conversation persists across reopen", async () => {
     const saved = [turn("t1", "person", "When are taxes due?"), turn("t2", "athena", "By April 15.", { cost_usd: 0.0004 })];
     await boot();
