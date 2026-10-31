@@ -36,6 +36,12 @@
   background: var(--card-raised);
 }
 .card--waiting { border-color: color-mix(in srgb, var(--role-human) 55%, transparent); }
+/* the variant's slip (ADR 0016): what waits on the person signs with their own colour, in pills */
+.card--waiting .card-label { font-size: var(--fs-lg); line-height: 1.35; }
+.card-actions .btn { border-radius: var(--r-pill); min-height: 38px; padding: 0 calc(var(--sp-4) + 4px); }
+.card-sign { background: var(--role-human); border-color: transparent; color: var(--on-human); font-weight: 600; }
+.card-sign:hover:not(:disabled) { background: color-mix(in srgb, var(--role-human) 86%, var(--foreground)); border-color: transparent; }
+.card-decline { background: transparent; border-color: var(--border-emphasis); color: var(--foreground); font-weight: 600; }
 .card-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .card-action { color: var(--muted-foreground); font-size: var(--fs-xs); }
 .card-where { margin-left: auto; color: var(--muted-foreground); font-size: var(--fs-xs); }

@@ -113,13 +113,13 @@ export function CardView({ card, onDecide, onResolved, where }: CardViewProps) {
         <div className="card-actions">
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn card-sign"
             disabled={busy !== null || (drafted !== null && text.trim() === "")}
             onClick={() => decide("approve")}
           >
             {busy === "approve" ? "Signing..." : changed ? "Sign your words" : "Sign"}
           </button>
-          <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={() => decide("decline")}>
+          <button type="button" className="btn card-decline" disabled={busy !== null} onClick={() => decide("decline")}>
             {busy === "decline" ? "Declining..." : "Decline"}
           </button>
         </div>

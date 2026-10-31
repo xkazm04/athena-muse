@@ -26,11 +26,52 @@ export function AthenaView() {
 
   return (
     <div className="m-athena">
-      <h1 className="m-title">Athena</h1>
-      <Cards />
-      <CoreLine />
-      <Costs />
+      <Head />
+      <div className="m-athena__cols">
+        <div className="m-athena__col">
+          <Cards />
+        </div>
+        <div className="m-athena__col">
+          <CoreLine />
+          <Costs />
+        </div>
+      </div>
     </div>
+  );
+}
+
+/** After the variant's mind page (ADR 0016): an eyebrow, her state in light words, and four figures. */
+function Head() {
+  const waiting = useMain((s) => s.waiting.length);
+  const decided = useMain((s) => s.resolved.length);
+  const counts = useMain((s) => s.coreCounts);
+  const ledger = useMain((s) => s.ledger);
+  return (
+    <header className="m-athena__head">
+      <p className="eyebrow" data-tone={waiting > 0 ? "human" : undefined}>
+        Athena
+      </p>
+      <h1 className="marquee">{waiting > 0 ? `${waiting} ${waiting === 1 ? "thing waits" : "things wait"} on you` : "What she did, and for whom"}</h1>
+      <p className="m-lead">What waits on your signature, what you decided, what she remembers everywhere, and what it cost.</p>
+      <dl className="m-kpis m-athena__kpis">
+        <div className="m-kpi" data-tone={waiting > 0 ? "human" : undefined}>
+          <dt>Waiting on you</dt>
+          <dd>{waiting}</dd>
+        </div>
+        <div className="m-kpi">
+          <dt>Decided</dt>
+          <dd>{decided}</dd>
+        </div>
+        <div className="m-kpi">
+          <dt>In core</dt>
+          <dd>{counts ? `${counts.facts} facts` : "-"}</dd>
+        </div>
+        <div className="m-kpi">
+          <dt>Cost, est.</dt>
+          <dd>{ledger ? money(ledger.totals.cost_usd) : "-"}</dd>
+        </div>
+      </dl>
+    </header>
   );
 }
 
@@ -42,7 +83,7 @@ function Cards() {
 
   return (
     <>
-      <section className="plane m-section" aria-labelledby="av-waiting">
+      <section className="m-section" aria-labelledby="av-waiting">
         <h2 id="av-waiting" className="m-h2">
           Waiting on you{" "}
           {waiting.length > 0 && (
@@ -67,7 +108,7 @@ function Cards() {
           </div>
         )}
       </section>
-      <section className="plane m-section" aria-labelledby="av-decided">
+      <section className="m-section" aria-labelledby="av-decided">
         <h2 id="av-decided" className="m-h2">
           Decided
         </h2>
@@ -93,7 +134,7 @@ function Cards() {
 function CoreLine() {
   const counts = useMain((s) => s.coreCounts);
   return (
-    <section className="plane m-section" aria-labelledby="av-core">
+    <section className="m-section" aria-labelledby="av-core">
       <h2 id="av-core" className="m-h2">
         What she remembers everywhere
       </h2>
@@ -164,7 +205,7 @@ function Costs() {
   const where = (r: LedgerRow) => whereName(spaces, r.space_id) + (r.surface === "probe" ? " (key check)" : "");
 
   return (
-    <section className="plane m-section" aria-labelledby="av-cost">
+    <section className="m-section" aria-labelledby="av-cost">
       <h2 id="av-cost" className="m-h2">
         What it cost
       </h2>
@@ -191,8 +232,8 @@ function Costs() {
             <p className="m-muted">No Muse calls yet.</p>
           ) : (
             <Ledger
-              className="m-table"
-              wrapClassName="m-table-wrap"
+              className="m-grid m-grid--auto"
+              wrapClassName="m-ledger"
               columns={COST_COLUMNS(where)}
               rows={ledger.rows}
               rowKey={(r) => r.id}
