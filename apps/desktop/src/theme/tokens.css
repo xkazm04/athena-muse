@@ -76,6 +76,13 @@
   --seal-mark: #f0f6ff;
   --seal-orb-core: #66b6ff;
   --seal-orb-edge: #0064e0;
+
+  /* the water's depth: lit from the surface, darker below (Backdrop's tone) */
+  --depth-0: color-mix(in srgb, var(--primary) 16%, var(--background));
+  --depth-1: color-mix(in srgb, var(--primary) 9%, var(--background));
+  --depth-2: var(--background);
+  --depth-3: color-mix(in srgb, black 35%, var(--background));
+  --vignette: color-mix(in srgb, black 45%, transparent);
 }
 
 [data-theme="light"] {
@@ -133,6 +140,13 @@
   --seal-dome-a: #2a7cf0;
   --seal-dome-b: #0a3f9e;
   --seal-glow: rgba(0, 100, 224, 0.26);
+
+  /* the water's depth: lit from the surface, darker below */
+  --depth-0: color-mix(in srgb, var(--primary) 16%, var(--background));
+  --depth-1: color-mix(in srgb, var(--primary) 10%, var(--background));
+  --depth-2: color-mix(in srgb, var(--primary) 5%, var(--background));
+  --depth-3: var(--background);
+  --vignette: color-mix(in srgb, var(--foreground) 7%, transparent);
 }
 
 @media (prefers-color-scheme: light) {
@@ -191,12 +205,20 @@
     --seal-dome-a: #2a7cf0;
     --seal-dome-b: #0a3f9e;
     --seal-glow: rgba(0, 100, 224, 0.26);
+
+    /* the water's depth: lit from the surface, darker below */
+    --depth-0: color-mix(in srgb, var(--primary) 16%, var(--background));
+    --depth-1: color-mix(in srgb, var(--primary) 10%, var(--background));
+    --depth-2: color-mix(in srgb, var(--primary) 5%, var(--background));
+    --depth-3: var(--background);
+    --vignette: color-mix(in srgb, var(--foreground) 7%, transparent);
   }
 }
 
 /* Scale tokens: the same in both themes. 12 px is the smallest type size that exists. */
 :root {
   --font-sans: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-sans);
   --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
 
   --fs-xs: 12px;
@@ -205,6 +227,12 @@
   --fs-lg: 18px;
   --fs-xl: 24px;
   --fs-2xl: 32px;
+  /* the marquee: one line of large, light words (her state, the first act) */
+  --fs-display: 48px;
+  --fw-display: 300;
+  --tracking-display: -0.025em;
+  /* eyebrows: small uppercase words in the interface blue above a title */
+  --tracking-eyebrow: 0.14em;
   --lh-tight: 1.25;
   --lh-body: 1.5;
 
@@ -221,6 +249,11 @@
   --r-md: 10px;
   --r-lg: 16px;
   --r-pill: 999px;
+  /* what each radius is for: 6 px for what you press or type in, 10 px for a card, 16 px for her
+   * window's coat; a pill for what reads as one word (tabs, chips, her answers) */
+  --r-interactive: var(--r-sm);
+  --r-card: var(--r-md);
+  --r-coat: var(--r-lg);
 
   --ease-settle: cubic-bezier(0.22, 0.8, 0.3, 1);
   --dur-fast: 120ms;

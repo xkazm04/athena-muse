@@ -10,7 +10,7 @@ export interface BackdropProps {
 const REDUCED = "(prefers-reduced-motion: reduce)";
 
 /**
- * One full-bleed canvas behind a window. The bloom, shafts and vignette are CSS (backdrop.css), so
+ * One full-bleed canvas behind a window. The tone, bloom, shafts and vignette are CSS (base.css), so
  * the theme still stands if the canvas never paints. Put it first in a positioned parent.
  */
 export function Backdrop({ speed = SPEED_REST, className }: BackdropProps) {
@@ -67,7 +67,12 @@ export function Backdrop({ speed = SPEED_REST, className }: BackdropProps) {
 
   return (
     <div ref={host} className={className ? `backdrop ${className}` : "backdrop"} aria-hidden="true">
-      <div className="backdrop__shafts" />
+      <div className="backdrop__shafts">
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
       <canvas ref={canvas} className="backdrop__current" />
       <div className="backdrop__vignette" />
     </div>

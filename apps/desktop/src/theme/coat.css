@@ -11,7 +11,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-coat);
   border: 1px solid var(--edge);
   box-shadow: var(--coat-shadow);
   color: var(--foreground);
@@ -42,7 +42,7 @@
   position: absolute;
   z-index: -1;
   inset: 2px;
-  border-radius: calc(var(--r-lg) - 2px);
+  border-radius: calc(var(--r-coat) - 2px);
   background: var(--glass);
   box-shadow: inset 0 1px 0 var(--lt-rim);
   pointer-events: none;
