@@ -73,7 +73,7 @@ export type SiteAccess = "signed_in" | "signed_out" | "unknown";
 /** A site on a draft's access step: still to do, signed in (the look said so), or skipped by the person. */
 export type AccessState = "open" | "signed_in" | "skipped";
 /** What the person does with one site on the access step. */
-export type AccessAct = "sign_in" | "check" | "skip";
+export type AccessAct = "sign_in" | "check" | "skip" | "use_moved";
 
 // Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 /** `auto` follows the system. */
@@ -309,6 +309,8 @@ export interface DraftSite {
   reason?: string;
   /** Her browser's tab while the person signs in there. */
   tab?: number;
+  /** The last look ended on another site's page that is not a sign-in: offered instead. */
+  moved_to?: string;
 }
 
 export interface Draft {

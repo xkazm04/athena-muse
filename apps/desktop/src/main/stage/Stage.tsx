@@ -6,7 +6,7 @@ import { useEffect, useMemo } from "react";
 import type { StageView } from "../../lib/contract";
 import { toggleAthena } from "../../lib/windows";
 import { useMain } from "../store";
-import { useAccessWheel, useShownPhase } from "./hooks";
+import { useAccessWatch, useAccessWheel, useShownPhase } from "./hooks";
 import { useStageKeys, type StageKey } from "./keymap";
 import { Describe, ReplyNotice, StageSeal, StepRail, UndoToast } from "./parts";
 import { isPencil, sealOf, stepOf } from "./select";
@@ -38,6 +38,7 @@ export function StageScreen({ state, dispatch, place, invented, phase: forced, o
   const step = stepOf(state.draft);
   const seal = sealOf(state, phase);
   useAccessWheel(state.draft, dispatch);
+  useAccessWatch(state.draft, !!state.work, dispatch);
   const View = VIEWS[state.view];
   const asking = step === "shape" && !!frame.ask && !state.work && phase === "idle";
   // a draft opened by its address: no describe form while it is read, or when it could not be

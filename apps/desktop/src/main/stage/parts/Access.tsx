@@ -29,6 +29,7 @@ export function AccessList({ sites, busy = false, onAct, words }: AccessListProp
         {sites.map((site) => {
           const b = badge(site, words);
           const signing = site.state !== "signed_in" && site.tab !== undefined;
+          const moved = site.state !== "signed_in" && site.moved_to ? host(new URL(site.moved_to).origin) : undefined;
           return (
             <li key={site.origin} className="sp-access__site" data-role="access-site" data-state={site.state} data-origin={site.origin}>
               <div className="sp-access__words">
@@ -43,8 +44,13 @@ export function AccessList({ sites, busy = false, onAct, words }: AccessListProp
                 {b.text}
               </span>
               <div className="sp-access__actions">
+                {moved && (
+                  <button type="button" className="btn btn-primary" data-role="access-use-moved" disabled={busy} onClick={() => onAct(site.origin, "use_moved")}>
+                    {words.useMoved(moved)}
+                  </button>
+                )}
                 {signing && (
-                  <button type="button" className="btn btn-primary" data-role="access-check" disabled={busy} onClick={() => onAct(site.origin, "check")}>
+                  <button type="button" className={moved ? "btn" : "btn btn-primary"} data-role="access-check" disabled={busy} onClick={() => onAct(site.origin, "check")}>
                     {words.signedInNow}
                   </button>
                 )}

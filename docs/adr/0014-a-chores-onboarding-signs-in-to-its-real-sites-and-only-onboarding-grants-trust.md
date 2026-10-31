@@ -74,3 +74,18 @@ open questions on 2026-10-31 (docs/concepts/business-channel, "Owner's answers (
 - Her browser must be running for a look; without it the overview shows what the last look found.
 - Measured on the local simulated reproduction (`scripts/access_seam.py`, WebView2, the built shell):
   the walk's checks and timings are in the builder's report; no real account was used.
+
+## Amendment (2026-10-31, owner)
+
+- **The stage keeps checking.** While a site's tab is open and it is not signed in, the stage looks
+  again every 4 s (one look at a time, at most 45 looks), so a sign-in that takes two pages is caught
+  when it finishes. After that the person's "I have signed in" stays.
+- **Onboarding catches a move to another site.** A look that ends on another site's page that is not
+  a sign-in (another address of the same company, `www.` to `studio.`) reads signed out with "sent her
+  on to X, a different site", and the step offers "Use X instead" (`use_moved`): X replaces the site in
+  the Project, carrying the chores it blocks. Each site's check page stays on the site it trusts.
+- **The step checks every site once more before it ends.** When no site is open, each signed-in site
+  is looked at again; one that is no longer signed in (a sign-in on one site signed her out of another)
+  opens again with "After the last sign-in, ...". Then the draft is saved.
+- No notice for projects whose old `apps` granted trust (owner). A site not yet checked does not block
+  her hands; only signed out does (owner).

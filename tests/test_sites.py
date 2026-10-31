@@ -142,6 +142,7 @@ def test_a_hand_on_a_trusted_site_looks_first_and_a_signed_out_site_is_refused(d
         (Seen(True, url=f"{ORIGIN}/home", password=True), "signed_out", "asked for a password"),
         (Seen(False, why="the page did not finish loading"), "unknown", "could not reach"),
         (Seen(True, url=f"{ORIGIN}/authors/mira"), "signed_in", "opened without asking"),
+        (Seen(True, url="https://studio.sunbeam-club.example/home"), "signed_out", "a different site"),
     ],
 )
 def test_the_looks_decision_table(seen: Seen, access: str, words: str) -> None:
@@ -282,6 +283,56 @@ def test_sign_in_check_retry_skip_and_all_done(client: TestClient, daemon: Daemo
     assert by[ORIGIN]["access"] == "signed_in" and by[OTHER]["access"] == "signed_out"
     assert "skipped" in by[OTHER].get("reason", "")
     assert act(client, kept, ORIGIN, "check").status_code == 400  # the step is over
+
+
+def test_a_move_to_another_site_is_caught_in_onboarding_and_that_site_used_instead(
+    client: TestClient, daemon: Daemon, fake: Fake
+) -> None:
+    """Owner, 2026-10-31: a sign-in that ends on another address of the same company is caught while
+    the chore is set up, and the site it moved to becomes the trusted one."""
+    studio = "https://studio.sunbeam-club.example"
+    kept = keep(client, to_verdict(client, daemon, {"n2": ORIGIN}))
+    with FakeShell(daemon.relay) as shell:
+        shell.pages[f"{ORIGIN}/account"] = {"final": f"{studio}/channel"}
+        moved = act(client, kept, ORIGIN, "check").json()["sites"][0]
+        assert moved["state"] == "open" and moved["moved_to"] == f"{studio}/channel"
+        assert "a different site" in moved["reason"]
+        used = act(client, kept, ORIGIN, "use_moved").json()
+        assert [(s["origin"], s["state"]) for s in used["sites"]] == [(studio, "open")]
+        assert not daemon.sites.trusted(kept["space_id"], ORIGIN)
+        assert daemon.sites.trusted(kept["space_id"], studio)
+        assert daemon.sites.get(kept["space_id"], studio)["blocks"] == ["Club invoice check"]
+        shell.pages[f"{studio}/channel"] = {"final": f"{studio}/channel"}
+        done = act(client, kept, studio, "check").json()
+    assert done["step"] == "saved" and done["sites"][0]["state"] == "signed_in"
+    assert act(client, kept, studio, "use_moved").status_code == 400  # the step is over
+
+
+def test_use_moved_needs_a_move(client: TestClient, daemon: Daemon, fake: Fake) -> None:
+    kept = keep(client, to_verdict(client, daemon, {"n2": ORIGIN}))
+    r = act(client, kept, ORIGIN, "use_moved")
+    assert r.status_code == 400 and "did not end on another site" in r.json()["reason"]
+
+
+def test_before_the_step_ends_every_signed_in_site_is_checked_again(
+    client: TestClient, daemon: Daemon, fake: Fake
+) -> None:
+    """A sign-in on one site can sign her out of another: the last site done checks them all."""
+    kept = keep(client, to_verdict(client, daemon, {"n2": ORIGIN, "n3": OTHER}))
+    with FakeShell(daemon.relay) as shell:
+        shell.pages[f"{ORIGIN}/account"] = {"final": f"{ORIGIN}/account"}
+        shell.pages[f"{OTHER}/account"] = {"final": f"{OTHER}/signin", "password": True}
+        assert act(client, kept, ORIGIN, "check").json()["sites"][0]["state"] == "signed_in"
+        # Signing in to the second site signs her out of the first.
+        shell.pages[f"{OTHER}/account"] = {"final": f"{OTHER}/account"}
+        shell.pages[f"{ORIGIN}/account"] = {"final": f"{ORIGIN}/signin", "password": True}
+        again = act(client, kept, OTHER, "check").json()
+        assert again["step"] == "access"
+        first = again["sites"][0]
+        assert first["state"] == "open" and first["reason"].startswith("After the last sign-in")
+        shell.pages[f"{ORIGIN}/account"] = {"final": f"{ORIGIN}/account"}
+        done = act(client, kept, ORIGIN, "check").json()
+    assert done["step"] == "saved" and [s["state"] for s in done["sites"]] == ["signed_in", "signed_in"]
 
 
 def test_the_access_step_never_takes_a_password(client: TestClient, daemon: Daemon, fake: Fake) -> None:

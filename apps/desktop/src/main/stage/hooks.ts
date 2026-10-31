@@ -50,6 +50,35 @@ export function useAccessWheel(draft: Draft | null, dispatch: (action: StageActi
   }, [wheel, draft, dispatch]);
 }
 
+/** How often, and how many times, the stage looks again while the person signs in (owner: keep checking). */
+export const WATCH_MS = 4000;
+export const WATCH_TRIES = 45;
+
+/**
+ * The access step (owner, 2026-10-31): while a site's tab is open and it is not signed in yet, she
+ * looks again every few seconds until it is, so a sign-in that takes two pages (address, then
+ * password) is caught when it finishes, not at its first page. One look at a time; a site whose look
+ * moved to another site waits for the person's choice; after WATCH_TRIES she stops and the person's
+ * "I have signed in" is left.
+ */
+export function useAccessWatch(draft: Draft | null, busy: boolean, dispatch: (action: StageAction) => void): void {
+  const waiting =
+    draft?.step === "access" ? draft.sites?.find((s) => s.state === "open" && s.tab !== undefined && !s.moved_to) : undefined;
+  const origin = waiting?.origin;
+  const tries = useRef(0);
+  useEffect(() => {
+    tries.current = 0;
+  }, [origin]);
+  useEffect(() => {
+    if (!origin || busy || tries.current >= WATCH_TRIES) return;
+    const t = setTimeout(() => {
+      tries.current += 1;
+      dispatch({ type: "access", origin, act: "check" });
+    }, WATCH_MS);
+    return () => clearTimeout(t);
+  }, [origin, busy, draft, dispatch]);
+}
+
 /** The draft's Project as the main window knows it, and the way to open it (the hand-off). */
 export function useDraftProject(draft: Draft | null): { project: SpaceSummary | undefined; openProject: () => void } {
   const project = useMain((s) => s.spaces.find((x) => x.id === draft?.space_id));

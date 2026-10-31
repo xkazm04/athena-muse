@@ -112,12 +112,26 @@ def sign_in_path(url: str) -> bool:
     return any(seg in SIGN_IN_SEGMENTS for seg in _SEGMENT.findall(path))
 
 
+def moved_to(origin: str, seen: Seen) -> str:
+    """The address on another site a look ended on when that page is not a sign-in (another
+    address of the same company, such as `www.` to `studio.`); empty otherwise. Onboarding offers it
+    as the site to use instead, so the move is caught while the chore is set up (ADR 0014)."""
+    if not seen.reached or seen.password or sign_in_path(seen.url):
+        return ""
+    landed = origin_of(seen.url)
+    if not landed or landed == origin:
+        return ""
+    return probe_address(seen.url)[1]
+
+
 def decide(origin: str, seen: Seen) -> tuple[SiteAccess, str]:
     """The look's decision table, in plain words (the reason is shown to the person)."""
     site = host_of(origin)
     if not seen.reached:
         return "unknown", f"Athena could not reach {site}: {seen.why or 'no answer'}"
     landed = origin_of(seen.url)
+    if moved_to(origin, seen):
+        return "signed_out", f"{site} sent her on to {host_of(landed)}, a different site."
     if landed != origin:
         where = host_of(landed) if landed else "another page"
         return "signed_out", f"{site} sent her to {where} to sign in."
@@ -222,6 +236,10 @@ class Sites:
                 )
         return self.get(space_id, origin)
 
+    def remove(self, space_id: str, origin: str) -> None:
+        """Onboarding only: a site replaced by the one its look moved to (`use_moved`)."""
+        self._store.run("DELETE FROM sites WHERE space_id = ? AND origin = ?", (space_id, origin))
+
     def looked(self, space_id: str, origin: str, access: SiteAccess, reason: str) -> tuple[Site, bool]:
         """Stores what a look found: (the site, whether what it found changed)."""
         before = self.get(space_id, origin)
@@ -274,19 +292,26 @@ def publish(daemon: Daemon, space_id: str, site: Site) -> None:
 def check(daemon: Daemon, space_id: str, origin: str, *, force: bool = False) -> Site:
     """The site after a look: the stored one while it is fresh (unless `force`), else a new look.
     With her browser not open, the stored site is answered unchanged. Publishes a change."""
+    return check_seen(daemon, space_id, origin, force=force)[0]
+
+
+def check_seen(
+    daemon: Daemon, space_id: str, origin: str, *, force: bool = False
+) -> tuple[Site, Seen | None]:
+    """`check`, and what the look saw (None when no look ran): onboarding reads a move from it."""
     site = daemon.sites.get(space_id, origin)
     with _lock(space_id, origin):
         site = daemon.sites.get(space_id, origin)
         if not force and not stale(site):
-            return site
+            return site, None
         seen = look(daemon, site["probe_url"])
         if seen is None:
-            return site
+            return site, None
         access, reason = decide(origin, seen)
         site, changed = daemon.sites.looked(space_id, origin, access, reason)
     if changed:
         publish(daemon, space_id, site)
-    return site
+    return site, seen
 
 
 def refresh(daemon: Daemon, space_id: str) -> int:

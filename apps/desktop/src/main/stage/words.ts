@@ -187,7 +187,8 @@ export const STAGE_WORDS = {
   signedIn: "signed in",
   skipped: "skipped",
   skippedHint: "Until you sign in, the project shows this site as a blocker.",
-  signingIn: "Sign in on the page in her browser, then come back here.",
+  signingIn: "Sign in on the page in her browser. She keeps checking until you are in.",
+  useMoved: (host: string) => `Use ${host} instead`,
   accessDone: "signed in or skipped",
 
   // saved

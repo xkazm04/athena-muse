@@ -184,6 +184,20 @@ describe("the Drawing view", () => {
     expect(dispatch).toHaveBeenLastCalledWith({ type: "access", origin, act: "sign_in" });
   });
 
+  it("offers the site a look moved to, and makes it the choice over 'I have signed in'", () => {
+    const origin = "https://www.brightside.example";
+    const site = { origin, label: "Brightside", probe_url: `${origin}/upload`, state: "open" as const, tab: 7, moved_to: "https://studio.brightside.example/channel" };
+    const draft = { ...STAGED.saved, step: "access" as const, sites: [site] };
+    const { dispatch, root } = draw(at({ draft }));
+    const drawer = root.querySelector<HTMLElement>('[data-role="drawer"][data-step="access"]')!;
+    const use = drawer.querySelector<HTMLButtonElement>('[data-role="access-use-moved"]')!;
+    expect(use.textContent).toBe("Use studio.brightside.example instead");
+    expect(use.className).toContain("btn-primary");
+    expect(drawer.querySelector('[data-role="access-check"]')!.className).not.toContain("btn-primary");
+    fireEvent.click(use);
+    expect(dispatch).toHaveBeenLastCalledWith({ type: "access", origin, act: "use_moved" });
+  });
+
   it("shows a real site on a piece's card as her guess until the person inks it", () => {
     const state = firstFrame();
     const d = state.draft!;

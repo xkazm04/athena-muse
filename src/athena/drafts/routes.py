@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import typing
 from collections.abc import Iterator
-from typing import Any, cast
+from typing import Any, cast, get_args
 
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
@@ -144,8 +144,10 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     async def access_act(request: Request) -> Response:
         body = await _body(request)
         origin, what = body.get("origin"), body.get("act")
-        if not isinstance(origin, str) or what not in ("sign_in", "check", "skip"):
-            raise ApiError("bad_request", "send the site's origin and an act: sign_in, check or skip")
+        if not isinstance(origin, str) or what not in get_args(AccessAct):
+            raise ApiError(
+                "bad_request", "send the site's origin and an act: sign_in, check, skip or use_moved"
+            )
         draft = await run_in_threadpool(
             access.act, daemon, request.path_params["id"], origin, cast("AccessAct", what)
         )

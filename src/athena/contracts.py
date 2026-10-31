@@ -91,7 +91,7 @@ SiteAccess = Literal["signed_in", "signed_out", "unknown"]
 #: A site on a draft's access step: still to do, signed in (the look said so), or skipped by the person.
 AccessState = Literal["open", "signed_in", "skipped"]
 #: What the person does with one site on the access step.
-AccessAct = Literal["sign_in", "check", "skip"]
+AccessAct = Literal["sign_in", "check", "skip", "use_moved"]
 
 # Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 ThemeChoice = Literal["auto", "dark", "light"]  # auto follows the system
@@ -565,6 +565,7 @@ class DraftSite(TypedDict):
     state: AccessState
     reason: NotRequired[str]  # plain words: what the last look found, when it was not signed in
     tab: NotRequired[int]  # her browser's tab while the person signs in there
+    moved_to: NotRequired[str]  # a look ended on another site, not a sign-in page: offered instead
 
 
 class Draft(TypedDict):
