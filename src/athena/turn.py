@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import queue
+import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
@@ -24,7 +27,7 @@ from athena.contracts import (
     Surface,
     tool_event,
 )
-from athena.engine import Engine, EngineError, TextDelta, ToolCall, Usage
+from athena.engine import Engine, EngineError, McpAccess, TextDelta, ToolCall, Usage
 from athena.engine.prices import estimate
 from athena.errors import ApiError
 from athena.memory import visible_spaces
@@ -34,6 +37,8 @@ if TYPE_CHECKING:
     from athena.drafts.shape import Design
 
 HISTORY_TURNS = 20
+#: How long a turn's MCP lease lives: the CLI's own limit and a margin.
+AGENT_LEASE_S = 420.0
 EPISODE_PART_MAX = 600
 
 LAW = (
@@ -186,6 +191,224 @@ def _refuse_or_label(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str
     return f"Forget: {_short(row['line'], 100)}", {"id": mem_id}
 
 
+@dataclass
+class Dispatched:
+    """A tool call's result for the model, the lines to stream, and the card it filed if any."""
+
+    result: str
+    events: list[dict[str, Any]] = field(default_factory=list)
+    card: Card | None = None
+
+
+def dispatch(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
+    """One catalog call, from a turn's round or from the MCP server (ADR 0015): an AUTO action runs
+    and answers, a GATED one files a card."""
+    name = call.name
+    if name not in CATALOG:
+        return Dispatched("There is no such action.")
+    if CATALOG[name] == "auto":
+        result, label = _run_auto(daemon, space_id, call)
+        return Dispatched(result, [tool_event(name, label)] if label else [])
+    if name not in ("propose_brief", "add_app", "forget"):
+        return Dispatched("That action is not offered here.")
+    checked = _refuse_or_label(daemon, space_id, call)
+    if isinstance(checked, str):
+        return Dispatched(checked)
+    label, args = checked
+    card = daemon.gate.file(space_id, name, args, label)
+    return Dispatched(
+        "Filed for the person to sign. Nothing has changed yet.",
+        [tool_event(name, label), {"type": "card", "card": card}],
+        card,
+    )
+
+
+def _record(
+    daemon: Daemon,
+    engine: Engine,
+    surface: Surface,
+    space_id: str,
+    started: float,
+    usage: Usage | None,
+    error: str | None = None,
+) -> float | None:
+    """One ledger row for one engine call; answers its cost when there is one."""
+    latency = int((time.monotonic() - started) * 1000)
+    if error is not None:
+        daemon.ledger.record(
+            surface=surface,
+            space_id=space_id,
+            engine=engine.id,
+            model=engine.model,
+            latency_ms=latency,
+            ok=False,
+            error=error,
+        )
+        return None
+    cost = None
+    if usage is not None:
+        cost = usage.cost_usd
+        # A plan-billed engine (Muse Code) is never priced from the list: no figure is not $0.
+        if cost is None and engine.cost_estimated:
+            cost = estimate(engine.model, usage.input_tokens, usage.output_tokens)
+    daemon.ledger.record(
+        surface=surface,
+        space_id=space_id,
+        engine=engine.id,
+        model=engine.model,
+        latency_ms=latency,
+        ok=True,
+        input_tokens=usage.input_tokens if usage else None,
+        output_tokens=usage.output_tokens if usage else None,
+        cost_usd=cost,
+        cost_estimated=engine.cost_estimated,
+    )
+    return cost
+
+
+#: What a turn's rounds hand back: the reply's parts, the cards filed, the cost; None after an error
+#: event was streamed.
+Rounds = tuple[list[str], list[Card], float | None] | None
+
+
+def _rounds(
+    daemon: Daemon,
+    engine: Engine,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    space_id: str,
+    surface: Surface,
+    portal: Portal | None,
+    design: Design | None,
+) -> Generator[dict[str, Any], None, Rounds]:
+    """Up to TOOL_ROUNDS_MAX model calls; the turn runs each call's tools between them."""
+    reply_parts: list[str] = []
+    cards: list[Card] = []
+    cost_total: float | None = None
+    for _ in range(TOOL_ROUNDS_MAX):
+        started = time.monotonic()
+        round_text: list[str] = []
+        calls: list[ToolCall] = []
+        usage: Usage | None = None
+        try:
+            for chunk in engine.complete(messages, tools):
+                if isinstance(chunk, TextDelta):
+                    round_text.append(chunk.text)
+                    yield {"type": "text", "delta": chunk.text}
+                elif isinstance(chunk, ToolCall):
+                    calls.append(chunk)
+                else:
+                    usage = chunk
+        except EngineError as e:
+            _record(daemon, engine, surface, space_id, started, None, e.reason)
+            yield {"type": "error", "error": "engine_unavailable", "reason": e.reason}
+            return None
+        cost = _record(daemon, engine, surface, space_id, started, usage)
+        if cost is not None:
+            cost_total = (cost_total or 0.0) + cost
+        reply_parts.append("".join(round_text))
+        if not calls:
+            break
+
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "".join(round_text) or None,
+                "tool_calls": [
+                    {
+                        "id": c.id,
+                        "type": "function",
+                        "function": {"name": c.name, "arguments": json.dumps(c.arguments)},
+                    }
+                    for c in calls
+                ],
+            }
+        )
+        filed = False
+        for call in calls:
+            name = call.name
+            if design is not None and design.owns(name):
+                result, events = design.call(call)
+                yield from events
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+                continue
+            if portal is not None and portal.owns(name):
+                (answer, events), filed_card = _run_portal(daemon, space_id, portal, call)
+                yield from events
+                if filed_card is not None:
+                    cards.append(filed_card)
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": answer})
+                continue
+            done = dispatch(daemon, space_id, call)
+            yield from done.events
+            if done.card is not None:
+                cards.append(done.card)
+                filed = True
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": done.result})
+        if filed:
+            break
+    return reply_parts, cards, cost_total
+
+
+def _agent(
+    daemon: Daemon,
+    engine: Engine,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    space_id: str,
+    surface: Surface,
+) -> Generator[dict[str, Any], None, Rounds]:
+    """An engine that calls tools itself (ADR 0015): one run against Athena's MCP server under a lease
+    for this turn. The server's lines and cards arrive through the lease and stream in order with the
+    engine's words; the lease ends with the run."""
+    assert daemon.mcp_url is not None
+    inbox: queue.Queue[tuple[str, Any]] = queue.Queue()
+    names = frozenset(t["function"]["name"] for t in tools)
+    lease = daemon.mcp.mint(space_id, ttl=AGENT_LEASE_S, tools=names, sink=lambda e: inbox.put(("event", e)))
+    access = McpAccess(daemon.mcp_url, lease.token, sorted(names))
+    agent = getattr(engine, "agent")  # noqa: B009 - the Protocol has no agent(); tools_on says it exists
+
+    def work() -> None:
+        try:
+            for item in agent(messages, access):
+                inbox.put(("item", item))
+            inbox.put(("end", None))
+        except EngineError as e:
+            inbox.put(("end", e.reason))
+        except Exception as e:  # a crash in the reader must still end the turn
+            inbox.put(("end", f"the engine stopped ({type(e).__name__})"))
+
+    started = time.monotonic()
+    threading.Thread(target=work, name="athena-agent", daemon=True).start()
+    parts: list[str] = []
+    cards: list[Card] = []
+    usage: Usage | None = None
+    try:
+        while True:
+            kind, item = inbox.get()
+            if kind == "event":
+                if item.get("type") == "card":
+                    cards.append(item["card"])
+                yield item
+            elif kind == "item":
+                if isinstance(item, TextDelta):
+                    parts.append(item.text)
+                    yield {"type": "text", "delta": item.text}
+                elif isinstance(item, Usage):
+                    usage = item
+            else:
+                error = item
+                break
+    finally:
+        daemon.mcp.drop(lease.token)
+    if error is not None:
+        _record(daemon, engine, surface, space_id, started, None, error)
+        yield {"type": "error", "error": "engine_unavailable", "reason": error}
+        return None
+    cost = _record(daemon, engine, surface, space_id, started, usage)
+    return ["".join(parts)], cards, cost
+
+
 def _stream(
     daemon: Daemon,
     engine: Engine,
@@ -213,110 +436,14 @@ def _stream(
                 "\n\n" + portal.frame() + reads.frame(daemon, space_id) + _waiting(daemon, space_id)
             )
 
-        reply_parts: list[str] = []
-        cards: list[Card] = []
-        cost_total: float | None = None
-        for _ in range(TOOL_ROUNDS_MAX):
-            started = time.monotonic()
-            round_text: list[str] = []
-            calls: list[ToolCall] = []
-            usage: Usage | None = None
-            try:
-                for chunk in engine.complete(messages, tools):
-                    if isinstance(chunk, TextDelta):
-                        round_text.append(chunk.text)
-                        yield {"type": "text", "delta": chunk.text}
-                    elif isinstance(chunk, ToolCall):
-                        calls.append(chunk)
-                    else:
-                        usage = chunk
-            except EngineError as e:
-                daemon.ledger.record(
-                    surface=surface,
-                    space_id=space_id,
-                    engine=engine.id,
-                    model=engine.model,
-                    latency_ms=int((time.monotonic() - started) * 1000),
-                    ok=False,
-                    error=e.reason,
-                )
-                yield {"type": "error", "error": "engine_unavailable", "reason": e.reason}
-                return
-            cost = None
-            if usage is not None:
-                cost = usage.cost_usd
-                # A plan-billed engine (Muse Code) is never priced from the list: no figure is not $0.
-                if cost is None and engine.cost_estimated:
-                    cost = estimate(engine.model, usage.input_tokens, usage.output_tokens)
-            daemon.ledger.record(
-                surface=surface,
-                space_id=space_id,
-                engine=engine.id,
-                model=engine.model,
-                latency_ms=int((time.monotonic() - started) * 1000),
-                ok=True,
-                input_tokens=usage.input_tokens if usage else None,
-                output_tokens=usage.output_tokens if usage else None,
-                cost_usd=cost,
-                cost_estimated=engine.cost_estimated,
-            )
-            if cost is not None:
-                cost_total = (cost_total or 0.0) + cost
-            reply_parts.append("".join(round_text))
-            if not calls:
-                break
-
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": "".join(round_text) or None,
-                    "tool_calls": [
-                        {
-                            "id": c.id,
-                            "type": "function",
-                            "function": {"name": c.name, "arguments": json.dumps(c.arguments)},
-                        }
-                        for c in calls
-                    ],
-                }
-            )
-            filed = False
-            for call in calls:
-                result = ""
-                name = call.name
-                if design is not None and design.owns(name):
-                    result, events = design.call(call)
-                    yield from events
-                    messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
-                    continue
-                if portal is not None and portal.owns(name):
-                    (answer, events), filed_card = _run_portal(daemon, space_id, portal, call)
-                    yield from events
-                    if filed_card is not None:
-                        cards.append(filed_card)
-                    messages.append({"role": "tool", "tool_call_id": call.id, "content": answer})
-                    continue
-                if name not in CATALOG:
-                    result = "There is no such action."
-                elif CATALOG[name] == "auto":
-                    result, label = _run_auto(daemon, space_id, call)
-                    if label:
-                        yield tool_event(name, label)
-                else:
-                    checked = _refuse_or_label(daemon, space_id, call)
-                    if isinstance(checked, str):
-                        result = checked
-                    else:
-                        label, args = checked
-                        card = daemon.gate.file(space_id, name, args, label)
-                        cards.append(card)
-                        filed = True
-                        yield tool_event(name, label)
-                        yield {"type": "card", "card": card}
-                        result = "Filed for the person to sign. Nothing has changed yet."
-                messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
-            if filed:
-                break
+        agentic = design is None and portal is None and daemon.mcp_url is not None
+        if agentic and getattr(engine, "tools_on", False):
+            outcome = yield from _agent(daemon, engine, messages, tools, space_id, surface)
+        else:
+            outcome = yield from _rounds(daemon, engine, messages, tools, space_id, surface, portal, design)
+        if outcome is None:
+            return
+        reply_parts, cards, cost_total = outcome
 
         reply = "".join(reply_parts).strip()
         closing: list[dict[str, Any]] = []

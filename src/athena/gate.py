@@ -43,6 +43,8 @@ def _card(r: sqlite3.Row) -> Card:
     }
     if r["resolved"] is not None:
         c["resolved"] = r["resolved"]
+    if r["outcome"] is not None:
+        c["outcome"] = r["outcome"]
     return c
 
 
@@ -86,7 +88,7 @@ class Gate:
             raise ApiError("bad_request", "already decided")
         if verdict == "approve" and self._executor is not None:
             try:
-                self._executor(card)
+                outcome = self._executor(card)
             except Exception as e:
                 self._store.run(
                     "UPDATE cards SET state = 'waiting', resolved = NULL WHERE id = ?", (card_id,)
@@ -97,6 +99,9 @@ class Gate:
                 raise ApiError(
                     "bad_request", "It could not be done, so nothing changed. Try again."
                 ) from None
+            if isinstance(outcome, str) and outcome:
+                self._store.run("UPDATE cards SET outcome = ? WHERE id = ?", (outcome[:1000], card_id))
+                card = self.get(card_id)
         self._events.publish({"type": "card_resolved", "card": card})
         return card
 

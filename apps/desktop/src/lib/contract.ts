@@ -504,6 +504,8 @@ export interface Card {
   state: CardState;
   created: string;
   resolved?: string;
+  /** What a signed card's run said, in plain words. */
+  outcome?: string;
 }
 
 export interface Turn {
@@ -1048,6 +1050,20 @@ export type TwinRehearsalEvent =
   | { type: "outcome"; state: MissionState; filed?: TwinFiled }
   | { type: "error"; error: ErrorWord; reason: string };
 
+// --- the MCP server (ADR 0015) ------------------------------------------------------------------
+// Protocol: see contracts.py (one JSON-RPC message per POST /mcp; the bearer is a lease; a gated
+// call answers {pending: {card_id}}).
+
+export interface McpLeaseAsk {
+  space_id: string;
+}
+export interface McpLease {
+  url: string;
+  token: string;
+  space_id: string;
+  expires: string;
+}
+
 export const ROUTES = {
   health: "/health",
   engine: "/engine",
@@ -1104,4 +1120,6 @@ export const ROUTES = {
   connector_flow: "/connectors/{kind}/flow",
   connector_disconnect: "/connectors/{kind}/disconnect",
   connector_probe: "/connectors/{kind}/probe",
+  mcp: "/mcp",
+  mcp_lease: "/mcp/lease",
 } as const;

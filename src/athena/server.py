@@ -1,6 +1,7 @@
 """The loopback HTTP surface: auth, CORS, the route modules, and the launch handshake.
 
-Binds 127.0.0.1 only. Every route needs `Authorization: Bearer <token>` except `GET /health`;
+Binds 127.0.0.1 only. Every route needs `Authorization: Bearer <token>` except `GET /health` and
+`/mcp`, whose bearer is an MCP lease the route checks itself (ADR 0015);
 `GET /events` takes `?token=` because EventSource cannot send headers. The token and the port are
 written to `<data>/daemon.json` (owner-only) for the desktop shell to read.
 """
@@ -27,7 +28,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from athena import engine as engine_mod
-from athena import routes_state, routes_turn
+from athena import routes_mcp, routes_state, routes_turn
 from athena.app import Daemon
 from athena.chores import routes_chores
 from athena.connectors import routes as routes_connectors
@@ -41,7 +42,7 @@ from athena.twins import routes as routes_twins
 
 # The desktop's origins: Tauri on Windows/Linux and macOS, and the Vite dev server.
 APP_ORIGINS = ("http://tauri.localhost", "tauri://localhost", "http://localhost:1420")
-OPEN_PATHS = frozenset({"/health"})
+OPEN_PATHS = frozenset({"/health", routes_mcp.LEASE_PATH})
 QUERY_TOKEN_PATHS = frozenset({"/events"})
 
 
@@ -58,6 +59,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_drafts.routes(daemon),
         *routes_twins.routes(daemon),
         *routes_connectors.routes(daemon),
+        *routes_mcp.routes(daemon),
     ]
 
     async def guard(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -141,6 +143,7 @@ def main(argv: list[str] | None = None) -> None:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("127.0.0.1", args.port))
     port = sock.getsockname()[1]
+    daemon.mcp_url = f"http://127.0.0.1:{port}/mcp"
     write_handshake(args.data, port, token)
     print(f"athena-daemon listening on 127.0.0.1:{port}", flush=True)
 

@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -66,6 +67,50 @@ def run_cli(call: CliCall) -> CliResult:
     except subprocess.TimeoutExpired as e:
         raise EngineError(f"The model took longer than {int(CLI_TIMEOUT_S)} seconds and was stopped") from e
     return CliResult(done.stdout.splitlines(), done.stderr or "", done.returncode)
+
+
+#: Runs one CLI call and hands back its stdout line by line as it comes (an engine with tools on).
+Streamer = Callable[[CliCall], Iterator[str]]
+
+
+def stream_cli(call: CliCall) -> Iterator[str]:
+    """The real streamer: stdout lines as they arrive; the run is stopped after CLI_TIMEOUT_S. A
+    run that never ends is stopped and says so. Its stderr is not kept: the final line says how it ended."""
+    try:
+        proc = subprocess.Popen(
+            call.argv,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            env=call.env,
+            cwd=call.cwd,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError as e:
+        raise EngineError(f"Could not start {Path(call.argv[0]).name}; is it installed?") from e
+    stopped = threading.Event()
+
+    def stop() -> None:
+        stopped.set()
+        proc.kill()
+
+    timer = threading.Timer(CLI_TIMEOUT_S, stop)
+    timer.start()
+    try:
+        assert proc.stdin is not None and proc.stdout is not None
+        proc.stdin.write(call.stdin or "")
+        proc.stdin.close()
+        yield from (line.rstrip("\n") for line in proc.stdout)
+        proc.wait()
+    finally:
+        timer.cancel()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    if stopped.is_set():
+        raise EngineError(f"The model took longer than {int(CLI_TIMEOUT_S)} seconds and was stopped")
 
 
 def child_env() -> dict[str, str]:

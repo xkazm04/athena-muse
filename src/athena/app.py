@@ -12,6 +12,7 @@ from athena.drafts.store import Drafts
 from athena.events import Events
 from athena.gate import Gate
 from athena.ledger import Ledger
+from athena.mcp import Leases
 from athena.memory import Memory
 from athena.settings import Settings
 from athena.spaces import Spaces
@@ -34,6 +35,8 @@ class Daemon:
     drafts: Drafts
     connectors: Connectors  # connected accounts (ADR 0008); nothing on disk or on the wire without a data dir
     twins: Twins  # the twins' tables (ADR 0008-0010)
+    mcp: Leases  # who may call the MCP server, and for which project (ADR 0015)
+    mcp_url: str | None = None  # set once the server knows its port; None = no MCP (tests, unless set)
 
     @classmethod
     def open(cls, data_dir: Path | None) -> Daemon:
@@ -56,6 +59,7 @@ class Daemon:
             drafts=Drafts(store, data_dir),
             connectors=Connectors.open(data_dir),
             twins=Twins(store),
+            mcp=Leases(),
         )
 
     def active_space(self) -> str:

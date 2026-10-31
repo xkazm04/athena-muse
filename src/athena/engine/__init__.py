@@ -40,6 +40,15 @@ class Usage:
     cost_usd: float | None = None
 
 
+@dataclass(frozen=True)
+class McpAccess:
+    """How an engine that calls tools itself reaches Athena's MCP server for one turn (ADR 0015)."""
+
+    url: str
+    token: str  # the turn's lease; never the daemon's token
+    tools: list[str]
+
+
 class EngineError(Exception):
     """A model call that failed. `reason` is plain words, safe to show."""
 

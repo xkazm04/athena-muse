@@ -92,6 +92,7 @@ _ADDED = (
     ("drafts", "views", "TEXT"),
     ("drafts", "ask", "TEXT"),
     ("drafts", "practice", "TEXT"),
+    ("cards", "outcome", "TEXT"),
 )
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.

@@ -275,6 +275,7 @@ class Card(TypedDict):
     state: CardState
     created: str
     resolved: NotRequired[str]
+    outcome: NotRequired[str]  # what a signed card's run said, in plain words
 
 
 class Turn(TypedDict):
@@ -1133,6 +1134,27 @@ class TwinOutcomeEvent(TypedDict):
     filed: NotRequired[TwinFiled]
 
 
+# --- the MCP server (ADR 0015) -------------------------------------------------------------------
+#
+# The protocol: `POST /mcp` takes one JSON-RPC 2.0 message per request (Streamable HTTP, JSON replies
+# only, no SSE); a request gets one JSON-RPC response, a notification gets 202 and no body. The
+# bearer is an MCP lease (`POST /mcp/lease`, or minted by a turn), never the daemon's token: a lease
+# names one project and expires. Methods: `initialize`, `ping`, `tools/list`, `tools/call`. A gated
+# call answers `structuredContent: {pending: {card_id}}` and runs once, when the person signs;
+# nothing else a caller sends can run it.
+
+
+class McpLeaseAsk(TypedDict):
+    space_id: str
+
+
+class McpLease(TypedDict):
+    url: str
+    token: str
+    space_id: str
+    expires: str
+
+
 # --- routes ---------------------------------------------------------------------------------------
 
 ROUTES = {
@@ -1191,4 +1213,6 @@ ROUTES = {
     "connector_flow": "/connectors/{kind}/flow",
     "connector_disconnect": "/connectors/{kind}/disconnect",
     "connector_probe": "/connectors/{kind}/probe",
+    "mcp": "/mcp",
+    "mcp_lease": "/mcp/lease",
 }
