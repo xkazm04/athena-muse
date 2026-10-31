@@ -325,8 +325,9 @@ p.m-muted {
   align-items: start;
 }
 .m-stage {
+  --field-h: clamp(320px, calc(100vh - 290px), 720px);
   position: relative;
-  height: clamp(320px, calc(100vh - 290px), 720px);
+  height: var(--field-h);
   overflow: hidden;
 }
 .m-stage__svg {
@@ -431,9 +432,19 @@ p.m-muted {
   background: var(--hue);
 }
 
+/* as tall as the field beside it: a long list scrolls inside its table, never the page */
 .m-marquee {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--sp-5);
+  max-height: clamp(320px, calc(100vh - 290px), 720px);
+}
+.m-marquee > .m-ledger {
+  min-height: 0;
+  overflow: hidden auto;
+}
+.m-field__table td {
+  height: 44px;
 }
 .m-marquee__one {
   display: grid;

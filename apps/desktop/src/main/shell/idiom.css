@@ -374,6 +374,18 @@ a.m-rowname {
     height: 46px;
   }
 }
+@media (max-width: 1100px) {
+  .m-chip-toggle,
+  .m-segmented button {
+    padding: 5px 10px;
+  }
+  .m-figure__per {
+    display: none;
+  }
+}
+.m-grid .badge {
+  white-space: nowrap;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .m-area,

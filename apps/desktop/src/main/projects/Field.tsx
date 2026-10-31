@@ -220,7 +220,7 @@ export function Field() {
                         onClick={(e) => (e.preventDefault(), enter(s))}
                       >
                         <i className="m-dot" aria-hidden="true" />
-                        {s.name}
+                        <span>{s.name}</span>
                       </a>
                     </td>
                     <td className="m-num">{s.apps.length}</td>

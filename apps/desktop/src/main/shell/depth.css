@@ -332,6 +332,9 @@
   .m-dock {
     padding-block: 8px 10px;
   }
+  .m-depth > .m-content {
+    padding-top: var(--sp-4);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
