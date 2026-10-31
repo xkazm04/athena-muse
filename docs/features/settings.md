@@ -4,8 +4,8 @@ Built 2026-10-31. Decision: [ADR 0012](../adr/0012-settings-live-in-the-daemon-a
 
 ## What it does
 
-`#settings` in the main window (the **Settings** link in the bar) is an overview: four tiles, each
-with a standing word and one line.
+`#settings` in the main window (**Settings** in the dock, or its tile on the surface) is an overview in the variant's mind idiom (ADR 0016): four instruments, each
+a glyph with a standing word and one line.
 
 | Tile | Standing | Level (`#settings/<item>`) |
 |---|---|---|
@@ -14,7 +14,7 @@ with a standing word and one line.
 | Accounts | set / not yet / needs you | Gmail and Notion as connected for Twins, read-only, with a link to Twins where they are connected. |
 | Data | local | The folder this computer's Athena keeps everything in, and what is in it. |
 
-Below the tiles, **Show the welcome again** draws the first run again. Nothing already set changes.
+Below the instruments, **Show the welcome again** draws the first run again. Nothing already set changes.
 
 A write that the daemon refuses is shown beside the control that made it, in the daemon's words,
 and the stored choice is shown again.
