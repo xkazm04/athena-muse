@@ -1,4 +1,5 @@
-"""Routes over the engine and the turn: /engine, /engine/key, /engine/probe, /run."""
+"""Routes over the engine and the turn: /engine, /engine/key, /engine/probe, /run, and Settings'
+(routes_settings.py), which shares this module's key custody and engine announcement."""
 
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import BaseRoute, Route
 
 from athena import engine as engine_mod
+from athena import routes_settings
 from athena.app import Daemon
 from athena.contracts import EngineId, EngineStatus
 from athena.engine import EngineError
@@ -44,7 +46,7 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
 
     def current() -> EngineStatus:
         try:
-            return engine_mod.status(keys)
+            return engine_mod.status(keys, daemon.settings.engine_choice())
         except EngineError as e:  # a bad ATHENA_ENGINE: say how to fix it
             raise ApiError("engine_unavailable", e.reason) from e
 
@@ -70,11 +72,13 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         # Which engine was tried comes from the one choice function, even when building it failed.
         engine_id: EngineId | None
         try:
-            engine_id = engine_mod.choose(keys)
+            engine_id = engine_mod.choose(keys, daemon.settings.engine_choice())
         except EngineError:
             engine_id = None
         try:
-            engine = engine_mod.build_engine(keys, transport=TRANSPORT)
+            engine = engine_mod.build_engine(
+                keys, stored=daemon.settings.engine_choice(), transport=TRANSPORT
+            )
             result = await run_in_threadpool(engine.probe)  # a CLI engine's probe takes seconds
             model = result.get("model", engine.model)
         except EngineError as e:
@@ -101,7 +105,9 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         if not isinstance(text, str) or not isinstance(space_id, str):
             raise ApiError("bad_request", "send text and space_id as strings")
         try:
-            engine = engine_mod.build_engine(keys, transport=TRANSPORT)
+            engine = engine_mod.build_engine(
+                keys, stored=daemon.settings.engine_choice(), transport=TRANSPORT
+            )
         except EngineError as e:
             raise ApiError("engine_unavailable", e.reason) from e
         events = run_turn(daemon, engine, text, space_id)  # raises the 4xx before any streaming
@@ -119,4 +125,5 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route("/engine/key", engine_key, methods=["POST", "DELETE"]),
         Route("/engine/probe", probe, methods=["POST"]),
         Route("/run", run, methods=["POST"]),
+        *routes_settings.routes(daemon, keys, announce),
     ]

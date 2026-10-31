@@ -7,6 +7,16 @@ import * as api from "../lib/api";
 import { CORE, type AppEvent, type Card, type EngineStatus, type SpaceSummary, type Turn } from "../lib/contract";
 import { DaemonError, getConnection, streamRun, UNREACHABLE } from "../lib/daemon";
 import type { SealState } from "../theme";
+import { applyLook } from "../ui/look";
+
+/** Her window wears the look chosen in Settings (ADR 0012); unread, the default look stays. */
+async function paintLook(): Promise<void> {
+  try {
+    applyLook((await api.settings()).look);
+  } catch {
+    // the defaults stay painted; the next `settings` event paints the choice
+  }
+}
 
 export type LiveItem = { kind: "tool"; label: string } | { kind: "card"; id: string };
 
@@ -133,6 +143,7 @@ export const useHer = create<HerState>()((set, get) => {
     set({ status: "reading", problem: "" });
     try {
       await getConnection();
+      void paintLook();
       const [engine, active, spaces] = await Promise.all([api.engine(), api.activeSpace(), api.spaces()]);
       set({ engine, spaces, activeId: active.space_id });
       await Promise.all([loadConversation(active.space_id), loadCards()]);
@@ -254,6 +265,10 @@ export const useHer = create<HerState>()((set, get) => {
           break;
         case "engine":
           if (e.status) set({ engine: e.status });
+          break;
+        case "settings":
+          if (e.look) applyLook(e.look);
+          else void paintLook();
           break;
         case "space_changed":
           void api.spaces().then((spaces) => set({ spaces }), () => undefined);

@@ -22,7 +22,9 @@ export type Route =
   | { view: "twin_voice"; id: string }
   | { view: "twin_entry"; id: string }
   | { view: "twin_mission"; id: string; mission: string }
-  | { view: "twin_draft"; id: string; draft: string };
+  | { view: "twin_draft"; id: string; draft: string }
+  /** Settings (ADR 0012): the overview (`null`), or one setting's level by name (`#settings/look`). */
+  | { view: "settings"; item: string | null };
 
 /** `id` is a space id or CORE (""). */
 export function parseHash(hash: string): Route {
@@ -31,6 +33,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === "chores") return parts[1] ? { view: "chore", id: parts[1] } : { view: "chores" };
   if (parts[0] === "stage") return { view: "stage", id: parts[1] && parts[1] !== STAGE_NEW ? parts[1] : null };
   if (parts[0] === "twins") return { view: "twins" };
+  if (parts[0] === "settings") return { view: "settings", item: parts[1] ?? null };
   if (parts[0] === "twin") return twinRoute(parts.slice(1));
   if (parts[0] !== "projects" || parts.length === 1) return { view: "projects" };
   const ref = parts[1] ?? "";
@@ -72,6 +75,8 @@ export function toHash(route: Route): string {
       return `#stage/${route.id === null ? STAGE_NEW : encodeURIComponent(route.id)}`;
     case "twins":
       return "#twins";
+    case "settings":
+      return route.item === null ? "#settings" : `#settings/${encodeURIComponent(route.item)}`;
     case "twin":
       return `#twin/${route.id === null ? TWIN_NEW : encodeURIComponent(route.id)}`;
     case "twin_voice":

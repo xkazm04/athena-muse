@@ -3,8 +3,19 @@
 
 import { create } from "zustand";
 import * as api from "../lib/api";
-import { CORE, type AppEvent, type Card, type ChoreSummary, type EngineStatus, type LedgerPage, type SpaceCounts, type SpaceSummary } from "../lib/contract";
+import {
+  CORE,
+  type AppEvent,
+  type Card,
+  type ChoreSummary,
+  type EngineStatus,
+  type LedgerPage,
+  type SettingsView,
+  type SpaceCounts,
+  type SpaceSummary,
+} from "../lib/contract";
 import { DaemonError } from "../lib/daemon";
+import { applyLook } from "../ui/look";
 import { parseHash, routeSpace, toHash, type Route } from "./route";
 
 export type Load = "idle" | "reading" | "ready" | "problem";
@@ -35,6 +46,12 @@ interface Data {
   route: Route;
   /** A short-lived problem from an action outside a form (switching project). */
   notice: string;
+  /** Settings (ADR 0012) as the daemon last answered; `null` until it has. */
+  settings: SettingsView | null;
+  /** Why Settings could not be read, verbatim; "" when it was. */
+  settingsProblem: string;
+  /** "Show the welcome again" (portable ADR 0094): the first run is drawn again; no row changes. */
+  welcome: boolean;
 }
 
 interface Actions {
@@ -56,6 +73,11 @@ interface Actions {
   syncRoute: (hash: string) => void;
   handleEvent: (e: AppEvent) => void;
   clearNotice: () => void;
+  /** Reads Settings and paints its look on this window. */
+  loadSettings: () => Promise<void>;
+  /** A write's answer: the whole view, and its look painted. */
+  putSettings: (view: SettingsView) => void;
+  setWelcome: (shown: boolean) => void;
 }
 
 export type MainState = Data & Actions;
@@ -76,6 +98,9 @@ const initial = (): Data => ({
   choresProblem: "",
   route: parseHash(typeof window === "undefined" ? "" : window.location.hash),
   notice: "",
+  settings: null,
+  settingsProblem: "",
+  welcome: false,
 });
 
 const putSpace = (list: SpaceSummary[], s: SpaceSummary) =>
@@ -138,7 +163,14 @@ export const useMain = create<MainState>()((set, get) => ({
 
   loadAll: async () => {
     const s = get();
-    await Promise.all([s.loadSpaces(), s.loadActive(), s.loadCards(), s.loadLedger(), s.loadCoreCounts()]);
+    await Promise.all([
+      s.loadSettings(),
+      s.loadSpaces(),
+      s.loadActive(),
+      s.loadCards(),
+      s.loadLedger(),
+      s.loadCoreCounts(),
+    ]);
   },
 
   loadChores: async () => {
@@ -203,6 +235,16 @@ export const useMain = create<MainState>()((set, get) => ({
       case "engine":
         if (e.status) set({ engine: e.status });
         else void s.loadEngine().catch(() => undefined);
+        // A key saved or removed, or an engine chosen: what Settings can offer has changed.
+        void s.loadSettings();
+        break;
+      case "settings":
+        // A look chosen in either window: paint it here too.
+        if (e.look) {
+          applyLook(e.look);
+          const view = get().settings;
+          if (view) set({ settings: { ...view, look: e.look } });
+        } else void s.loadSettings();
         break;
       case "turn_done":
         void s.loadSpaces();
@@ -213,6 +255,22 @@ export const useMain = create<MainState>()((set, get) => ({
   },
 
   clearNotice: () => set({ notice: "" }),
+
+  loadSettings: async () => {
+    try {
+      get().putSettings(await api.settings());
+    } catch (e) {
+      // The look stays as painted; the Settings page says why it could not read.
+      set({ settingsProblem: reasonOf(e, "Could not read the settings") });
+    }
+  },
+
+  putSettings: (view) => {
+    applyLook(view.look);
+    set({ settings: view, settingsProblem: "" });
+  },
+
+  setWelcome: (welcome) => set({ welcome }),
 }));
 
 /** Tests start from a clean store. */

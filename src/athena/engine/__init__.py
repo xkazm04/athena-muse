@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
-from athena.contracts import EngineId, EngineStatus, Probe
+from athena.contracts import EngineId, EngineOption, EngineSource, EngineStatus, Probe
 from athena.keys import KeyStore
 
 if TYPE_CHECKING:
@@ -64,6 +64,11 @@ class Engine(Protocol):
 
 ENGINES: tuple[EngineId, ...] = ("muse", "muse_code", "claude_code", "scripted")
 PROGRAMS: dict[EngineId, str] = {"muse_code": "muse", "claude_code": "claude"}
+NO_KEY = "There is no Meta key: add one in Settings or set META_API_KEY"
+NOT_INSTALLED: dict[EngineId, str] = {
+    "muse_code": "Muse Code is not installed: put `muse` on PATH, or set another ATHENA_ENGINE",
+    "claude_code": "Claude Code is not installed: put `claude` on PATH, or set another ATHENA_ENGINE",
+}
 DEFAULT_MODELS: dict[EngineId, str] = {
     "muse": DEFAULT_MODEL,
     "muse_code": DEFAULT_MODEL,
@@ -72,16 +77,57 @@ DEFAULT_MODELS: dict[EngineId, str] = {
 }
 
 
-def choose(keys: KeyStore) -> EngineId:
-    """The one place the engine is chosen. `ATHENA_ENGINE` wins; unset, `muse` with a key, else
-    `scripted`. Every site that needs the engine (build, status, probe, run) asks here."""
-    raw = os.environ.get("ATHENA_ENGINE", "").strip().lower()
-    if not raw:
-        return "muse" if keys.get() else "scripted"
+def _known(raw: str) -> EngineId | None:
+    raw = raw.strip().lower()
     for engine_id in ENGINES:
         if raw == engine_id:
             return engine_id
-    raise EngineError("ATHENA_ENGINE must be one of muse, muse_code, claude_code or scripted")
+    return None
+
+
+def decide(keys: KeyStore, stored: str = "") -> tuple[EngineId, EngineSource]:
+    """The one place the engine is chosen, and who chose it (ADR 0006, ADR 0012).
+
+    `ATHENA_ENGINE` wins. Else the choice stored in Settings (`stored`), except `muse` without a key,
+    which runs simulated as it always has. Else `muse` with a key, else `scripted`."""
+    raw = os.environ.get("ATHENA_ENGINE", "").strip()
+    if raw:
+        pinned = _known(raw)
+        if pinned is None:
+            raise EngineError("ATHENA_ENGINE must be one of muse, muse_code, claude_code or scripted")
+        return pinned, "env"
+    chosen = _known(stored)
+    if chosen is not None and (chosen != "muse" or keys.get()):
+        return chosen, "setting"
+    return ("muse" if keys.get() else "scripted"), "default"
+
+
+def choose(keys: KeyStore, stored: str = "") -> EngineId:
+    """The engine `decide` picks. Every site that needs the engine (build, status, probe, run) asks
+    here; the daemon passes the stored Settings choice, the CLIs pass none."""
+    return decide(keys, stored)[0]
+
+
+def options(keys: KeyStore) -> list[EngineOption]:
+    """Every engine as Settings offers it, read without calling one: a key on file, a program on PATH.
+    Whether the key works or the CLI is signed in is the probe's to say."""
+    from athena.engine.cli import which
+
+    found: list[EngineOption] = []
+    for engine_id in ENGINES:
+        if engine_id == "scripted":
+            found.append({"id": engine_id, "readiness": "simulated"})
+        elif engine_id == "muse":
+            found.append(
+                {"id": engine_id, "readiness": "ready"}
+                if keys.get()
+                else {"id": engine_id, "readiness": "no_key", "reason": NO_KEY}
+            )
+        elif which(PROGRAMS[engine_id]) is None:
+            found.append({"id": engine_id, "readiness": "not_installed", "reason": NOT_INSTALLED[engine_id]})
+        else:
+            found.append({"id": engine_id, "readiness": "ready"})
+    return found
 
 
 def engine_model(engine_id: EngineId) -> str:
@@ -101,17 +147,21 @@ def model_name() -> str:
 
 
 def build_engine(
-    keys: KeyStore, *, transport: httpx.BaseTransport | None = None, runner: Runner | None = None
+    keys: KeyStore,
+    *,
+    stored: str = "",
+    transport: httpx.BaseTransport | None = None,
+    runner: Runner | None = None,
 ) -> Engine:
-    """Builds the chosen engine, or says in plain words what is missing. `runner` replaces the CLI
-    subprocess call (tests)."""
+    """Builds the chosen engine, or says in plain words what is missing. `stored` is the Settings
+    choice (ADR 0012); `runner` replaces the CLI subprocess call (tests)."""
     from athena.engine.claude_code import ClaudeCodeEngine
     from athena.engine.cli import which
     from athena.engine.meta import MuseEngine
     from athena.engine.muse_code import MuseCodeEngine
     from athena.engine.scripted import ScriptedEngine
 
-    engine_id = choose(keys)
+    engine_id = choose(keys, stored)
     if engine_id == "scripted":
         return ScriptedEngine()
     model = engine_model(engine_id)
@@ -120,22 +170,22 @@ def build_engine(
     if engine_id == "muse":
         key = keys.get()
         if key is None:
-            raise EngineError("There is no Meta key: add one in Settings or set META_API_KEY")
+            raise EngineError(NO_KEY)
         base = os.environ.get("META_BASE_URL", "").strip() or DEFAULT_BASE_URL
         return MuseEngine(key, model=model, base_url=base, transport=transport)
     program = which(PROGRAMS[engine_id])
     if engine_id == "muse_code":
         if program is None:
-            raise EngineError("Muse Code is not installed: put `muse` on PATH, or set another ATHENA_ENGINE")
+            raise EngineError(NOT_INSTALLED["muse_code"])
         return MuseCodeEngine(program, model=model, runner=runner)
     if program is None:
-        raise EngineError("Claude Code is not installed: put `claude` on PATH, or set another ATHENA_ENGINE")
+        raise EngineError(NOT_INSTALLED["claude_code"])
     return ClaudeCodeEngine(program, model=model, runner=runner)
 
 
-def status(keys: KeyStore) -> EngineStatus:
+def status(keys: KeyStore, stored: str = "") -> EngineStatus:
     """The engine `choose` picks, as the windows show it. Raises EngineError on a bad ATHENA_ENGINE."""
-    engine_id = choose(keys)
+    engine_id = choose(keys, stored)
     return {
         "engine": engine_id,
         "model": engine_model(engine_id),

@@ -1,0 +1,125 @@
+/* Settings (ADR 0012): the overview's tiles and a level's choices. Tokens only; sizes are --fs-*. */
+
+.m-settings {
+  display: grid;
+  gap: var(--sp-4);
+  max-width: 960px;
+}
+.m-settings__head {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.m-settings__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-settings__tile {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--sp-2);
+  height: 100%;
+  min-height: 140px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-card);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-1);
+  color: var(--foreground);
+  text-decoration: none;
+  transition:
+    border-color var(--dur-fast) var(--ease-settle),
+    transform var(--dur-fast) var(--ease-settle);
+}
+.m-settings__tile:hover,
+.m-settings__tile:focus-visible {
+  border-color: var(--border-emphasis);
+  transform: translateY(-2px);
+}
+.m-settings__name {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.m-settings__line {
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+}
+
+.m-settings__choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--sp-2);
+}
+.m-settings__choice {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-interactive);
+  background: var(--recessed);
+  color: var(--foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-settle);
+}
+.m-settings__choice:hover:not(:disabled) {
+  border-color: var(--border-emphasis);
+  background: var(--hover-wash);
+}
+.m-settings__choice:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.m-settings__choice[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--card-raised);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.m-settings__choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.m-settings__choice-name {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.m-settings__choice-hint {
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}
+
+.m-settings__accounts {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-settings__path {
+  display: block;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--recessed);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-settings__tile,
+  .m-settings__choice {
+    transition: none;
+  }
+  .m-settings__tile:hover,
+  .m-settings__tile:focus-visible {
+    transform: none;
+  }
+}

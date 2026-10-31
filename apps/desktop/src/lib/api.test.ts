@@ -54,6 +54,17 @@ describe("api paths", () => {
   it("builds settings, conversation, cards, decision and ledger", async () => {
     expect(await called(api.activeSpace)).toMatchObject({ url: "/settings/active-space" });
     expect(await called(() => api.setActiveSpace("spc_2"))).toMatchObject({ method: "POST", body: { space_id: "spc_2" } });
+    expect(await called(api.settings)).toMatchObject({ method: "GET", url: "/settings" });
+    expect(await called(() => api.setLook({ theme: "light" }))).toEqual({
+      method: "POST",
+      url: "/settings/look",
+      body: { theme: "light" },
+    });
+    expect(await called(() => api.chooseEngine("claude_code"))).toEqual({
+      method: "POST",
+      url: "/settings/engine",
+      body: { engine: "claude_code" },
+    });
     expect((await called(() => api.conversation("spc_1"))).url).toBe("/conversation?space_id=spc_1");
     expect((await called(() => api.cards("waiting"))).url).toBe("/cards?state=waiting");
     expect((await called(() => api.cards())).url).toBe("/cards");

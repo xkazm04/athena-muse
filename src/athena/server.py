@@ -90,7 +90,9 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         keys = KeyStore(daemon.data_dir)
 
         def engine() -> Engine:
-            return engine_mod.build_engine(keys, transport=routes_turn.TRANSPORT)
+            return engine_mod.build_engine(
+                keys, stored=daemon.settings.engine_choice(), transport=routes_turn.TRANSPORT
+            )
 
         running = poller.Poller(daemon, engine, seconds)
         running.start()

@@ -37,7 +37,25 @@ export type ActionName =
   | "ask"
   | "twin_send"
   | "twin_note";
-export type AppEventType = "card_filed" | "card_resolved" | "space_changed" | "active_space" | "engine" | "turn_done";
+export type AppEventType =
+  | "card_filed"
+  | "card_resolved"
+  | "space_changed"
+  | "active_space"
+  | "engine"
+  | "turn_done"
+  | "settings";
+
+// Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
+/** `auto` follows the system. */
+export type ThemeChoice = "auto" | "dark" | "light";
+/** `large` adds 2 px to every size under the headings. */
+export type TypeScale = "standard" | "large";
+/** `calm` stills every animation, whatever the system asks. */
+export type MotionChoice = "system" | "calm";
+/** Who decided the engine turns run on. */
+export type EngineSource = "env" | "setting" | "default";
+export type EngineReadiness = "ready" | "no_key" | "not_installed" | "simulated";
 
 export const CATALOG: Record<ActionName, ActionClass> = {
   recall: "auto",
@@ -436,6 +454,47 @@ export interface ActiveSpace {
   space_id: string;
 }
 
+// --- settings (ADR 0012) --------------------------------------------------------------------------
+
+/** How both windows are painted. An unknown stored value reads as its default. */
+export interface Look {
+  theme: ThemeChoice;
+  type_scale: TypeScale;
+  motion: MotionChoice;
+}
+
+/** POST /settings/look: any of the three; an omitted one keeps what is stored. */
+export interface LookBody {
+  theme?: ThemeChoice;
+  type_scale?: TypeScale;
+  motion?: MotionChoice;
+}
+
+/** One engine as Settings offers it, read without calling it (a key on file, a program on PATH). */
+export interface EngineOption {
+  id: EngineId;
+  readiness: EngineReadiness;
+  /** Plain words: why it cannot be chosen, and the fix. */
+  reason?: string;
+}
+
+/** GET /settings: everything the Settings page reads in one answer. */
+export interface SettingsView {
+  look: Look;
+  /** The engine the next turn runs on. */
+  engine: EngineId;
+  source: EngineSource;
+  /** The stored choice; omitted when none was made. */
+  choice?: EngineId;
+  engines: EngineOption[];
+  /** Where this daemon keeps its files; omitted when nothing is on disk. */
+  data_dir?: string;
+}
+
+export interface EngineChoiceBody {
+  engine: EngineId;
+}
+
 export interface Card {
   id: string;
   space_id: string;
@@ -511,6 +570,7 @@ export interface AppEvent {
   erased?: boolean;
   status?: EngineStatus;
   turn_id?: string;
+  look?: Look;
 }
 
 // --- twins (ADR 0008-0010) ------------------------------------------------------------------------
@@ -998,6 +1058,9 @@ export const ROUTES = {
   space_memory: "/spaces/{id}/memory",
   memory_core: "/spaces/{id}/memory/{mem_id}/core",
   active_space: "/settings/active-space",
+  settings: "/settings",
+  settings_look: "/settings/look",
+  settings_engine: "/settings/engine",
   conversation: "/conversation",
   run: "/run",
   cards: "/cards",

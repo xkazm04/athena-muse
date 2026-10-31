@@ -1,0 +1,26 @@
+/* The look's two attributes (ADR 0012), written by look.ts. Tokens only; tokens.css is not edited. */
+
+/* Large text: every size under the headings one step of 2px up (portable ADR 0054's rule). The
+   headings (--fs-lg and above) keep theirs. look.test.ts checks each value against tokens.css. */
+:root[data-type-scale="large"] {
+  --fs-xs: 14px;
+  --fs-sm: 15px;
+  --fs-md: 17px;
+}
+
+/* Calm: whatever the system asks, nothing animates or eases; every change lands at once. It is the
+   same rule as base.css's reduced-motion block, keyed to the choice instead of the media query. */
+:root[data-motion="calm"] *,
+:root[data-motion="calm"] *::before,
+:root[data-motion="calm"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* This sheet moves nothing of its own; the block is here because every sheet carries one. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion] {
+    scroll-behavior: auto;
+  }
+}

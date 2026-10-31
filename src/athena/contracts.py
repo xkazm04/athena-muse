@@ -55,7 +55,16 @@ ActionName = Literal[
     "twin_send",
     "twin_note",
 ]
-AppEventType = Literal["card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done"]
+AppEventType = Literal[
+    "card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done", "settings"
+]
+
+# Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
+ThemeChoice = Literal["auto", "dark", "light"]  # auto follows the system
+TypeScale = Literal["standard", "large"]  # large adds 2 px to every size under the headings
+MotionChoice = Literal["system", "calm"]  # calm stills every animation, whatever the system asks
+EngineSource = Literal["env", "setting", "default"]  # who decided the engine turns run on
+EngineReadiness = Literal["ready", "no_key", "not_installed", "simulated"]
 
 # The closed action catalog. The daemon is its only author; the class decides whether it runs or
 # files a card. A project never changes a class.
@@ -213,6 +222,48 @@ class MemoryPage(TypedDict):
 
 class ActiveSpace(TypedDict):
     space_id: str
+
+
+# --- settings (ADR 0012) --------------------------------------------------------------------------
+
+
+class Look(TypedDict):
+    """How both windows are painted. An unknown stored value reads as its default."""
+
+    theme: ThemeChoice
+    type_scale: TypeScale
+    motion: MotionChoice
+
+
+class LookBody(TypedDict):
+    """POST /settings/look: any of the three; an omitted one keeps what is stored."""
+
+    theme: NotRequired[ThemeChoice]
+    type_scale: NotRequired[TypeScale]
+    motion: NotRequired[MotionChoice]
+
+
+class EngineOption(TypedDict):
+    """One engine as Settings offers it, read without calling it (a key on file, a program on PATH)."""
+
+    id: EngineId
+    readiness: EngineReadiness
+    reason: NotRequired[str]  # plain words: why it cannot be chosen, and the fix
+
+
+class SettingsView(TypedDict):
+    """GET /settings: everything the Settings page reads in one answer."""
+
+    look: Look
+    engine: EngineId  # the engine the next turn runs on
+    source: EngineSource
+    choice: NotRequired[EngineId]  # the stored choice; omitted when none was made
+    engines: list[EngineOption]
+    data_dir: NotRequired[str]  # where this daemon keeps its files; omitted when nothing is on disk
+
+
+class EngineChoiceBody(TypedDict):
+    engine: EngineId
 
 
 class Card(TypedDict):
@@ -605,7 +656,7 @@ def tool_event(name: ActionName, label: str) -> dict[str, Any]:
 class AppEvent(TypedDict):
     """One SSE message on `/events`. Payload keys by type:
     card_filed / card_resolved: `card`; space_changed: `space_id` (and `erased: true` on erase);
-    active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`.
+    active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`; settings: `look`.
     """
 
     type: AppEventType
@@ -614,6 +665,7 @@ class AppEvent(TypedDict):
     erased: NotRequired[bool]
     status: NotRequired[EngineStatus]
     turn_id: NotRequired[str]
+    look: NotRequired[Look]
 
 
 # --- twins (ADR 0008-0010) ------------------------------------------------------------------------
@@ -1093,6 +1145,9 @@ ROUTES = {
     "space_memory": "/spaces/{id}/memory",
     "memory_core": "/spaces/{id}/memory/{mem_id}/core",
     "active_space": "/settings/active-space",
+    "settings": "/settings",
+    "settings_look": "/settings/look",
+    "settings_engine": "/settings/engine",
     "conversation": "/conversation",
     "run": "/run",
     "cards": "/cards",

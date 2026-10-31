@@ -138,8 +138,8 @@ def test_every_route_asks_the_one_choice_function(
 ) -> None:
     asked: list[str] = []
 
-    def spy(_: KeyStore) -> EngineId:
-        asked.append("x")
+    def spy(_: KeyStore, stored: str = "") -> EngineId:
+        asked.append(stored)  # the daemon always hands over the Settings choice (ADR 0012)
         return "scripted"
 
     monkeypatch.setattr(engine_mod, "choose", spy)
@@ -149,6 +149,7 @@ def test_every_route_asks_the_one_choice_function(
     assert len(asked) == 3  # the row's engine, then the build
     resp = client.post("/run", json={"text": "hello", "space_id": ""})
     assert resp.status_code == 200 and len(asked) == 4
+    assert asked == ["", "", "", ""]  # nothing chosen in Settings yet
 
 
 def test_routes_name_no_engine_of_their_own() -> None:

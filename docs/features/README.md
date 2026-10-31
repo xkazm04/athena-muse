@@ -5,6 +5,7 @@ is built; its design history stays in git.
 
 - [Chore onboarding](chore-onboarding.md) - describe a need, watch it sketched in two views, test it against your own expectations, keep it (ADR 0007)
 - [Twins](twins/README.md) - a clone that speaks for you on Gmail and Notion, set up with Athena (ADRs 0008-0010)
+- [Settings](settings.md) - the engine her turns run on, the look both windows wear, the connected accounts and where the data lives (ADR 0012)
 
 ## Open
 

@@ -115,7 +115,7 @@ const SOURCE: Record<EngineStatus["key"], string> = {
   absent: "No key yet.",
 };
 
-function Connection() {
+export function Connection() {
   const engine = useMain((s) => s.engine);
   const { state, check, removeKey } = useProbe();
   const [key, setKey] = useState("");

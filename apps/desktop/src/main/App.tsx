@@ -12,6 +12,7 @@ import { Field } from "./projects/Field";
 import { Level } from "./projects/Level";
 import { CoreLevel, Memory } from "./projects/Memory";
 import { isTwinRoute } from "./route";
+import { SettingsView } from "./settings/Settings";
 import { Stage } from "./stage/Stage";
 import { TwinsView } from "./twins/Twins";
 import { reasonOf, useMain } from "./store";
@@ -23,6 +24,9 @@ export function App() {
   const setEngine = useMain((s) => s.setEngine);
   const loadAll = useMain((s) => s.loadAll);
   const navigate = useMain((s) => s.navigate);
+  // Settings' "Show the welcome again": the first run is drawn over the shell; no row changes.
+  const welcome = useMain((s) => s.welcome);
+  const setWelcome = useMain((s) => s.setWelcome);
 
   const wake = useCallback(async () => {
     setBoot({ phase: "waking" });
@@ -64,10 +68,11 @@ export function App() {
       </Centered>
     );
   }
-  if (boot.firstRun) {
+  if (boot.firstRun || welcome) {
     return (
       <FirstRun
         onDone={(toProjects) => {
+          setWelcome(false);
           setBoot({ phase: "up", firstRun: false });
           if (toProjects) navigate({ view: "projects" });
         }}
@@ -142,6 +147,7 @@ export function Shell() {
         {route.view === "athena" && <AthenaView />}
         {route.view === "chores" && <Chores />}
         {route.view === "chore" && <ChoreScene id={route.id} />}
+        {route.view === "settings" && <SettingsView item={route.item} />}
       </main>
     </div>
   );
@@ -158,6 +164,7 @@ export function MainTop({ extra }: { extra?: ReactNode }) {
   const onAthena = route.view === "athena";
   const onChores = route.view === "chores" || route.view === "chore";
   const onTwins = isTwinRoute(route);
+  const onSettings = route.view === "settings";
   const here = (on: boolean) => (on ? "page" : undefined);
 
   return (
@@ -182,7 +189,7 @@ export function MainTop({ extra }: { extra?: ReactNode }) {
         ))}
       {extra}
       <nav className="m-nav" aria-label="Main">
-        <a href="#projects" className="m-nav__link" aria-current={here(!onAthena && !onChores && !onTwins)}>
+        <a href="#projects" className="m-nav__link" aria-current={here(!onAthena && !onChores && !onTwins && !onSettings)}>
           Projects
         </a>
         <a href="#chores" className="m-nav__link" aria-current={here(onChores)}>
@@ -193,6 +200,9 @@ export function MainTop({ extra }: { extra?: ReactNode }) {
         </a>
         <a href="#athena" className="m-nav__link" aria-current={here(onAthena)}>
           Athena
+        </a>
+        <a href="#settings" className="m-nav__link" aria-current={here(onSettings)}>
+          Settings
         </a>
       </nav>
       <button type="button" className="btn btn-primary m-talk" onClick={() => void toggleAthena()}>

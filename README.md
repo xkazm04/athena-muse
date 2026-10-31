@@ -9,7 +9,7 @@ Status: **core and Chores built in the event window** (from 2026-10-26). Built f
 Developer Hackathon, Startup track. This slice adds Chores: four errands kept as data, rehearsed on a
 headless bench against invented portals and shown in the Chores scene
 ([ADR 0005](docs/adr/0005-chores-are-data-rehearsed-on-a-bench.md)). Not yet in this build: running a
-chore live inside a Project, Settings, the Blue Hour onboarding interview and test run (see
+chore live inside a Project, the Blue Hour onboarding interview and test run (see
 [the plan](docs/concepts/blue-hour-onboarding/README.md)).
 
 | You are | Go to |
@@ -36,6 +36,10 @@ chore live inside a Project, Settings, the Blue Hour onboarding interview and te
 - **Chores.** Four family errands, each a folder of data with invented portals and an answer key.
   A bench rehearses one headless and scores the cards Athena files; a chore is featured only when
   its proofs pass ([ADR 0005](docs/adr/0005-chores-are-data-rehearsed-on-a-bench.md)).
+- **Settings.** Choose the engine her turns run on (no restart), the theme, the text size and calm
+  motion for both windows; see the connected accounts and where the data lives
+  ([ADR 0012](docs/adr/0012-settings-live-in-the-daemon-and-the-engine-choice-needs-no-restart.md),
+  [the feature](docs/features/settings.md)).
 - **Loop Tide.** A cobalt theme derived from the Meta and Muse identities (never their marks): a
   living current behind the main window and her animated seal in a cobalt-lens window.
 

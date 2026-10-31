@@ -25,6 +25,8 @@ import {
   type Draft,
   type DraftAbandoned,
   type DropBody,
+  type EngineChoiceBody,
+  type EngineId,
   type EngineStatus,
   type ExpectedList,
   type GoalList,
@@ -32,6 +34,7 @@ import {
   type Health,
   type KeyBody,
   type LedgerPage,
+  type LookBody,
   type MarkBody,
   type MemoryBody,
   type MemoryKind,
@@ -48,6 +51,7 @@ import {
   type RehearseBody,
   type SamplesBody,
   type SayBody,
+  type SettingsView,
   type SpaceErased,
   type SpaceList,
   type SpaceSummary,
@@ -105,6 +109,12 @@ export const memory = (spaceIdOrCore: string, kind?: MemoryKind, limit?: number)
   request<MemoryPage>("GET", path(ROUTES.space_memory, { id: spaceRef(spaceIdOrCore) }) + query({ kind, limit }));
 export const makeCore = (spaceId: string, memId: string) =>
   request<Pick<MemoryRow, "id" | "kind">>("POST", path(ROUTES.memory_core, { id: spaceRef(spaceId), mem_id: memId }));
+
+// Settings (ADR 0012): every write answers the whole view, so the page shows what was stored.
+export const settings = () => request<SettingsView>("GET", ROUTES.settings);
+export const setLook = (body: LookBody) => request<SettingsView>("POST", ROUTES.settings_look, body);
+export const chooseEngine = (engine: EngineId) =>
+  request<SettingsView>("POST", ROUTES.settings_engine, { engine } satisfies EngineChoiceBody);
 
 export const activeSpace = () => request<ActiveSpace>("GET", ROUTES.active_space);
 export const setActiveSpace = (spaceId: string) =>

@@ -66,7 +66,9 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     def engine() -> Engine:
         try:
             # The turn routes' transport, read per request so tests can inject a mock one.
-            return engine_mod.build_engine(keys, transport=routes_turn.TRANSPORT)
+            return engine_mod.build_engine(
+                keys, stored=daemon.settings.engine_choice(), transport=routes_turn.TRANSPORT
+            )
         except EngineError as e:
             raise ApiError("engine_unavailable", e.reason) from e
 

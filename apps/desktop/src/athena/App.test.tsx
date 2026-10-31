@@ -16,6 +16,7 @@ vi.mock("../lib/api", () => ({
   cards: vi.fn(),
   setActiveSpace: vi.fn(),
   decide: vi.fn(),
+  settings: vi.fn(),
 }));
 
 let emitApp: (e: AppEvent) => void = () => undefined;
@@ -221,6 +222,21 @@ describe("her window", () => {
     act(() => emitApp({ type: "active_space", space_id: "spc_2" }));
     expect(await screen.findByText("Garden question")).toBeTruthy();
     expect(m.conversation).toHaveBeenLastCalledWith("spc_2");
+  });
+
+  it("wears the look chosen in Settings, at boot and when the main window changes it", async () => {
+    m.settings.mockResolvedValue({
+      look: { theme: "light", type_scale: "large", motion: "system" },
+      engine: "muse",
+      source: "default",
+      engines: [],
+    });
+    await boot();
+    await waitFor(() => expect(document.documentElement.getAttribute("data-theme")).toBe("light"));
+    expect(document.documentElement.getAttribute("data-type-scale")).toBe("large");
+    act(() => emitApp({ type: "settings", look: { theme: "auto", type_scale: "standard", motion: "calm" } }));
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+    expect(document.documentElement.getAttribute("data-motion")).toBe("calm");
   });
 
   it("labels the simulated engine, and only then", async () => {

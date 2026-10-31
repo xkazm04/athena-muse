@@ -169,3 +169,11 @@ def test_place_coverage_has_one_key_per_place() -> None:
 
 def test_twin_actions_are_gated() -> None:
     assert contracts.CATALOG["twin_send"] == contracts.CATALOG["twin_note"] == "gated"
+
+
+def test_settings_match() -> None:
+    # ADR 0012: the settings enums and shapes, optional on one side exactly when on the other.
+    for name in ("ThemeChoice", "TypeScale", "MotionChoice", "EngineSource", "EngineReadiness"):
+        assert _ts_union(name) == set(typing.get_args(getattr(contracts, name))), name
+    for name in ("Look", "LookBody", "EngineOption", "SettingsView", "EngineChoiceBody", "AppEvent"):
+        assert _ts_interface_keys(name) == _py_keys(name), name

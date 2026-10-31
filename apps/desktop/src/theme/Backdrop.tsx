@@ -9,6 +9,9 @@ export interface BackdropProps {
 
 const REDUCED = "(prefers-reduced-motion: reduce)";
 
+/** Calm chosen in Settings (ADR 0012) stills the current as the system's reduced motion does. */
+const calm = () => document.documentElement.getAttribute("data-motion") === "calm";
+
 /**
  * One full-bleed canvas behind a window. The tone, bloom, shafts and vignette are CSS (base.css), so
  * the theme still stands if the canvas never paints. Put it first in a positioned parent.
@@ -29,7 +32,7 @@ export function Backdrop({ speed = SPEED_REST, className }: BackdropProps) {
 
     const mount = () => {
       cur?.stop();
-      cur = startCurrent(cv, { reduced: mq.matches, speed: speedRef.current });
+      cur = startCurrent(cv, { reduced: mq.matches || calm(), speed: speedRef.current });
       current.current = cur;
       const r = el.getBoundingClientRect();
       cur.resize(r.width, r.height, window.devicePixelRatio || 1);
@@ -42,8 +45,11 @@ export function Backdrop({ speed = SPEED_REST, className }: BackdropProps) {
     });
     ro.observe(el);
     const relook = () => cur?.relook();
-    const themeWatch = new MutationObserver(relook);
-    themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    const themeWatch = new MutationObserver((changes) => {
+      if (changes.some((c) => c.attributeName === "data-motion")) mount();
+      else relook();
+    });
+    themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-motion"] });
     const scheme = window.matchMedia("(prefers-color-scheme: light)");
     mq.addEventListener("change", mount);
     scheme.addEventListener("change", relook);
