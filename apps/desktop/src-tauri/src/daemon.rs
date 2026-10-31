@@ -79,6 +79,7 @@ fn launch(shared: &Shared, data_dir: &Path) -> Outcome {
         .arg("athena-daemon")
         .arg("--data")
         .arg(data_dir)
+        .args(port_arg())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
@@ -134,6 +135,14 @@ fn launch(shared: &Shared, data_dir: &Path) -> Outcome {
         return Err(failure("Athena's background service started but did not answer", &tail, Some(&info.token)));
     }
     Ok(info)
+}
+
+/// `ATHENA_DAEMON_PORT` pins the daemon's port (a test run keeps clear of the person's own app).
+fn port_arg() -> Vec<String> {
+    match std::env::var("ATHENA_DAEMON_PORT") {
+        Ok(p) if p.parse::<u16>().is_ok() => vec!["--port".to_string(), p],
+        _ => Vec::new(),
+    }
 }
 
 fn read_handshake(path: &Path) -> Option<DaemonInfo> {

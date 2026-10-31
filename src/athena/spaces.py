@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import sqlite3
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from athena.browser.files import space_dir
 from athena.busy import Busy
 from athena.clock import mint, now_iso
 from athena.contracts import (
@@ -195,7 +197,7 @@ class Spaces:
             }
             turns = db.execute("SELECT COUNT(*) FROM turns WHERE space_id = ?", (space_id,)).fetchone()[0]
             drafts = [r[0] for r in db.execute("SELECT id FROM drafts WHERE space_id = ?", (space_id,))]
-            for table in ("memory", "turns", "cards", "page_reads", "drafts", *TWIN_TABLES):
+            for table in ("memory", "turns", "cards", "page_reads", "drafts", "files", *TWIN_TABLES):
                 db.execute(f"DELETE FROM {table} WHERE space_id = ?", (space_id,))
             db.execute("DELETE FROM spaces WHERE id = ?", (space_id,))
             db.execute(
@@ -203,6 +205,9 @@ class Spaces:
             )
         for draft_id in drafts:
             remove_folder(self._data_dir, draft_id)
+        files = space_dir(self._data_dir, space_id)
+        if files is not None and files.is_dir():
+            shutil.rmtree(files)
         return {
             "id": space_id,
             "episodes": counts.get("episode", 0),

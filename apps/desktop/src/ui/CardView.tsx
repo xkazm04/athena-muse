@@ -25,6 +25,21 @@ const ACTION: Record<Card["action"], string> = {
   ask: "Ask a question",
   twin_send: "Send this email",
   twin_note: "Write this to Notion",
+  // Her browser (ADR 0013): a read is a card only on a site that is not one of the project's apps.
+  page_open: "Open a page in her browser",
+  page_read: "Read a page in her browser",
+  page_find: "Look over a page in her browser",
+  page_wait: "Wait on a page in her browser",
+  page_scroll: "Scroll a page in her browser",
+  tabs_read: "Look at her browser's tabs",
+  file_list: "Look at the project's files",
+  page_click: "Click on a page",
+  page_fill: "Type on a page",
+  page_select: "Choose on a page",
+  page_submit: "Send a form",
+  page_upload: "Upload a file",
+  page_download: "Download a file",
+  wheel_handoff: "Take over her browser",
 };
 
 /** A twin's draft (ADR 0009) carries its text, which the person may rewrite before signing. */

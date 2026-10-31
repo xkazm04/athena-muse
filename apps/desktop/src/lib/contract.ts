@@ -36,7 +36,21 @@ export type ActionName =
   | "sketch"
   | "ask"
   | "twin_send"
-  | "twin_note";
+  | "twin_note"
+  | "page_open"
+  | "page_read"
+  | "page_find"
+  | "page_wait"
+  | "page_scroll"
+  | "tabs_read"
+  | "file_list"
+  | "page_click"
+  | "page_fill"
+  | "page_select"
+  | "page_submit"
+  | "page_upload"
+  | "page_download"
+  | "wheel_handoff";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -44,7 +58,11 @@ export type AppEventType =
   | "active_space"
   | "engine"
   | "turn_done"
-  | "settings";
+  | "settings"
+  | "wheel";
+/** Her browser's answer when a hand did not run (ADR 0013). */
+export type HandReason = "no_browser" | "no_tab" | "moved" | "refused" | "timeout" | "failed" | "unknown_ref";
+export type WheelState = "back" | "closed" | "timeout";
 
 // Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 /** `auto` follows the system. */
@@ -70,6 +88,22 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   // Twins (ADR 0009): one Gmail message, one Notion append or create; a draft not let go alone waits here.
   twin_send: "gated",
   twin_note: "gated",
+  // Her browser (ADR 0013): the class is the floor; a hand on a site not among the project's apps
+  // files a card whatever its class, and a signed card runs only on the page it was asked on.
+  page_open: "auto",
+  page_read: "auto",
+  page_find: "auto",
+  page_wait: "auto",
+  page_scroll: "auto",
+  tabs_read: "auto",
+  file_list: "auto",
+  page_click: "gated",
+  page_fill: "gated",
+  page_select: "gated",
+  page_submit: "gated",
+  page_upload: "gated",
+  page_download: "gated",
+  wheel_handoff: "gated",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -573,6 +607,13 @@ export interface AppEvent {
   status?: EngineStatus;
   turn_id?: string;
   look?: Look;
+  wheel?: WheelNote;
+}
+
+/** The person was handed her browser's tab and the page moved on, the tab closed, or 30 minutes passed. */
+export interface WheelNote {
+  tab: number;
+  state: WheelState;
 }
 
 // --- twins (ADR 0008-0010) ------------------------------------------------------------------------
@@ -1050,10 +1091,60 @@ export type TwinRehearsalEvent =
   | { type: "outcome"; state: MissionState; filed?: TwinFiled }
   | { type: "error"; error: ErrorWord; reason: string };
 
-// --- the MCP server (ADR 0015) ------------------------------------------------------------------
-// Protocol: see contracts.py (one JSON-RPC message per POST /mcp; the bearer is a lease; a gated
-// call answers {pending: {card_id}}).
+// --- her browser and the MCP server (ADR 0013, 0015) -------------------------------------------
+// Protocols: see contracts.py (the relay's long-poll and once-only answers; MCP as one JSON-RPC
+// message per POST /mcp, a gated call answering {pending: {card_id}}).
 
+export interface TabInfo {
+  id: number;
+  url: string;
+  title: string;
+  load: number;
+}
+export interface HandFile {
+  path: string;
+  name: string;
+}
+export interface HandResult {
+  ok: boolean;
+  output: string;
+  reason?: HandReason;
+  tab?: TabInfo;
+  tabs?: TabInfo[];
+  file?: HandFile;
+  measured?: Record<string, number>;
+}
+export interface BrowserCall {
+  id: string;
+  hand: string;
+  args: Record<string, unknown>;
+  tab?: number;
+  load?: number;
+  url?: string;
+}
+export interface BrowserNext {
+  call?: BrowserCall;
+}
+export interface BrowserDone {
+  id: string;
+  result: HandResult;
+}
+export interface BrowserAccepted {
+  accepted: boolean;
+}
+export interface FileItem {
+  id: string;
+  space_id: string;
+  name: string;
+  mime: string;
+  size: number;
+  sha256: string;
+  origin: string;
+  created: string;
+}
+export interface FileList {
+  files: FileItem[];
+}
 export interface McpLeaseAsk {
   space_id: string;
 }
@@ -1120,6 +1211,10 @@ export const ROUTES = {
   connector_flow: "/connectors/{kind}/flow",
   connector_disconnect: "/connectors/{kind}/disconnect",
   connector_probe: "/connectors/{kind}/probe",
+  space_files: "/spaces/{id}/files",
+  browser_next: "/browser/next",
+  browser_done: "/browser/done",
+  browser_note: "/browser/note",
   mcp: "/mcp",
   mcp_lease: "/mcp/lease",
 } as const;

@@ -1,5 +1,7 @@
-//! Athena's desktop shell: two windows (`main`, `athena`) over one loopback daemon (ADR 0002).
+//! Athena's desktop shell: two windows (`main`, `athena`) over one loopback daemon (ADR 0002), and
+//! her browser's tabs (`page-<n>`, ADR 0013).
 
+mod browser;
 mod daemon;
 
 use tauri::{AppHandle, Manager, RunEvent, State, WindowEvent};
@@ -49,10 +51,15 @@ pub fn run() {
                 .build(),
         )
         .manage(shared.clone())
-        .invoke_handler(tauri::generate_handler![daemon_info, toggle_athena])
+        .invoke_handler(tauri::generate_handler![daemon_info, toggle_athena, browser::browser_reply])
         .on_window_event(|window, event| {
+            if let WindowEvent::Destroyed = event {
+                browser::forget(window.app_handle(), window.label());
+            }
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "athena" {
+                if window.label().starts_with("page-") {
+                    // A tab of her browser closes alone.
+                } else if window.label() == "athena" {
                     // Her window is summoned again with the shortcut; closing only puts her away.
                     api.prevent_close();
                     let _ = window.hide();
@@ -64,7 +71,10 @@ pub fn run() {
         })
         .setup(move |app| {
             let data_dir = app.path().app_data_dir()?;
-            daemon::start(shared.clone(), data_dir);
+            daemon::start(shared.clone(), data_dir.clone());
+            let hands = browser::new_shared(data_dir);
+            app.manage(hands.clone());
+            browser::start(app.handle().clone(), hands, shared.clone());
             // Another app may own the chord; Athena still works from the button.
             if let Err(e) = app.global_shortcut().register(shortcut) {
                 eprintln!("could not register Ctrl+Shift+Space: {e}");

@@ -65,7 +65,18 @@ def test_enums_match() -> None:
         "TwinTurnSide",
     )
     twins += ("TwinMessageKind", "PieceOpName", "SetupPanel", "FactSuggest", "ConnectState", "MissionSource")
-    for name in (*names, "Verdict", "Surface", "ActionName", "AppEventType", *chores, *drafts, *twins):
+    browser = ("HandReason", "WheelState")
+    for name in (
+        *names,
+        "Verdict",
+        "Surface",
+        "ActionName",
+        "AppEventType",
+        *chores,
+        *drafts,
+        *twins,
+        *browser,
+    ):
         assert _ts_union(name) == set(typing.get_args(getattr(contracts, name))), name
 
 
@@ -78,6 +89,7 @@ def test_proof_op_matches() -> None:
 def test_list_envelopes_match() -> None:
     envelopes = (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards"))
     twins = (("ConnectionList", "connections"), ("ThreadList", "threads"), ("GoalList", "goals"))
+    envelopes += (("FileList", "files"),)
     for name, key in (*envelopes, ("ChoreList", "chores"), ("ExpectedList", "expected"), *twins):
         assert list(getattr(contracts, name).__annotations__) == [key], name
         assert re.search(rf"export interface {name} \{{\s*{key}: \w+\[\];\s*\}}", TS), name

@@ -54,10 +54,27 @@ ActionName = Literal[
     "ask",
     "twin_send",
     "twin_note",
+    "page_open",
+    "page_read",
+    "page_find",
+    "page_wait",
+    "page_scroll",
+    "tabs_read",
+    "file_list",
+    "page_click",
+    "page_fill",
+    "page_select",
+    "page_submit",
+    "page_upload",
+    "page_download",
+    "wheel_handoff",
 ]
 AppEventType = Literal[
-    "card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done", "settings"
+    "card_filed", "card_resolved", "space_changed", "active_space", "engine", "turn_done", "settings", "wheel"
 ]
+#: Her browser's answer when a hand did not run (ADR 0013).
+HandReason = Literal["no_browser", "no_tab", "moved", "refused", "timeout", "failed", "unknown_ref"]
+WheelState = Literal["back", "closed", "timeout"]
 
 # Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 ThemeChoice = Literal["auto", "dark", "light"]  # auto follows the system
@@ -84,6 +101,23 @@ CATALOG: dict[ActionName, ActionClass] = {
     # draft the send rule lets go alone runs without a card; every other one waits on this class.
     "twin_send": "gated",
     "twin_note": "gated",
+    # Her browser (ADR 0013). The class is the floor: a page hand on a tab whose site is not one of
+    # the project's apps files a card whatever its class says, and a signed card runs only on the
+    # tab and the page load it was asked on.
+    "page_open": "auto",
+    "page_read": "auto",
+    "page_find": "auto",
+    "page_wait": "auto",
+    "page_scroll": "auto",
+    "tabs_read": "auto",
+    "file_list": "auto",
+    "page_click": "gated",
+    "page_fill": "gated",
+    "page_select": "gated",
+    "page_submit": "gated",
+    "page_upload": "gated",
+    "page_download": "gated",
+    "wheel_handoff": "gated",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -654,10 +688,19 @@ def tool_event(name: ActionName, label: str) -> dict[str, Any]:
     return {"type": "tool", "name": name, "label": label, "class": CATALOG[name]}
 
 
+class WheelNote(TypedDict):
+    """The person was handed her browser's tab (`wheel_handoff`) and the page moved on (`back`), the
+    tab was closed, or 30 minutes passed."""
+
+    tab: int
+    state: WheelState
+
+
 class AppEvent(TypedDict):
     """One SSE message on `/events`. Payload keys by type:
     card_filed / card_resolved: `card`; space_changed: `space_id` (and `erased: true` on erase);
-    active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`; settings: `look`.
+    active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`; settings: `look`;
+    wheel: `wheel`.
     """
 
     type: AppEventType
@@ -667,6 +710,7 @@ class AppEvent(TypedDict):
     status: NotRequired[EngineStatus]
     turn_id: NotRequired[str]
     look: NotRequired[Look]
+    wheel: NotRequired[WheelNote]
 
 
 # --- twins (ADR 0008-0010) ------------------------------------------------------------------------
@@ -1134,14 +1178,85 @@ class TwinOutcomeEvent(TypedDict):
     filed: NotRequired[TwinFiled]
 
 
-# --- the MCP server (ADR 0015) -------------------------------------------------------------------
+# --- her browser and the MCP server (ADR 0013, 0015) -------------------------------------------
 #
-# The protocol: `POST /mcp` takes one JSON-RPC 2.0 message per request (Streamable HTTP, JSON replies
-# only, no SSE); a request gets one JSON-RPC response, a notification gets 202 and no body. The
-# bearer is an MCP lease (`POST /mcp/lease`, or minted by a turn), never the daemon's token: a lease
-# names one project and expires. Methods: `initialize`, `ping`, `tools/list`, `tools/call`. A gated
-# call answers `structuredContent: {pending: {card_id}}` and runs once, when the person signs;
-# nothing else a caller sends can run it.
+# The relay's protocol (the shell is its only client, with the daemon's bearer):
+# - `GET /browser/next?wait=N` (N <= 25 s) answers `BrowserNext`: `{call}` as soon as one waits, or
+#   `{}` when N passes. The shell polls again at once; a shell that has not polled for 40 s is gone
+#   and every hand answers `no_browser`.
+# - The shell answers each call exactly once with `POST /browser/done` `BrowserDone`; the reply is
+#   `{accepted}`. An answer after the caller's deadline (the caller already got `timeout`), or to
+#   an id never issued, is `accepted: false` and changes nothing.
+# - `POST /browser/note` `WheelNote`: the page of a handed tab moved on; published as the `wheel`
+#   app event. No reply body beyond `{}`.
+# A call carrying `load` and `url` is bound to that page: the shell answers `moved` and does nothing
+# when the tab is on another.
+#
+# The MCP server's protocol (ADR 0015): `POST /mcp` takes one JSON-RPC 2.0 message per request
+# (Streamable HTTP, JSON replies only, no SSE); a request gets one JSON-RPC response, a notification
+# gets 202 and no body. The bearer is an MCP lease (`POST /mcp/lease`, or minted by a turn), never
+# the daemon's token: a lease names one project and expires. Methods: `initialize`, `ping`,
+# `tools/list`, `tools/call`. A gated call answers `structuredContent: {pending: {card_id}}` and
+# runs once, when the person signs; nothing else a caller sends can run it.
+
+
+class TabInfo(TypedDict):
+    id: int
+    url: str
+    title: str
+    load: int  # page loads finished in this tab
+
+
+class HandFile(TypedDict):
+    path: str  # where the shell put a download, inside the project's files folder
+    name: str
+
+
+class HandResult(TypedDict):
+    ok: bool
+    output: str
+    reason: NotRequired[HandReason]
+    tab: NotRequired[TabInfo]
+    tabs: NotRequired[list[TabInfo]]
+    file: NotRequired[HandFile]
+    measured: NotRequired[dict[str, int]]  # an upload's bytes, parts and milliseconds
+
+
+class BrowserCall(TypedDict):
+    id: str
+    hand: str  # open | tabs | tab | close | wheel | upload | download | page_*
+    args: dict[str, Any]
+    tab: NotRequired[int]
+    load: NotRequired[int]
+    url: NotRequired[str]
+
+
+class BrowserNext(TypedDict):
+    call: NotRequired[BrowserCall]
+
+
+class BrowserDone(TypedDict):
+    id: str
+    result: HandResult
+
+
+class BrowserAccepted(TypedDict):
+    accepted: bool
+
+
+class FileItem(TypedDict):
+    id: str
+    space_id: str
+    name: str
+    mime: str
+    size: int
+    sha256: str
+    origin: str  # the site it was downloaded from
+    created: str
+
+
+class FileList(TypedDict):
+    files: list[FileItem]
 
 
 class McpLeaseAsk(TypedDict):
@@ -1213,6 +1328,10 @@ ROUTES = {
     "connector_flow": "/connectors/{kind}/flow",
     "connector_disconnect": "/connectors/{kind}/disconnect",
     "connector_probe": "/connectors/{kind}/probe",
+    "space_files": "/spaces/{id}/files",
+    "browser_next": "/browser/next",
+    "browser_done": "/browser/done",
+    "browser_note": "/browser/note",
     "mcp": "/mcp",
     "mcp_lease": "/mcp/lease",
 }

@@ -90,13 +90,15 @@ class Leases:
 
 
 def chat_tools(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
-    """The function tools a chat turn in this space is offered: memory and the project's own changes."""
+    """The function tools a chat turn in this space is offered: memory, the project's own changes,
+    and her browser while the desktop runs it."""
+    from athena.browser import actions as browser
     from athena.turn import TOOLS
 
     names = ["recall", "remember", "forget"]
     if space_id != "":
         names += ["propose_brief", "add_app"]
-    return [TOOLS[n] for n in names]  # type: ignore[index]
+    return [TOOLS[n] for n in names] + browser.offered(daemon, space_id)  # type: ignore[index]
 
 
 def _offered(daemon: Daemon, lease: Lease) -> list[dict[str, Any]]:

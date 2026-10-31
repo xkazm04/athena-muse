@@ -1,6 +1,6 @@
 # A business run through Athena - the AI-music channel, and the gaps it finds
 
-Status: **designed, not built** (2026-10-28). A plan and a gap map. Nothing here is built until [Chore onboarding v2](../../features/chore-onboarding.md) has shipped. The phases below then run in order.
+Status: **Phase 0 built** (2026-10-31): her browser (tabs, hands, per-origin trust, upload, download, hand the wheel), Athena's MCP server, and Claude Code with tools on. Its acceptance holds on local simulated pages ([Phase 0](#phase-0---hands-and-the-engine-built-2026-10-31)); the run on a real YouTube test channel waits for the owner. Phases 1-4 are designed, not built, and run in order.
 
 Purpose: one real business is walked through Athena step by step, and every step she cannot take today becomes a named feature. The business is a YouTube channel that publishes music videos for good Suno tracks by creators nobody has heard of. It is a real need, and it exercises everything a long-running Project has to do: delegated correspondence, recurring web checks, the owner's judgement, files moving both ways, a peer app doing heavy work, a gated publish, and a report of where things stand.
 
@@ -331,6 +331,93 @@ Inline English, plain words, no translation ritual.
 - **Render cost and time.** 31.5 minutes per 5-minute track (measured, one track). The ceiling holds spend; renders run one at a time on Gravitone's `box.render` lease.
 - **Engine swap.** Muse API function calling must carry the same catalog. Phase 0 measures one turn on each engine.
 - **Account standing.** Automated comments can look like spam. Every comment is a card, with no batch-sign in v1.
+
+## Phase 0 - hands and the engine (built 2026-10-31)
+
+Built on its own branch for the Director's review. ADRs: [0013](../../adr/0013-her-browser-tabs-hands-and-trust-per-origin.md) (her browser) and [0015](../../adr/0015-athenas-tools-reach-every-engine-through-one-mcp-server.md) (the MCP server). Every acceptance step that needs YouTube ran against local test pages (`athena.browser.fixture`, simulated, labelled on every page). The real-account steps wait for the owner ([checklist](#phase-0-real-account-run-owner-present)).
+
+### The spike: go on the local reproduction, open on real YouTube
+
+The question was whether `page_upload` can be done in WebView2, which has no CDP `setFileInputFiles`, and whether the hands reach through shadow DOM and iframes.
+
+- **Method.** The shell stages the file into the page in base64 parts of 512 KiB through `eval`. The page builds a `File` in the input's own realm (the frame's `File` and `DataTransfer`), assigns it to `input.files` through a `DataTransfer`, and fires `input` and `change`.
+- **Reproduction.** The studio page opens a same-origin iframe. The frame's upload dialog is a custom element with an open shadow root holding a hidden `<input type=file>`, a title field and Private / Unlisted / Public. The page hashes the file it was given (SHA-256) and posts the digest back.
+- **Measured** (WebView2 on this machine, the built shell, `scripts/browser_seam.py`, 2026-10-31, n=1 each). Each figure is the shell's own measurement, staging and the page's assignment included:
+
+| File | Parts | Staged and given | Page's SHA-256 matched |
+|---|---|---|---|
+| draft-5mb.mp4 (5,242,880 bytes, seeded) | 10 | 305 ms | yes |
+| draft-50mb.mp4 (52,428,800 bytes, seeded) | 100 | 2,798 ms | yes |
+
+- **Verdict: go** on the local reproduction. The browser decision stands, and nothing goes back to the owner as a fallback.
+- **Still open** (owner present): the real YouTube Studio upload dialog. Unknowns there: whether Studio's own iframe is same-origin with the top page (a cross-origin frame is unreachable by design), whether its CSP or Trusted Types stop the reply path (`invoke` falls back to `chrome.webview.postMessage`), and how a 500 MB file behaves. Linear from the figures above, 500 MB is about 28 s of staging (est.).
+- **Found on the seam, fixed:** Chromium holds a page's second script-started download behind a prompt. The shell now allows "automatic downloads" only while a signed `page_download` has armed that tab. A missing upload part was not caught, because `Array.some` skips the holes of a sparse array; the jsdom test found it.
+
+### Work packages (cut at the design gate by the builder; Director to confirm)
+
+| WP | What | Where |
+|---|---|---|
+| WP0 | The contract: the new catalog actions, `HandResult`, `BrowserCall`, `FileItem`, `McpLease`, `WheelNote`, the card's `outcome`, the routes, and both stream protocols (the relay's long-poll and MCP's one JSON-RPC message per POST) | `contracts.py`, `contract.ts` |
+| WP1 | The MCP server and leases; one `dispatch` for a turn's round and for MCP | `mcp.py`, `routes_mcp.py`, `turn.py` |
+| WP2 | Claude Code with tools on: one run per chat turn against the MCP server, streamed | `engine/claude_code.py`, `engine/cli.py` |
+| WP3 | The spike and the fixture pages | `browser/fixture.py`, `scripts/browser_seam.py` |
+| WP4 | The shell's browser: tabs, the relay, `hands.js` (deep walk, upload), downloads, the wheel, the page capability | `src-tauri/src/browser.rs`, `hands.js`, `capabilities/page.json`, `build.rs` |
+| WP5 | The daemon's browser: relay, per-origin trust, cards bound to the page, files, the executor | `browser/relay.py`, `browser/actions.py`, `browser/files.py`, `browser/routes.py` |
+| WP6 | The live seam and the owner-present checklist | `scripts/browser_seam.py`, this section |
+
+### What each item does now, and how it was verified
+
+| Item | Does | Verified |
+|---|---|---|
+| MCP server | `POST /mcp` on the loopback. The bearer is a lease that names one project and expires; the daemon's token is refused there. The tools are the catalog. A gated call answers `{pending: {card_id}}` and runs once, when the person signs | `tests/test_mcp_server.py`. On the seam: tools listed (19), daemon token refused |
+| Claude Code, tools on | A chat turn runs `claude -p` with `--tools ""`, only Athena's server under `--strict-mcp-config`, and `--allowedTools` set to the turn's tools. The server's lines and cards stream in order with her words; one ledger row per run. `ATHENA_CLAUDE_TOOLS=0` switches back to op lines | `tests/test_engine_agent.py`. Live: one turn read the channel page through her browser (below) |
+| Tabs, hands, trust | A tab is a `page-<n>` window. Ten page hands plus the shell's open, tabs, upload, download and wheel. Walks go through open shadow roots and same-origin frames. The project's apps are the trust list: an AUTO hand runs only on a trusted site and files a card anywhere else. A card runs only on the tab, page load and address it was asked on. A "Public" or "Unlisted" control is refused even when signed | `tests/test_browser_actions.py`, `apps/desktop/src/lib/hands.test.ts`, Rust unit tests. On the seam: a moved page refused the old card; an untrusted site filed a card; Public was refused when signed |
+| `page_download` | Arms the tab, clicks, and lands the file in the project's files under its SHA-256 (one row per digest), named to the model only as `fil_...`. A download nobody armed is cancelled | On the seam: a WAV (16,044 bytes), 5 MB and 50 MB, each kept with a matching digest |
+| `page_upload` | See the spike | On the seam: both files reached the input in the shadow root inside the iframe |
+| Hand the wheel | A gated card brings the tab forward with her line in its title. When the page moves on, the shell posts `back` and the daemon publishes the `wheel` event | On the seam: `{tab: 5, state: back}` was heard. The person's tick was simulated by two signed hands |
+| Her window | A card for each new action shows a plain title ("Upload a file", "Take over her browser") | typecheck, the existing CardView tests |
+
+### Acceptance on the local reproduction (simulated)
+
+`uv run python scripts/browser_seam.py --engine claude_code --live-turn` (2026-10-31): **14 of 14 checks pass**. The session is a script over MCP, signing each card through `POST /decisions` the way her window does. No model is used except in the live turn.
+
+| Plan's acceptance step | Local reproduction | Result |
+|---|---|---|
+| A scripted session reads a YouTube channel page | `/channel`: a creator's three tracks | read, fenced as page data (20 ms) |
+| It files a gated comment card that, once signed, posts exactly once to a test video | `/watch?v=t1`: a fill card and a click card | both cards signed, one comment in the journal; the second signature answered 400 "already decided" |
+| It downloads a test file | `/downloads`: WAV, 5 MB, 50 MB | 350 / 180 / 521 ms per signed card |
+| It uploads an MP4 as a private draft on a test channel | `/studio`: the shadow-DOM dialog in an iframe | 5 MB and 50 MB uploaded; title filled; saved as `private`; Public refused |
+| One turn on each engine (Risks) | Claude Code, sonnet | 5.8 s, `page_open` then `page_read`, all three titles named, $0.0214 (CLI's own figure, est.). The Muse API turn is not measured: no key on this machine |
+
+### Director defaults taken (overridable)
+
+- **A window per tab**, not portable's child webviews in one window. This needs no `unstable` Tauri feature and no layout code; handing the wheel means focusing that window.
+- **`page_open` is a new AUTO action** (not in the plan's list). Without it nothing can open the channel page. It runs at once on a project app and files a card for any other site.
+- **The project's apps are the only trust list**, including for reads. "On first sight" means "not one of the project's apps"; there is no per-origin trust beyond that yet.
+- **A minimal `files` table now, adopted by Phase 1's records** as the `file` kind, because upload and download need one in Phase 0.
+- **Claude Code's chat turn may make 16 model calls** (`--max-turns 16`), not the turn's six; the stage, the bench and the rehearsals keep op lines.
+- **The card keeps its run's words** (`outcome`, additive). A signed browser card's result, such as the saved file's id, is otherwise lost.
+- **`page_screenshot`, `record_list` and `record_put` are not in Phase 0.** Records are Phase 1. The screenshot needs WebView2's `CapturePreview`, and no Phase 0 acceptance step needs it.
+- **Her browser shares the app's WebView2 profile**, as in athena-portable.
+
+### Phase 0 real-account run (owner present)
+
+Not run: it needs the owner's YouTube test channel and is the open half of the spike.
+1. Make or pick a **test** channel with no audience. Start the app on Claude Code (`ATHENA_ENGINE=claude_code`) with a fresh data folder.
+2. Make a project with `https://www.youtube.com` and `https://studio.youtube.com` as its apps. Sign in to YouTube once in her browser (open a tab, then hand yourself the wheel).
+3. Read: ask her for the titles on a creator's channel page. Expect `page_open` and `page_read` with no card.
+4. Comment: ask her to comment on one of **your own test channel's** videos. Sign the fill card and the click card. Check that the comment exists once, then sign the click card again and expect "already decided".
+5. Download: from a page you control, download a small file. Check that the project's files list it with its SHA-256.
+6. Upload, the spike on the real dialog: in Studio, "Create" -> "Upload videos", then `page_find` with role `file`.
+   - Record whether the input is found (same-origin frame or not), whether `page_upload` reaches it, and the shell's measured milliseconds for a small MP4 and for a large one (about 200 MB).
+   - Leave visibility on Private. Expect any "Public" control to be refused.
+7. Record here what ran, what was refused and why, the est. cost from the ledger, and anything that broke. If the upload cannot reach Studio's input, the browser decision goes back to the owner with the measurement, as the Risks say.
+
+### Open questions (for the owner or Director)
+
+- **Studio's frame.** If the real upload dialog sits in a cross-origin frame, hands cannot reach it by design. Options: inject `hands.js` into every frame (Tauri `initialization_script_for_all_frames`, with a per-frame reply), or go back to the browser decision. This is irreversible in spirit, so it is asked, not guessed.
+- **Trust beyond the apps list.** Should a person be able to trust a site for reads without adding it as a project app?
+- **The test channel and mailbox:** personal, or new ones for the business? (Also in "Open for the owner" below.)
 
 ## Open for the owner
 

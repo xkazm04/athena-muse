@@ -7,11 +7,12 @@ import queue
 import threading
 import time
 from collections.abc import Generator, Iterator
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 from athena.app import Daemon
+from athena.browser import actions as browser
+from athena.browser.actions import Dispatched
 from athena.chores import reads
 from athena.chores.portal import SEPARATOR, Portal
 from athena.chores.spec import ChoreError, find_chore, load_chore
@@ -191,19 +192,12 @@ def _refuse_or_label(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str
     return f"Forget: {_short(row['line'], 100)}", {"id": mem_id}
 
 
-@dataclass
-class Dispatched:
-    """A tool call's result for the model, the lines to stream, and the card it filed if any."""
-
-    result: str
-    events: list[dict[str, Any]] = field(default_factory=list)
-    card: Card | None = None
-
-
 def dispatch(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
     """One catalog call, from a turn's round or from the MCP server (ADR 0015): an AUTO action runs
-    and answers, a GATED one files a card."""
+    and answers, a GATED one files a card. Her browser's actions decide with per-origin trust too."""
     name = call.name
+    if name in browser.NAMES:
+        return browser.act(daemon, space_id, name, call.arguments)
     if name not in CATALOG:
         return Dispatched("There is no such action.")
     if CATALOG[name] == "auto":
@@ -430,6 +424,8 @@ def _stream(
             tools = [TOOLS[n] for n in ("recall", "remember", "forget")]
             if space_id != "":
                 tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
+            if portal is None:
+                tools += browser.offered(daemon, space_id)
         if portal is not None:
             tools += portal.tools()
             messages[0]["content"] += (
@@ -578,6 +574,8 @@ def execute(daemon: Daemon, card: Card) -> str:
         return "Forgotten."
     if card["action"] == "portal_act":
         return _portal_for(daemon, args).execute(args)
+    if card["action"] in browser.NAMES:
+        return browser.execute(daemon, card)
     if card["action"] in ("twin_send", "twin_note"):
         # One Gmail message in-thread, or one Notion note (ADR 0009). Imported here: the twins
         # package runs its setup turn through this module.

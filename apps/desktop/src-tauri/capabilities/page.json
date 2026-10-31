@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "page",
+  "description": "The tabs of her browser (ADR 0013): untrusted remote pages. Exactly one command, browser_reply, and nothing else. A page can only hand the relay an answer tagged with its tab's nonce; a wrong nonce or an id nobody waits on is dropped in Rust (src/browser.rs). The remote urls are wide because a tab may be pointed anywhere: the narrowing is the command list. Both the bare and the :* spellings are listed because a URL pattern built from http://* leaves the port empty, which means the scheme's default.",
+  "local": false,
+  "remote": { "urls": ["http://*", "http://*:*", "https://*", "https://*:*"] },
+  "windows": ["page-*"],
+  "permissions": ["allow-browser-reply"]
+}

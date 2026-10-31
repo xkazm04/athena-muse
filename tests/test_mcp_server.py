@@ -8,6 +8,7 @@ from typing import Any
 from starlette.testclient import TestClient
 
 from athena.app import Daemon
+from browser_kit import ORIGIN, FakeShell
 from conftest import TOKEN
 
 URL = "http://127.0.0.1:9/mcp"
@@ -83,6 +84,17 @@ def test_a_tool_the_lease_does_not_offer_is_refused(client: TestClient, daemon: 
     for name in ("page_open", "twin_send", "portal_act", "sketch"):
         out = _rpc(client, token, "tools/call", {"name": name, "arguments": {}}).json()["result"]
         assert out["isError"] is True
+
+
+def test_her_browser_tools_appear_while_the_shell_polls(client: TestClient, daemon: Daemon) -> None:
+    _, token = _lease(client, daemon, [ORIGIN])
+    with FakeShell(daemon.relay):
+        names = {t["name"] for t in _rpc(client, token, "tools/list").json()["result"]["tools"]}
+        assert {"page_open", "page_read", "page_click", "page_upload", "wheel_handoff"} <= names
+        opened = _rpc(
+            client, token, "tools/call", {"name": "page_open", "arguments": {"url": f"{ORIGIN}/channel"}}
+        )
+        assert opened.json()["result"]["content"][0]["text"].startswith("Tab 1")
 
 
 def test_an_expired_or_dropped_lease_is_refused(client: TestClient, daemon: Daemon) -> None:

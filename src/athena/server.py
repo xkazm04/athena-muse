@@ -30,6 +30,7 @@ from starlette.routing import BaseRoute, Route
 from athena import engine as engine_mod
 from athena import routes_mcp, routes_state, routes_turn
 from athena.app import Daemon
+from athena.browser import routes as routes_browser
 from athena.chores import routes_chores
 from athena.connectors import routes as routes_connectors
 from athena.contracts import VERSION
@@ -59,6 +60,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_drafts.routes(daemon),
         *routes_twins.routes(daemon),
         *routes_connectors.routes(daemon),
+        *routes_browser.routes(daemon),
         *routes_mcp.routes(daemon),
     ]
 

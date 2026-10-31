@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from athena.browser.files import Files
+from athena.browser.relay import Relay
 from athena.busy import Busy
 from athena.connectors.part import Connectors
 from athena.conversation import Conversation
@@ -35,6 +37,8 @@ class Daemon:
     drafts: Drafts
     connectors: Connectors  # connected accounts (ADR 0008); nothing on disk or on the wire without a data dir
     twins: Twins  # the twins' tables (ADR 0008-0010)
+    relay: Relay  # her browser in the desktop shell (ADR 0013)
+    files: Files  # a project's files (ADR 0013)
     mcp: Leases  # who may call the MCP server, and for which project (ADR 0015)
     mcp_url: str | None = None  # set once the server knows its port; None = no MCP (tests, unless set)
 
@@ -59,6 +63,8 @@ class Daemon:
             drafts=Drafts(store, data_dir),
             connectors=Connectors.open(data_dir),
             twins=Twins(store),
+            relay=Relay(),
+            files=Files(store, data_dir),
             mcp=Leases(),
         )
 

@@ -13,6 +13,8 @@
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-is-registered",
-    "opener:allow-open-url"
+    "opener:allow-open-url",
+    "allow-daemon-info",
+    "allow-toggle-athena"
   ]
 }

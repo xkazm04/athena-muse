@@ -345,6 +345,42 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the browser_reply command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-browser-reply",
+          "markdownDescription": "Enables the browser_reply command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the daemon_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-daemon-info",
+          "markdownDescription": "Enables the daemon_info command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the toggle_athena command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-toggle-athena",
+          "markdownDescription": "Enables the toggle_athena command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the browser_reply command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-browser-reply",
+          "markdownDescription": "Denies the browser_reply command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the daemon_info command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-daemon-info",
+          "markdownDescription": "Denies the daemon_info command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the toggle_athena command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-toggle-athena",
+          "markdownDescription": "Denies the toggle_athena command without any pre-configured scope."
+        },
+        {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",
           "type": "string",
           "const": "core:default",
