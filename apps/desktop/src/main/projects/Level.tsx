@@ -83,7 +83,7 @@ function LevelBody({ space }: { space: SpaceSummary }) {
 
   return (
     <div className="m-level">
-      <button type="button" className="btn btn-quiet m-back" onClick={() => navigate({ view: "projects" })}>
+      <button type="button" className="m-crumb" onClick={() => navigate({ view: "projects" })}>
         All projects
       </button>
       <SiteBlockers spaceId={space.id} sites={sites.sites} />

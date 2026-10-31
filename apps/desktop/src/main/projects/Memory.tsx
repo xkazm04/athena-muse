@@ -27,7 +27,7 @@ export function CoreLevel() {
 
   return (
     <div className="m-level">
-      <button type="button" className="btn btn-quiet m-back" onClick={() => navigate({ view: "projects" })}>
+      <button type="button" className="m-crumb" onClick={() => navigate({ view: "projects" })}>
         All projects
       </button>
       <section className="plane m-section">
@@ -90,7 +90,7 @@ export function Memory({ id }: { id: string }) {
     <div className="m-level">
       <button
         type="button"
-        className="btn btn-quiet m-back"
+        className="m-crumb"
         onClick={() => navigate(isCore ? { view: "core" } : { view: "project", id })}
       >
         Back to {whereName(spaces, id)}

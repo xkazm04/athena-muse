@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { NAME_MAX, SPACES_MAX, type SpaceSummary } from "../../lib/contract";
+import { NAME_MAX, SPACES_MAX, type SpaceCounts, type SpaceSummary } from "../../lib/contract";
 import { Seal } from "../../theme";
 import { hueColor } from "../../ui";
 import { reasonOf, useMain } from "../store";
@@ -42,6 +42,12 @@ export function useReducedMotion(): boolean {
   return reduced;
 }
 
+/** The title row's one line: how many projects, and what the core holds. */
+export function projectTotals(spaces: SpaceSummary[], core: SpaceCounts | null): string {
+  const n = spaces.length === 0 ? "No projects yet" : `${spaces.length} ${spaces.length === 1 ? "project" : "projects"}`;
+  return core ? `${n} · ${core.facts} facts and ${core.episodes} episodes in core` : n;
+}
+
 const firstLine = (text: string) => text.split(/\r?\n/).find((l) => l.trim())?.trim() ?? "";
 
 export function Field() {
@@ -52,6 +58,7 @@ export function Field() {
   const loadSpaces = useMain((s) => s.loadSpaces);
   const navigate = useMain((s) => s.navigate);
   const setActive = useMain((s) => s.setActive);
+  const coreCounts = useMain((s) => s.coreCounts);
   const reduced = useReducedMotion();
   const { ref, size } = useStageSize();
   const [focused, setFocused] = useState<string | null>(null);
@@ -67,15 +74,15 @@ export function Field() {
 
   return (
     <div className="m-field">
-      <div className="m-field__head">
-        <h1 className="m-title">Projects</h1>
-        {load === "reading" && (
-          <span className="badge" data-tone="info">
-            reading
-          </span>
-        )}
-        <NewProject />
-        <DescribeDoor />
+      <div className="m-depth-head">
+        <h1 className="title-depth">Projects</h1>
+        <p className="m-depth-head__totals">
+          {load === "reading" ? "reading" : projectTotals(shown, coreCounts)}
+        </p>
+        <div className="m-depth-head__act">
+          <DescribeDoor />
+          <NewProject />
+        </div>
       </div>
       {load === "problem" && (
         <div className="plane m-problem" role="alert">
@@ -150,32 +157,18 @@ export function Field() {
             );
           })}
         </div>
-        <aside className="plane m-marquee" aria-live="polite">
+        <aside className="m-marquee" aria-live="polite">
           {marquee ? (
-            <>
-              <p className="m-eyebrow">{marquee.id === active ? "Athena is working here" : "Project"}</p>
+            <div className="m-marquee__one">
+              <p className="eyebrow">{marquee.id === active ? "Athena is working here" : "Project"}</p>
               <h2 className="m-marquee__name" style={{ color: hueColor(marquee.hue) }}>
                 {marquee.name}
               </h2>
               <p className="m-marquee__brief">{firstLine(marquee.brief) || "No brief yet."}</p>
-              <dl className="m-facts">
-                <div>
-                  <dt>Apps</dt>
-                  <dd>{marquee.apps.length}</dd>
-                </div>
-                <div>
-                  <dt>Episodes</dt>
-                  <dd>{marquee.counts.episodes}</dd>
-                </div>
-                <div>
-                  <dt>Facts</dt>
-                  <dd>{marquee.counts.facts}</dd>
-                </div>
-              </dl>
               <button type="button" className="btn btn-primary" onClick={() => enter(marquee)}>
                 Enter
               </button>
-            </>
+            </div>
           ) : shown.length === 0 && load === "ready" ? (
             <p className="m-lead">
               Projects keep Athena&apos;s memory for one piece of your work apart from the rest.
@@ -183,6 +176,61 @@ export function Field() {
           ) : (
             <p className="m-muted">Point at a project to see it here.</p>
           )}
+          <div className="m-ledger">
+            <table className="m-grid m-field__table">
+              <caption className="m-sr">Every project, and the core every project shares.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Project</th>
+                  <th scope="col" className="m-num">
+                    Apps
+                  </th>
+                  <th scope="col" className="m-num">
+                    Episodes
+                  </th>
+                  <th scope="col" className="m-num">
+                    Facts
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <a className="m-rowname" href="#projects/core">
+                      <i className="m-dot" aria-hidden="true" />
+                      Core
+                    </a>
+                  </td>
+                  <td className="m-num m-muted">-</td>
+                  <td className="m-num">{coreCounts?.episodes ?? "-"}</td>
+                  <td className="m-num">{coreCounts?.facts ?? "-"}</td>
+                </tr>
+                {shown.map((s) => (
+                  <tr
+                    key={s.id}
+                    data-selected={s.id === focused || (!focused && s.id === active) ? "true" : undefined}
+                    onMouseEnter={() => setFocused(s.id)}
+                    onMouseLeave={() => setFocused((f) => (f === s.id ? null : f))}
+                  >
+                    <td>
+                      <a
+                        className="m-rowname"
+                        href={`#projects/${encodeURIComponent(s.id)}`}
+                        style={{ ["--tone" as string]: hueColor(s.hue) }}
+                        onClick={(e) => (e.preventDefault(), enter(s))}
+                      >
+                        <i className="m-dot" aria-hidden="true" />
+                        {s.name}
+                      </a>
+                    </td>
+                    <td className="m-num">{s.apps.length}</td>
+                    <td className="m-num">{s.counts.episodes}</td>
+                    <td className="m-num">{s.counts.facts}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </aside>
       </div>
     </div>
@@ -221,7 +269,7 @@ function NewProject() {
     return (
       <button
         type="button"
-        className="btn btn-primary m-push"
+        className="btn btn-primary"
         disabled={full}
         title={full ? `You have ${SPACES_MAX} projects, the most there can be` : undefined}
         onClick={() => setOpen(true)}
@@ -232,7 +280,7 @@ function NewProject() {
   }
   return (
     <form
-      className="m-row m-push"
+      className="m-row m-field__new"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();

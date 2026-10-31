@@ -226,10 +226,10 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.m-grid tbody tr[aria-selected="true"] td {
+.m-grid tbody tr[data-selected="true"] td {
   background: var(--card-raised);
 }
-.m-grid tbody tr[aria-selected="true"] td:first-child {
+.m-grid tbody tr[data-selected="true"] td:first-child {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 .m-grid caption {
@@ -237,7 +237,9 @@
 }
 /* a row's name: the button that opens it, in the row's own words */
 .m-rowname {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   max-width: 100%;
   padding: 0;
   border: 0;
@@ -255,6 +257,14 @@
 }
 .m-rowname:hover {
   color: var(--accent-text);
+}
+.m-rowname > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+a.m-rowname {
+  text-decoration: none;
 }
 .m-job {
   display: inline-flex;
@@ -301,6 +311,9 @@
   font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
+}
+.m-crumb::before {
+  content: "\2190";
 }
 .m-crumb:hover {
   background: var(--hover-wash);

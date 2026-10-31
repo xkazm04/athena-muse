@@ -53,6 +53,18 @@ describe("projects field", () => {
     expect(screen.getByRole("link", { name: "Describe a need" }).getAttribute("href")).toBe("#stage/new");
   });
 
+  it("lists the core and every project in the table with their counts, and totals them beside the title", async () => {
+    useMain.setState({ coreCounts: { episodes: 4, facts: 7 } });
+    start([space(), space({ id: "spc_b2", name: "Garden", apps: ["https://www.github.com"] })]);
+    expect(screen.getByText("2 projects · 7 facts and 4 episodes in core")).toBeTruthy();
+    const rows = screen.getAllByRole("row").slice(1).map((r) => r.textContent);
+    expect(rows).toEqual(["Core-47", "Taxes032", "Garden132"]);
+    expect(screen.getByRole("link", { name: "Core" }).getAttribute("href")).toBe("#projects/core");
+    await act(async () => fireEvent.click(screen.getByRole("link", { name: "Garden" })));
+    expect(useMain.getState().route).toEqual({ view: "project", id: "spc_b2" });
+    expect(api.setActiveSpace).toHaveBeenCalledWith("spc_b2");
+  });
+
   it("every project is a button; focus fills the marquee, click enters and makes it active", async () => {
     start([space(), space({ id: "spc_b2", name: "Garden", brief: "", apps: ["https://www.github.com"] })]);
     const garden = screen.getByRole("button", { name: "Garden" });

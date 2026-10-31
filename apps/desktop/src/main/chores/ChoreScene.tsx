@@ -50,7 +50,7 @@ export function ChoreScene({ id }: { id: string }) {
   return (
     <div className="m-chore">
       <button type="button" className="m-crumb" onClick={() => navigate({ view: "chores" })}>
-        <span aria-hidden="true">&larr;</span> All chores
+        All chores
       </button>
       {problem && (
         <div className="plane m-problem" role="alert">
