@@ -32,6 +32,13 @@ app's; each of this app's surfaces takes the one closest to it:
 | mind and accounts: instruments (a glyph, a name, a status chip with a dot), cards for what is set up elsewhere; a level with its glyph at the left | `settings/Settings.tsx`: "How Athena is set up" over Engine, Look, Accounts and Data as instruments with their standing and line, cards for the welcome, Twins and her window; a setting's level puts its glyph and standing at the left and its choices at the right | `#settings`, `#settings/<item>` |
 | a depth's head and table | `twins/Overview.tsx` and `overview.css`: the heavy title with its line beside it and "New twin" at the right, the six stat tiles as figure cards in one row (`data-role="stat-tile"` kept), the ledger as the variant's table (no box, eyebrow heads, light rules); the wallet, the queue and the open spread keep Passport's structure. The invented example's label sits in the bar beside the engine lamp. A twin's setup keeps its own row (what is set up, simulated, her window, back) without the brand the bar already shows | `#twins`, `#twin/...` |
 | stage: the brand bar and the whole window, no dock | `stage/Stage.tsx` keeps both views (Drawing, Orbit) and every `data-role`; inside the bar its own row loses the glass and the rule and the repeated name, the current step is outlined, the switch is the variant's segmented control, and the describe step asks in light words over a soft field with a pill to send; the dock is left off so the views keep their height | `#stage/...` |
+| her window, the ledger: the name as an eyebrow, a display line in Outfit, the transcript as a timeline with "You" and "Athena" eyebrows, a pill to write in and a round send | `athena/her.css`, `Composer.tsx`: the same, at her window's own size; her state is the display line (pink when something waits) and the cards she files are the slip | her window |
+
+Not mapped: the variant's window shapes (seal, slip, sheet, tape, hear) are one window that changes size
+with what she is doing; this app's window keeps one size, so only their idiom (the slip's pink pills,
+the ledger's timeline) is taken. The variant's voice depth, apps depth and waking screen have no
+counterpart here. The variant's bell is her figure in four poses (resting, working, hearing, asking);
+here it is the owner's seal, unchanged, whose rest and waiting states the surface and the dock show.
 
 The body face is the system face (Segoe UI), as the variant set it; Outfit stays for the display lines
 of her window. A depth's title is heavy (`.title-depth`, 40 px); the surface's marquee grows with the

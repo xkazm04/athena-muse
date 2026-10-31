@@ -45,17 +45,22 @@ body.her #root {
 .her-who {
   min-width: 0;
 }
+/* the variant's window (ADR 0016): her name is the eyebrow, her state the display line in Outfit */
 .her-name {
   margin: 0;
-  font-size: var(--fs-lg);
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: var(--lh-tight);
-  letter-spacing: 0.01em;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
 }
 .her-state {
   margin: 2px 0 0;
-  color: var(--faint);
-  font-size: var(--fs-xs);
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 400;
   line-height: var(--lh-tight);
   white-space: nowrap;
   overflow: hidden;
@@ -119,7 +124,7 @@ body.her #root {
   flex-direction: column;
   gap: var(--sp-2);
   margin: 0 var(--sp-2);
-  padding: var(--sp-3) var(--sp-2) var(--sp-4);
+  padding: var(--sp-3) var(--sp-2) var(--sp-4) calc(var(--sp-2) + 26px);
   border-top: 1px solid var(--border-subtle);
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -136,17 +141,72 @@ body.her #root {
   line-height: var(--lh-body);
 }
 
+/* the transcript is a timeline: a thread down the left, a mark for each line, an eyebrow naming who */
+.her-line,
+.her-tool,
+.her-card {
+  position: relative;
+}
+.her-line::before,
+.her-tool::after,
+.her-card::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: -6px;
+  bottom: -14px;
+  width: 1px;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.her-line::after,
+.her-card::after {
+  content: "";
+  position: absolute;
+  left: -24px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--glass-solid);
+}
+.her-line--person::after {
+  background: var(--glass-solid);
+  border: 2px solid var(--foreground);
+}
+.her-card::after {
+  top: 14px;
+  background: var(--role-human);
+}
 .her-line {
   display: flex;
   flex-direction: column;
   max-width: 100%;
   animation: her-arrive var(--dur-base) var(--ease-settle);
 }
-.her-line--person {
-  align-items: flex-end;
-}
+.her-line--person,
 .her-line--athena {
   align-items: flex-start;
+}
+.her-bubble::before,
+.her-say::before {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--accent-text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+.her-bubble::before {
+  content: "You";
+}
+.her-say::before {
+  content: "Athena";
+}
+.her-say--pending::before {
+  display: none;
 }
 .her-bubble,
 .her-say {
@@ -156,13 +216,12 @@ body.her #root {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* the person's lines carry their own colour, pink */
+/* the person's words are the display line of their turn */
 .her-bubble {
-  max-width: 86%;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid color-mix(in srgb, var(--role-human) 42%, transparent);
-  border-radius: var(--r-md) var(--r-md) var(--r-sm) var(--r-md);
-  background: color-mix(in srgb, var(--role-human) 13%, transparent);
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.35;
 }
 .her-say {
   max-width: 94%;
@@ -194,7 +253,10 @@ body.her #root {
 }
 .her-tool {
   margin: 0;
-  padding: 0 var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-card);
+  background: var(--recess);
   color: var(--faint);
   font-size: var(--fs-xs);
   line-height: 1.4;
@@ -246,6 +308,7 @@ body.her #root {
 }
 
 /* ---- composer ---- */
+/* the variant's composer: a pill to write in and a round button to send */
 .her-composer {
   display: flex;
   align-items: flex-end;
@@ -256,8 +319,10 @@ body.her #root {
 }
 .her-input {
   flex: 1 1 auto;
-  min-height: 40px;
+  min-height: 42px;
+  padding: 9px var(--sp-4);
   border-color: var(--edge);
+  border-radius: 21px;
   background: var(--recess);
   resize: none;
 }
@@ -279,7 +344,18 @@ textarea.her-input {
   font-variant-numeric: tabular-nums;
 }
 .her-send {
-  min-height: 40px;
+  min-height: 42px;
+}
+.her-send--round {
+  width: 42px;
+  padding: 0;
+}
+.her-send--round svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 @keyframes her-arrive {

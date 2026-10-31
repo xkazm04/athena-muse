@@ -89,8 +89,16 @@ export const Composer = forwardRef<HTMLTextAreaElement>(function Composer(_, out
             Stop
           </button>
         ) : (
-          <button type="submit" className="btn btn-primary her-send" disabled={!ready || !text.trim()}>
-            Send
+          <button
+            type="submit"
+            className="btn btn-primary her-send her-send--round"
+            aria-label="Send"
+            title="Send (Enter)"
+            disabled={!ready || !text.trim()}
+          >
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+              <path d="M3 8h10M9 4l4 4-4 4" />
+            </svg>
           </button>
         )}
       </div>
