@@ -20,6 +20,11 @@ body.her #root {
   min-height: 0;
 }
 
+/* In her window every answer is a pill, the shape the coat's round edge asks for (Loop Tide). */
+.her-app .btn {
+  border-radius: var(--r-pill);
+}
+
 /* ---- head: the seal, her name and state, the project, hide ---- */
 .her-head {
   display: grid;

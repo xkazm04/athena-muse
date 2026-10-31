@@ -56,7 +56,7 @@ function Welcome({ onNext, onSkip }: { onNext: () => void; onSkip: () => void })
   return (
     <section className="plane m-step" aria-labelledby="fr-welcome">
       <Seal state="rest" size={96} label="Athena" />
-      <h1 id="fr-welcome" className="m-step__title">
+      <h1 id="fr-welcome" className="m-step__title marquee">
         Meet Athena
       </h1>
       <p className="m-step__lead">
@@ -92,7 +92,7 @@ function Connect({ onConnected, onSkip }: { onConnected: () => void; onSkip: () 
   return (
     <section className="plane m-step" aria-labelledby="fr-connect">
       <Seal state={sealFor(state.phase)} size={72} label="Athena" />
-      <h1 id="fr-connect" className="m-step__title">
+      <h1 id="fr-connect" className="m-step__title marquee">
         Connect Muse
       </h1>
       <ol className="m-steps">
@@ -192,7 +192,7 @@ function Ready({ onDone }: { onDone: (toProjects: boolean) => void }) {
   return (
     <section className="plane m-step" aria-labelledby="fr-ready">
       <Seal state="signed" size={96} label="Athena, connected" />
-      <h1 id="fr-ready" className="m-step__title">
+      <h1 id="fr-ready" className="m-step__title marquee">
         Athena is connected
       </h1>
       <p className="m-step__lead">
