@@ -1,6 +1,6 @@
 """Routes over twins: the overview, setup and its slips, the dress rehearsal, going live and pausing,
 missions (with the recent conversations and suggested goals a new one is given from), and how it
-sounds now (the preview).
+sounds now (the preview), and a message the person pastes for a web channel's voice.
 
 Every setup change answers the whole `TwinDetail`. The two streams (`say`, `rehearse`) and every call
 that waits on a model or a connected account run off the event loop. A new mission is worked once at
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable, Iterator
-from typing import Any
+from typing import Any, cast
 
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
@@ -21,11 +21,11 @@ from starlette.routing import BaseRoute, Route
 from athena import engine as engine_mod
 from athena import routes_turn
 from athena.app import Daemon
-from athena.contracts import ROUTES
+from athena.contracts import ROUTES, PasteBody
 from athena.engine import Engine, EngineError
 from athena.errors import ApiError
 from athena.keys import KeyStore
-from athena.twins import missions, panels, preview, rehearse, setup, threads, view
+from athena.twins import missions, panels, preview, rehearse, setup, threads, view, web
 
 
 async def _body(request: Request) -> dict[str, Any]:
@@ -152,6 +152,12 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         daemon.twins.row(twin_id)
         return JSONResponse(await run_in_threadpool(threads.goals, daemon, engine(), twin_id, body))
 
+    async def paste(request: Request) -> Response:
+        body = await _body(request)
+        twin_id = request.path_params["id"]
+        daemon.twins.row(twin_id)
+        return JSONResponse(await run_in_threadpool(web.paste, daemon, twin_id, cast("PasteBody", body)))
+
     async def sounds(request: Request) -> Response:
         twin_id = request.path_params["id"]
         daemon.twins.row(twin_id)
@@ -196,4 +202,5 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route(ROUTES["twin_preview"], sounds, methods=["GET"]),
         Route(ROUTES["twin_threads"], recent, methods=["GET"]),
         Route(ROUTES["twin_goals"], goals, methods=["POST"]),
+        Route(ROUTES["twin_paste"], paste, methods=["POST"]),
     ]

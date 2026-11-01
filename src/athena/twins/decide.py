@@ -8,7 +8,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from athena.contracts import Autonomy, SendDecision, TwinChannel, TwinMessageKind, WaitReason
+from athena.contracts import (
+    Autonomy,
+    ChannelKind,
+    SendDecision,
+    TwinChannel,
+    TwinMessageKind,
+    WaitReason,
+)
+
+#: The web channels (business Phase 2): a message there is always a card, never sent alone.
+WEB_CHANNELS: frozenset[ChannelKind] = frozenset({"mail_web", "bio", "comment"})
 
 
 @dataclass(frozen=True)
@@ -37,6 +47,7 @@ def level(channel: TwinChannel, kind: TwinMessageKind) -> Autonomy:
 def decide(channel: TwinChannel, draft: DraftFacts, *, twin_live: bool) -> Ruling:
     """A draft is sent alone only when all of these hold:
 
+    - the channel is a connected account (Gmail, Notion), not a web channel;
     - the channel is connected and the twin is live;
     - the level is `auto` (the channel's `split` level for this kind of message when it has one);
     - `confidence >= bar`;
@@ -44,6 +55,8 @@ def decide(channel: TwinChannel, draft: DraftFacts, *, twin_live: bool) -> Rulin
 
     Everything else waits, with the first reason that holds, in this order:
 
+    0. `web_channel`: a business message (business mail, a bio link, a comment) is always a card,
+       whatever its level, confidence or risks; `sent_alone` is never offered there.
     1. `paused`: the twin is not live or the channel is not connected. A paused twin or channel
        never sends.
     2. The level: `first_message` when a split channel holds first messages below Auto, else
@@ -53,6 +66,8 @@ def decide(channel: TwinChannel, draft: DraftFacts, *, twin_live: bool) -> Rulin
 
     Pure: no clock, no store, no I/O, so the same facts always get the same ruling.
     """
+    if channel["kind"] in WEB_CHANNELS:
+        return Ruling("waits", "web_channel")
     if not twin_live or channel["status"] != "connected":
         return Ruling("waits", "paused")
     held = level(channel, draft.kind)

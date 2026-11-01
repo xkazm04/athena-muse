@@ -12,6 +12,7 @@ from typing import Any, cast
 
 from athena.app import Daemon
 from athena.contracts import (
+    ChannelKind,
     ConnectorKind,
     MemoryFact,
     Mission,
@@ -27,7 +28,7 @@ from athena.contracts import (
     TwinSummary,
     TwinWeek,
 )
-from athena.twins import catalogue, preview, style
+from athena.twins import catalogue, preview, style, web
 from athena.twins.rubric import coverage, piece, readiness, ready
 from athena.twins.store import Twins
 
@@ -62,13 +63,19 @@ def health(last_at: str, now: datetime) -> str | None:
 def channels(daemon: Daemon, twin_id: str) -> list[TwinChannel]:
     out: list[TwinChannel] = []
     now = _now()
+    space_id = ""
     for row in daemon.twins.rows("channels", twin_id):
-        kind = cast("ConnectorKind", row["id"])  # WP2.3: web channels have no connection
-        conn = daemon.connectors.connection(kind)
+        if row["id"] in web.WEB_CHANNELS:
+            space_id = space_id or str(daemon.twins.row(twin_id)["space_id"])
+            kind: ChannelKind = row["id"]
+            status, account = web.status(daemon, space_id, kind, row)
+        else:
+            conn = daemon.connectors.connection(cast("ConnectorKind", row["id"]))
+            kind, status, account = row["id"], conn["status"], conn.get("account", "")
         channel: TwinChannel = {
             "kind": kind,
-            "account": conn.get("account", ""),
-            "status": conn["status"],
+            "account": account,
+            "status": status,
             "autonomy": row["autonomy"],
             "bar": int(row["bar"]),
         }
@@ -134,10 +141,14 @@ def drafts(daemon: Daemon, twin_id: str) -> list[TwinDraft]:
         args = card["args"]
         if card["action"] not in TWIN_ACTIONS or args.get("twin_id") != twin_id:
             continue
+        if card["action"] == "twin_send_web":
+            channel: ChannelKind = args.get("channel", "mail_web")
+        else:
+            channel = "gmail" if card["action"] == "twin_send" else "notion"
         draft: TwinDraft = {
             "id": str(args.get("draft", card["id"])),
             "twin_id": twin_id,
-            "channel": "gmail" if card["action"] == "twin_send" else "notion",
+            "channel": channel,
             "to": str(args.get("to") or args.get("where") or ""),
             "subject": str(args.get("subject", "")),
             "text": str(args.get("text", "")),
@@ -220,7 +231,11 @@ def summary(daemon: Daemon, twin_id: str) -> TwinSummary:
 
 
 def samples(twins: Twins, twin_id: str) -> list[Sample]:
-    return [cast("Sample", r) for r in twins.rows("samples", twin_id)]
+    """The sent mail the slip lists, then the messages the person pasted for a web channel, each as a
+    sample it learns from (its text stays in the store; the slip shows an excerpt)."""
+    return [
+        web.pasted_sample(r) if r.get("pasted") else cast("Sample", r) for r in twins.rows("samples", twin_id)
+    ]
 
 
 def pages(twins: Twins, twin_id: str) -> list[NotionPage]:

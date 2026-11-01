@@ -13,7 +13,10 @@ Each one is the person's own act, so the pieces it makes are ink, and each answe
 - **Chores.** The catalogue (`catalogue.py`); a preset whose tool is not connected cannot be picked.
   The task inbox reads one Notion page the twin may read (a picked page), chosen here; what it has
   taken from that page is kept with it.
-- **Autonomy.** Per channel: the level, the bar and an optional split by kind of message.
+- **Autonomy.** Per channel: the level, the bar and an optional split by kind of message. A web
+  channel (business mail, bio links, comments) is fixed: every message waits for a signature.
+- **Pasted messages.** For a web channel the person pastes messages they wrote (`twins.web.paste`);
+  they sit on the samples slip beside the sent mail and are kept when the mail is listed again.
 - **Memory.** The person keeps or drops each fact. A fact that promises money or names another
   person is suggested drop, whatever the model said.
 """
@@ -36,6 +39,7 @@ from athena.contracts import (
     SAMPLES_MAX,
     Autonomy,
     AutonomySplit,
+    ChannelKind,
     ConnectorKind,
     SetupPanel,
 )
@@ -44,7 +48,7 @@ from athena.engine import Engine, EngineError
 from athena.errors import ApiError
 from athena.twins import catalogue, reach, style
 from athena.twins.reach import Unreachable
-from athena.twins.setup import LABELS, cut, not_busy, own_pieces, sync
+from athena.twins.setup import LABELS, WEB_LABELS, cut, not_busy, own_pieces, sync
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +101,12 @@ def prepare(daemon: Daemon, twin_id: str, slip: SetupPanel | None) -> None:
     """Lists the sent mail or the pages the slip shows, once, when the account is connected. A read
     that fails leaves the slip empty: the slip says so and the person can try again."""
     try:
-        if slip == "samples" and not daemon.twins.rows("samples", twin_id):
+        listed = [r for r in daemon.twins.rows("samples", twin_id) if not r.get("pasted")]
+        if (
+            slip == "samples"
+            and not listed
+            and daemon.connectors.connection("gmail")["status"] == "connected"
+        ):
             list_samples(daemon, twin_id)
         elif slip == "pages" and not daemon.twins.rows("pages", twin_id):
             list_pages(daemon, twin_id)
@@ -134,7 +143,12 @@ def list_samples(daemon: Daemon, twin_id: str) -> None:
         if why:
             body["why_not"] = why
         bodies.append(body)
-    daemon.twins.replace("samples", twin_id, space_id, bodies)
+    daemon.twins.replace("samples", twin_id, space_id, [*bodies, *pasted(daemon, twin_id)])
+
+
+def pasted(daemon: Daemon, twin_id: str) -> list[dict[str, Any]]:
+    """The messages the person pasted for a web channel: kept when the sent mail is listed again."""
+    return [r for r in daemon.twins.rows("samples", twin_id) if r.get("pasted")]
 
 
 def pick_samples(daemon: Daemon, engine: Engine, twin_id: str, raw: Any) -> None:
@@ -142,13 +156,13 @@ def pick_samples(daemon: Daemon, engine: Engine, twin_id: str, raw: Any) -> None
     space_id = _space(daemon, twin_id)
     ids = _ids(raw, "the samples")
     twins = daemon.twins
-    listed = twins.rows("samples", twin_id)
+    listed = [s for s in twins.rows("samples", twin_id) if not s.get("pasted")]
     if not listed:
         try:
             list_samples(daemon, twin_id)
         except Unreachable as e:
             raise ApiError("bad_request", str(e)) from None
-        listed = twins.rows("samples", twin_id)
+        listed = [s for s in twins.rows("samples", twin_id) if not s.get("pasted")]
     by_id = {s["id"]: s for s in listed}
     if not 1 <= len(ids) <= SAMPLES_MAX:
         raise ApiError("bad_request", f"pick 1 to {SAMPLES_MAX} of your sent messages")
@@ -164,7 +178,10 @@ def pick_samples(daemon: Daemon, engine: Engine, twin_id: str, raw: Any) -> None
             texts = {i: reach.mail_text(daemon.connectors, i) for i in ids}
         except (Unreachable, ValueError) as e:
             raise ApiError("bad_request", str(e) or "Gmail could not be read") from None
-        twins.replace("samples", twin_id, space_id, [{**s, "picked": s["id"] in ids} for s in listed])
+        kept = pasted(daemon, twin_id)
+        twins.replace(
+            "samples", twin_id, space_id, [*[{**s, "picked": s["id"] in ids} for s in listed], *kept]
+        )
         messages = [
             {"role": "system", "content": VOICE_RULES},
             {"role": "user", "content": _mail_message([by_id[i] for i in ids], texts)},
@@ -430,9 +447,12 @@ def set_autonomy(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> None:
     space_id = _space(daemon, twin_id)
     sync(daemon, twin_id)
     kind, level, bar, split = body.get("channel"), body.get("autonomy"), body.get("bar"), body.get("split")
+    if kind in WEB_LABELS:
+        _web_autonomy(daemon, twin_id, space_id, cast("ChannelKind", kind), body)
+        return
     if kind not in LABELS:
-        raise ApiError("bad_request", "the channel is gmail or notion")
-    channel = cast("ConnectorKind", kind)  # WP2.3: the web channels have their own autonomy rule
+        raise ApiError("bad_request", "the channel is gmail, notion, mail_web, bio or comment")
+    channel = cast("ConnectorKind", kind)
     row = daemon.twins.one("channels", twin_id, channel)
     if row is None:
         raise ApiError("bad_request", f"connect {LABELS[channel]} for this twin first")
@@ -474,6 +494,43 @@ def set_autonomy(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> None:
     own_pieces(daemon, twin_id, "autonomy", f"a-{channel}", wanted)
 
 
+WEB_WAITS = "always waits for your signature; never sent alone"
+
+
+def _web_autonomy(
+    daemon: Daemon, twin_id: str, space_id: str, kind: ChannelKind, body: dict[str, Any]
+) -> None:
+    """A web channel's autonomy is fixed: every message waits for the person's signature, so the slip
+    takes Review or Assist and refuses Auto, alone or in a split. Business mail also keeps the page
+    a new message is written on (`compose_url`), which must be on one of the project's sites."""
+    from athena.twins import web  # web reads this module's slips
+
+    label = WEB_LABELS[kind]
+    row = daemon.twins.one("channels", twin_id, kind)
+    if row is None:
+        raise ApiError("bad_request", f"add {label.lower()} to this twin first")
+    level, bar, split = body.get("autonomy"), body.get("bar", row.get("bar")), body.get("split")
+    if level == "auto" or (isinstance(split, dict) and "auto" in split.values()):
+        raise ApiError(
+            "bad_request", f"{label}: every message waits for your signature; it is never sent alone"
+        )
+    if split is not None:
+        raise ApiError("bad_request", f"{label} has one level: every message waits for your signature")
+    if level not in LEVELS:
+        raise ApiError("bad_request", "the level is review or assist")
+    if isinstance(bar, bool) or not isinstance(bar, int) or not BAR_MIN <= bar <= BAR_MAX:
+        raise ApiError("bad_request", f"how sure it must be is a whole number from {BAR_MIN} to {BAR_MAX}")
+    stored = {k: v for k, v in row.items() if k not in ("id", "split")}
+    stored.update(autonomy=level, bar=bar)
+    if "compose_url" in body:
+        if kind != "mail_web":
+            raise ApiError("bad_request", "only business mail has a page to write new messages on")
+        stored["compose_url"] = web.compose_setting(daemon, space_id, body["compose_url"])
+    daemon.twins.save("channels", twin_id, space_id, kind, stored)
+    wanted = [{"id": f"a-{kind}", "label": f"{label}: {LEVEL_WORDS[level]}", "detail": WEB_WAITS}]
+    own_pieces(daemon, twin_id, "autonomy", f"a-{kind}", wanted)
+
+
 # --- memory -------------------------------------------------------------------------------------------
 
 
@@ -496,7 +553,12 @@ def set_memory(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> None:
     if reason is not None and reason.strip():
         fact["reason"] = cut(reason, DETAIL_MAX)  # the person's own reason, shown in place of hers
     twins.save("memory", twin_id, space_id, fact_id, fact)
-    kept = [f for f in twins.rows("memory", twin_id) if f.get("keep") is True]
+    memory_pieces(daemon, twin_id)
+
+
+def memory_pieces(daemon: Daemon, twin_id: str) -> None:
+    """The memory place's pieces become the facts the person keeps."""
+    kept = [f for f in daemon.twins.rows("memory", twin_id) if f.get("keep") is True]
     wanted = [
         {"id": f"m-{f['id']}", "label": f["fact"], "evidence": [f["sample"]] if f.get("sample") else []}
         for f in kept

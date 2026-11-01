@@ -27,6 +27,7 @@ from athena.contracts import (
     NAME_MAX,
     NEED_MAX,
     TEXT_MAX,
+    ChannelKind,
     ConnectorKind,
     PieceOp,
     SetupPanel,
@@ -45,9 +46,21 @@ from athena.turn import run_turn
 from athena.twins import style
 from athena.twins.rubric import KINDS, PLACES, TWIN_RUBRIC, coverage, piece, readiness, ready
 
-# The connected-account channels a setup conversation inks (WP2.3 adds the web channels).
+#: The connected-account channels: inked when the account is connected.
 CHANNEL_KINDS: tuple[ConnectorKind, ...] = ("gmail", "notion")
 LABELS: dict[ConnectorKind, str] = {"gmail": "Gmail", "notion": "Notion"}
+#: The web channels (business Phase 2): no account to connect, it speaks through her browser and
+#: every message waits for the person's signature. Inked when the person confirms the piece.
+WEB_KINDS: tuple[ChannelKind, ...] = ("mail_web", "bio", "comment")
+WEB_LABELS: dict[ChannelKind, str] = {"mail_web": "Business mail", "bio": "Bio links", "comment": "Comments"}
+#: Every channel a twin may hold, in plain words.
+CHANNEL_LABELS: dict[str, str] = {str(k): v for k, v in (*LABELS.items(), *WEB_LABELS.items())}
+#: What a web channel may touch, in plain words.
+WEB_SCOPE: dict[ChannelKind, str] = {
+    "mail_web": "only messages you sign, from your mailbox in her browser",
+    "bio": "opens a creator's bio link; you send the message yourself",
+    "comment": "only comments you sign, under a creator's track",
+}
 #: Places that fill from a working slip; her pieces there would claim what the person did not do.
 SLIP_PLACES = frozenset({"knowledge", "chores", "autonomy", "memory"})
 #: What a Notion channel may touch, in plain words.
@@ -57,7 +70,8 @@ NEW_TWIN = "New twin"
 
 RULES = (
     "## Setting up a twin with the person\n"
-    "The person is making a twin: a clone that writes messages as them, on Gmail and Notion. Together "
+    "The person is making a twin: a clone that writes messages as them, on Gmail and Notion, or through "
+    "their browser (business mail, a creator's bio link, a comment under a track). Together "
     "you fill in its document, one place at a time. Use `sketch` to write what they told you and to "
     "propose what is missing; use `ask` for the next useful question. Some places fill from the "
     "working slip on their screen: signing in, their sent mail, the style dials, the Notion pages, "
@@ -98,8 +112,9 @@ def piece_tool() -> dict[str, Any]:
             "op": "add, change, remove or dial",
             "id": "The piece's id (add: optional, one is given if empty; change and remove: required)",
             "place": f"{', '.join(PLACES)} (add: required)",
-            "kind": f"{', '.join(KINDS)} (add: required): name and purpose sit in who, gmail and notion "
-            "are the channels, everything else is a line",
+            "kind": f"{', '.join(KINDS)} (add: required): name and purpose sit in who; gmail, notion, "
+            "mail_web (business mail in the browser), bio (a creator's bio link) and comment (under a "
+            "track) are the channels; everything else is a line",
             "label": f"A few plain words, at most {LABEL_MAX} characters (add: required)",
             "detail": "An optional second line",
             "quote": "add or dial: the person's exact words this comes from (3 words or more)",
@@ -133,13 +148,24 @@ def connected(daemon: Daemon, kind: ConnectorKind) -> bool:
     return daemon.connectors.connection(kind)["status"] == "connected"
 
 
-def channel_kinds(nodes: list[SketchNode]) -> list[ConnectorKind]:
-    """The connected-account channels on the sketch (WP2.3 adds the web channels beside them)."""
+def channel_kinds(nodes: list[SketchNode]) -> list[ChannelKind]:
+    """Every channel on the sketch: the connected accounts and the web channels."""
     return [
-        cast("ConnectorKind", n["kind"])
+        cast("ChannelKind", n["kind"])
         for n in nodes
-        if str(n["slot"]) == "channels" and str(n["kind"]) in LABELS
+        if str(n["slot"]) == "channels" and str(n["kind"]) in CHANNEL_LABELS
     ]
+
+
+def connector_kinds(nodes: list[SketchNode]) -> list[ConnectorKind]:
+    """The connected-account channels on the sketch."""
+    return [c for k in channel_kinds(nodes) for c in CHANNEL_KINDS if c == k]
+
+
+def web_only(nodes: list[SketchNode]) -> bool:
+    """The twin speaks only on web channels, so it has no Gmail to learn a voice from."""
+    kinds = channel_kinds(nodes)
+    return bool(kinds) and not any(k in LABELS for k in kinds)
 
 
 def panel(
@@ -147,11 +173,14 @@ def panel(
 ) -> tuple[SetupPanel, ConnectorKind | None] | None:
     """The working slip a question about `place` needs, worked out from where the twin stands."""
     if place == "channels":
-        for kind in channel_kinds(nodes) or ["gmail"]:
+        wanted: list[ConnectorKind] = connector_kinds(nodes) or ([] if channel_kinds(nodes) else ["gmail"])
+        for kind in wanted:
             if not connected(daemon, kind):
                 return "connect", kind
         return None
     if place == "voice":
+        if web_only(nodes):  # no Gmail: its voice is what the person pastes on the samples slip
+            return "samples", None
         if not connected(daemon, "gmail"):
             return "connect", "gmail"
         picked = any(r.get("picked") for r in daemon.twins.rows("samples", twin_id))
@@ -164,15 +193,25 @@ def panel(
 
 def sync(daemon: Daemon, twin_id: str) -> list[PieceOp]:
     """Inks each channel piece whose account is connected (the person signed in: that is their act,
-    no quote needed), names the account on it, and opens the twin's channel there at Assist."""
+    no quote needed), names the account on it, and opens the twin's channel there at Assist. A web
+    channel has no account: the person inks its piece themselves (`confirm`), and its channel then
+    opens at Assist, where it stays (a web channel's message always waits for a signature)."""
     twins = daemon.twins
     row = twins.row(twin_id)
     sketch = twins.sketch(twin_id)
     ops: list[PieceOp] = []
     for node in sketch["nodes"]:
-        if str(node["slot"]) != "channels" or str(node["kind"]) not in LABELS:
+        if str(node["slot"]) != "channels":
             continue
-        kind = cast("ConnectorKind", node["kind"])  # WP2.3: web channels have no connection
+        if str(node["kind"]) in WEB_LABELS:
+            web = cast("ChannelKind", node["kind"])
+            if node["confirmed"] and twins.one("channels", twin_id, web) is None:
+                opened = {"autonomy": "assist", "bar": BAR_DEFAULT, "scope": WEB_SCOPE[web]}
+                twins.save("channels", twin_id, row["space_id"], web, opened)
+            continue
+        if str(node["kind"]) not in LABELS:
+            continue
+        kind = cast("ConnectorKind", node["kind"])
         conn = daemon.connectors.connection(kind)
         if conn["status"] != "connected":
             continue
@@ -342,8 +381,15 @@ class TwinDesign(SketchDesign):
             )
             lines.append(f"- {LABELS[kind]}: {said}")
         samples = twins.rows("samples", self.twin_id)
-        picked = sum(bool(s.get("picked")) for s in samples)
-        lines.append(f"- Sent mail it learns its voice from: {picked} picked of {len(samples)} listed")
+        sent = [s for s in samples if not s.get("pasted")]
+        picked = sum(bool(s.get("picked")) for s in sent)
+        lines.append(f"- Sent mail it learns its voice from: {picked} picked of {len(sent)} listed")
+        pasted: dict[str, int] = {}
+        for s in samples:
+            if s.get("pasted"):
+                pasted[s["channel"]] = pasted.get(s["channel"], 0) + 1
+        for where, n in pasted.items():
+            lines.append(f"- Messages the person pasted for {CHANNEL_LABELS[where].lower()}: {n}")
         titles = [p["title"] for p in twins.rows("pages", self.twin_id) if p.get("picked")]
         lines.append("- Notion pages it may answer from:" + (" (none picked)" if not titles else ""))
         if titles:
@@ -351,7 +397,10 @@ class TwinDesign(SketchDesign):
         chores = [r["id"] for r in twins.rows("chores", self.twin_id)]
         lines.append(f"- Ready-made chores picked: {', '.join(chores) or 'none'}")
         for ch in twins.rows("channels", self.twin_id):
-            lines.append(f"- {LABELS[ch['id']]} may send alone: {ch['autonomy']}, bar {ch['bar']}")
+            if ch["id"] in WEB_LABELS:
+                lines.append(f"- {WEB_LABELS[ch['id']]}: every message waits for the person's signature")
+            else:
+                lines.append(f"- {LABELS[ch['id']]} may send alone: {ch['autonomy']}, bar {ch['bar']}")
         kept = sum(r.get("keep") is True for r in twins.rows("memory", self.twin_id))
         lines.append(f"- Facts about the person it keeps: {kept}")
         return "\n".join(lines)
@@ -434,19 +483,26 @@ def _after_start(events: Iterator[dict[str, Any]], inked: list[PieceOp]) -> Iter
 
 
 def confirm(daemon: Daemon, twin_id: str, piece_ids: list[str]) -> None:
-    """The person inks her proposals. A channel is inked by connecting it, not here."""
+    """The person inks her proposals. A connected account's channel is inked by connecting it, not
+    here; a web channel has no account, so the person inks it here and its channel opens."""
     row = daemon.twins.row(twin_id)
     not_busy(daemon, row["space_id"])
     sync(daemon, twin_id)
     sketch = daemon.twins.sketch(twin_id)
     for node in sketch["nodes"]:
-        if node["id"] in piece_ids and str(node["slot"]) == "channels" and not node["confirmed"]:
+        if (
+            node["id"] in piece_ids
+            and str(node["slot"]) == "channels"
+            and str(node["kind"]) not in WEB_LABELS
+            and not node["confirmed"]
+        ):
             raise ApiError("bad_request", f"{node['label']} is yours once you connect it")
     try:
         inked, _ = sketches.confirm(sketch, piece_ids)
     except SketchError as e:
         raise ApiError("bad_request", str(e)) from e
     daemon.twins.put(twin_id, sketch=inked)
+    sync(daemon, twin_id)
 
 
 def drop(daemon: Daemon, twin_id: str, piece_ids: list[str]) -> None:

@@ -65,6 +65,11 @@ class Twins:
             raise ApiError("unknown_ref", "there is no such twin")
         return rows[0]
 
+    def of_space(self, space_id: str) -> str | None:
+        """The Project's twin (one per Project), or None."""
+        found = self._store.query("SELECT id FROM twins WHERE space_id = ?", (space_id,))
+        return str(found[0]["id"]) if found else None
+
     def ids(self) -> list[str]:
         return [r["id"] for r in self._store.query("SELECT id FROM twins ORDER BY created, rowid")]
 

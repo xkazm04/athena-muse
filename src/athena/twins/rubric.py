@@ -16,9 +16,10 @@ from athena.drafts.rubric import Rubric
 
 PLACES = ("who", "channels", "voice", "knowledge", "chores", "never", "autonomy", "memory", "mission")
 
-#: What a piece is. `name` and `purpose` say who it is; a channel piece is the account's kind; every
-#: other piece is a `line`.
-KINDS = ("line", "name", "purpose", "gmail", "notion")
+#: What a piece is. `name` and `purpose` say who it is; a channel piece is the channel's kind (a
+#: connected account, or a web channel through her browser); every other piece is a `line`.
+CHANNEL_PIECES = ("gmail", "notion", "mail_web", "bio", "comment")
+KINDS = ("line", "name", "purpose", *CHANNEL_PIECES)
 
 TWIN_RUBRIC = Rubric(
     places=PLACES,
@@ -36,7 +37,8 @@ TWIN_RUBRIC = Rubric(
     },
     meaning={
         "who": "who it speaks as: its name, what it is for and how it signs",
-        "channels": "where it speaks: Gmail, Notion",
+        "channels": "where it speaks: Gmail, Notion, or through her browser: business mail, bio links, "
+        "comments",
         "voice": "how it sounds, learned only from mail the person wrote",
         "knowledge": "what it knows: the Notion pages it may answer from",
         "chores": "what it does there: the ready-made chores it may run",
@@ -48,7 +50,7 @@ TWIN_RUBRIC = Rubric(
     kinds=KINDS,
     allowed={
         "who": ("line", "name", "purpose"),
-        "channels": ("gmail", "notion"),
+        "channels": CHANNEL_PIECES,
         **{p: ("line",) for p in ("voice", "knowledge", "chores", "never", "autonomy", "memory", "mission")},
     },
 )
