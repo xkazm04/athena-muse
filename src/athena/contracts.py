@@ -25,6 +25,12 @@ BRIEF_MAX = 1600
 APPS_MAX = 24
 SITES_MAX = 24  # a project's sites (ADR 0014)
 SITE_FRESH_S = 300  # a look at a site stands this long before the overview or a hand looks again
+RECORDS_PAGE_MAX = 500  # records one list answers (business Phase 1)
+BLOCKS_MAX = 12  # blocks in one report
+REPORT_TITLE_MAX = 80
+CALLOUT_MAX = 280
+RECOMPOSE_MIN_S = 3600  # a shape change recomposes at most this often
+VOCAB = 1  # the report's block vocabulary version
 SPACES_MAX = 100
 HUE_MAX = 359
 TEXT_MAX = 8000  # one person message
@@ -43,7 +49,7 @@ Role = Literal["person", "athena"]
 ActionClass = Literal["auto", "gated"]
 CardState = Literal["waiting", "approved", "declined"]
 Verdict = Literal["approve", "decline"]
-Surface = Literal["turn", "probe", "design", "rehearsal", "twin"]
+Surface = Literal["turn", "probe", "design", "rehearsal", "twin", "report"]
 ActionName = Literal[
     "recall",
     "remember",
@@ -72,6 +78,8 @@ ActionName = Literal[
     "wheel_handoff",
     "setup_read",
     "setup_act",
+    "record_list",
+    "record_put",
 ]
 AppEventType = Literal[
     "card_filed",
@@ -83,6 +91,7 @@ AppEventType = Literal[
     "settings",
     "wheel",
     "site",
+    "report",
 ]
 #: Her browser's answer when a hand did not run (ADR 0013).
 HandReason = Literal["no_browser", "no_tab", "moved", "refused", "timeout", "failed", "unknown_ref"]
@@ -94,6 +103,19 @@ SiteAccess = Literal["signed_in", "signed_out", "unknown"]
 AccessState = Literal["open", "signed_in", "skipped"]
 #: What the person does with one site on the access step.
 AccessAct = Literal["sign_in", "check", "skip", "use_moved"]
+
+# Records and the report (business Phase 1). Kinds are a catalog in code; a project picks from it.
+RecordKind = Literal["creator", "track", "thread", "agreement", "file", "render", "release", "stat"]
+#: Who wrote a revision.
+RecordBy = Literal["person", "athena", "routine", "daemon"]
+TrackVerdict = Literal["keep", "pass", "later"]
+AgreementState = Literal["proposed", "agreed", "declined"]
+#: The creator's Suno plan: a free-plan song cannot be licensed for commercial use.
+SunoPlan = Literal["free", "pro", "premier", "unknown"]
+ThreadChannel = Literal["mail_web", "bio", "comment"]
+RenderState = Literal["staged", "running", "rendered", "refused", "failed"]
+BlockKind = Literal["stat", "trend", "queue", "pipeline", "list", "thread", "cards", "callout"]
+BindingAgg = Literal["count", "sum", "last", "series"]
 
 # Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 ThemeChoice = Literal["auto", "dark", "light"]  # auto follows the system
@@ -141,6 +163,10 @@ CATALOG: dict[ActionName, ActionClass] = {
     # conversation. A read answers at once; every change files a card, one per machine-changing step.
     "setup_read": "auto",
     "setup_act": "gated",
+    # A project's records (business Phase 1). A read answers at once. The class is the floor: a put of
+    # a find (creator, track) runs at once, a put of any other kind files a card.
+    "record_list": "auto",
+    "record_put": "auto",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -250,6 +276,7 @@ class SpaceSummary(TypedDict):
     created: str  # ISO 8601 UTC
     updated: str
     counts: SpaceCounts
+    kinds: NotRequired[list[RecordKind]]  # the record kinds it keeps; omitted when none
 
 
 class SpaceList(TypedDict):
@@ -1365,6 +1392,168 @@ class McpLease(TypedDict):
     expires: str
 
 
+# --- records and the report (business Phase 1) ---------------------------------------------------
+# An absent value is an omitted key, never null or 0. A body is validated per kind by
+# athena.records.kinds; the shapes below are the wire's, one per kind.
+
+
+class CreatorBody(TypedDict):
+    name: str
+    channel_url: str  # the record's key
+    followed: bool
+    bio_links: NotRequired[list[str]]
+    note: NotRequired[str]
+
+
+class TrackBody(TypedDict):
+    url: str  # the record's key
+    title: str
+    creator_key: str
+    found_at: str
+    verdict: NotRequired[TrackVerdict]
+    genre: NotRequired[str]
+    note: NotRequired[str]
+    file_id: NotRequired[str]  # a `fil_...` of this project
+
+
+class ThreadBody(TypedDict):
+    creator_key: str
+    channel: ThreadChannel
+    last_at: str
+    subject: NotRequired[str]
+    url: NotRequired[str]
+    snippet: NotRequired[str]
+
+
+class AgreementBody(TypedDict):
+    creator_key: str  # the record's key
+    state: AgreementState
+    thread_key: str  # the evidence: the thread it was agreed in
+    plan: NotRequired[SunoPlan]
+    terms: NotRequired[str]
+
+
+class FileRecordBody(TypedDict):
+    file_id: str  # the record's key; must be a row in this project's files
+    track_key: NotRequired[str]
+
+
+class RenderBody(TypedDict):
+    track_key: str  # the record's key
+    state: RenderState
+    job_ids: NotRequired[list[str]]
+    reasons: NotRequired[list[str]]
+    output_file_id: NotRequired[str]
+
+
+class ReleaseBody(TypedDict):
+    track_key: str  # the record's key
+    title: str
+    track_url: str
+    creator_channel_url: str
+    genre: str
+    credits: str
+
+
+class StatBody(TypedDict):
+    metric: str
+    value: float
+    measured_at: str  # when it was read, never a claimed time; key `<metric>@<measured_at>`
+
+
+class RecordItem(TypedDict):
+    id: str  # `rec_...`, one per revision
+    space_id: str
+    kind: RecordKind
+    key: str
+    rev: int  # 1 for the first; a change is a new revision, never an edit
+    body: dict[str, Any]
+    by: RecordBy
+    created: str
+
+
+class RecordList(TypedDict):
+    records: list[RecordItem]
+
+
+class RecordPutBody(TypedDict):
+    kind: RecordKind
+    body: dict[str, Any]
+
+
+class TrackVerdictBody(TypedDict):
+    verdict: TrackVerdict
+    genre: NotRequired[str]
+    note: NotRequired[str]
+
+
+class KindsBody(TypedDict):
+    kinds: list[RecordKind]
+
+
+class MayRender(TypedDict):
+    ok: bool
+    reasons: list[str]  # plain words, empty when ok
+
+
+class Binding(TypedDict):
+    kind: RecordKind
+    filter: NotRequired[dict[str, str | bool | None]]  # body field equals; None means the field is absent
+    agg: NotRequired[BindingAgg]
+    field: NotRequired[str]  # summed / last / series field (a stat's `value`)
+
+
+class Block(TypedDict):
+    id: str  # minted once; a recompose keeps it
+    kind: BlockKind
+    title: str
+    span: int  # 1..12 columns
+    binding: NotRequired[Binding]
+    config: dict[str, Any]
+
+
+class ReportSpec(TypedDict):
+    v: int  # 1
+    vocab: int  # the block vocabulary version it was composed against (VOCAB)
+    title: str
+    blocks: list[Block]
+    callout: NotRequired[str]
+
+
+class SeriesPoint(TypedDict):
+    t: str
+    v: float
+
+
+class StageCount(TypedDict):
+    label: str
+    count: int
+
+
+class BlockValue(TypedDict):
+    count: NotRequired[int]
+    value: NotRequired[float]
+    series: NotRequired[list[SeriesPoint]]
+    items: NotRequired[list[RecordItem]]
+    stages: NotRequired[list[StageCount]]
+    cards: NotRequired[list[Card]]
+
+
+class ReportView(TypedDict):
+    spec: ReportSpec
+    default: bool  # True: no composed spec yet (or the last compose failed); the kinds' default layout
+    rendered_at: str
+    dropped: int  # blocks the validation door removed
+    reasons: list[str]  # why each was removed, plain words
+    values: dict[str, BlockValue]  # by block id, computed from records, never from the model
+    pinned: list[str]  # block ids
+    composed_at: NotRequired[str]
+
+
+class PinsBody(TypedDict):
+    pinned: list[str]
+
+
 # --- routes ---------------------------------------------------------------------------------------
 
 ROUTES = {
@@ -1433,4 +1622,11 @@ ROUTES = {
     "browser_note": "/browser/note",
     "mcp": "/mcp",
     "mcp_lease": "/mcp/lease",
+    "space_records": "/spaces/{id}/records",
+    "record_history": "/records/{id}/history",
+    "record_verdict": "/records/{id}/verdict",
+    "space_kinds": "/spaces/{id}/kinds",
+    "space_report": "/spaces/{id}/report",
+    "space_report_compose": "/spaces/{id}/report/compose",
+    "space_report_pins": "/spaces/{id}/report/pins",
 }

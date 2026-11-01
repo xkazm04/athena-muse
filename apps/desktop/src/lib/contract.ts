@@ -16,6 +16,12 @@ export const APPS_MAX = 24;
 export const SITES_MAX = 24;
 /** A look at a site stands this long (seconds) before the overview or a hand looks again. */
 export const SITE_FRESH_S = 300;
+export const RECORDS_PAGE_MAX = 500;
+export const BLOCKS_MAX = 12;
+export const REPORT_TITLE_MAX = 80;
+export const CALLOUT_MAX = 280;
+export const RECOMPOSE_MIN_S = 3600;
+export const VOCAB = 1;
 export const SPACES_MAX = 100;
 export const HUE_MAX = 359;
 export const TEXT_MAX = 8000;
@@ -28,7 +34,7 @@ export type Role = "person" | "athena";
 export type ActionClass = "auto" | "gated";
 export type CardState = "waiting" | "approved" | "declined";
 export type Verdict = "approve" | "decline";
-export type Surface = "turn" | "probe" | "design" | "rehearsal" | "twin";
+export type Surface = "turn" | "probe" | "design" | "rehearsal" | "twin" | "report";
 export type ActionName =
   | "recall"
   | "remember"
@@ -56,7 +62,9 @@ export type ActionName =
   | "page_download"
   | "wheel_handoff"
   | "setup_read"
-  | "setup_act";
+  | "setup_act"
+  | "record_list"
+  | "record_put";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -66,7 +74,8 @@ export type AppEventType =
   | "turn_done"
   | "settings"
   | "wheel"
-  | "site";
+  | "site"
+  | "report";
 /** Her browser's answer when a hand did not run (ADR 0013). */
 export type HandReason = "no_browser" | "no_tab" | "moved" | "refused" | "timeout" | "failed" | "unknown_ref";
 export type WheelState = "back" | "closed" | "timeout";
@@ -76,6 +85,19 @@ export type SiteAccess = "signed_in" | "signed_out" | "unknown";
 export type AccessState = "open" | "signed_in" | "skipped";
 /** What the person does with one site on the access step. */
 export type AccessAct = "sign_in" | "check" | "skip" | "use_moved";
+
+// Records and the report (business Phase 1). Kinds are a catalog in code; a project picks from it.
+export type RecordKind = "creator" | "track" | "thread" | "agreement" | "file" | "render" | "release" | "stat";
+/** Who wrote a revision. */
+export type RecordBy = "person" | "athena" | "routine" | "daemon";
+export type TrackVerdict = "keep" | "pass" | "later";
+export type AgreementState = "proposed" | "agreed" | "declined";
+/** The creator's Suno plan: a free-plan song cannot be licensed for commercial use. */
+export type SunoPlan = "free" | "pro" | "premier" | "unknown";
+export type ThreadChannel = "mail_web" | "bio" | "comment";
+export type RenderState = "staged" | "running" | "rendered" | "refused" | "failed";
+export type BlockKind = "stat" | "trend" | "queue" | "pipeline" | "list" | "thread" | "cards" | "callout";
+export type BindingAgg = "count" | "sum" | "last" | "series";
 
 // Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 /** `auto` follows the system. */
@@ -120,6 +142,9 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   // The setup conversation (ADR 0017): a read answers at once, every change is a card.
   setup_read: "auto",
   setup_act: "gated",
+  // A project's records (business Phase 1): a put of a find runs at once, any other kind files a card.
+  record_list: "auto",
+  record_put: "auto",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -511,6 +536,8 @@ export interface SpaceSummary {
   created: string;
   updated: string;
   counts: SpaceCounts;
+  /** The record kinds it keeps; omitted when none. */
+  kinds?: RecordKind[];
 }
 
 // List routes answer wrapped, never as a bare array.
@@ -1246,6 +1273,158 @@ export interface McpLease {
   expires: string;
 }
 
+// --- records and the report (business Phase 1) ---------------------------------------------------
+// An absent value is an omitted key, never null or 0.
+
+export interface CreatorBody {
+  name: string;
+  /** The record's key. */
+  channel_url: string;
+  followed: boolean;
+  bio_links?: string[];
+  note?: string;
+}
+export interface TrackBody {
+  /** The record's key. */
+  url: string;
+  title: string;
+  creator_key: string;
+  found_at: string;
+  verdict?: TrackVerdict;
+  genre?: string;
+  note?: string;
+  /** A `fil_...` of this project. */
+  file_id?: string;
+}
+export interface ThreadBody {
+  creator_key: string;
+  channel: ThreadChannel;
+  last_at: string;
+  subject?: string;
+  url?: string;
+  snippet?: string;
+}
+export interface AgreementBody {
+  /** The record's key. */
+  creator_key: string;
+  state: AgreementState;
+  /** The evidence: the thread it was agreed in. */
+  thread_key: string;
+  plan?: SunoPlan;
+  terms?: string;
+}
+export interface FileRecordBody {
+  /** The record's key; a row in this project's files. */
+  file_id: string;
+  track_key?: string;
+}
+export interface RenderBody {
+  track_key: string;
+  state: RenderState;
+  job_ids?: string[];
+  reasons?: string[];
+  output_file_id?: string;
+}
+export interface ReleaseBody {
+  track_key: string;
+  title: string;
+  track_url: string;
+  creator_channel_url: string;
+  genre: string;
+  credits: string;
+}
+export interface StatBody {
+  metric: string;
+  value: number;
+  /** When it was read, never a claimed time. */
+  measured_at: string;
+}
+export interface RecordItem {
+  /** `rec_...`, one per revision. */
+  id: string;
+  space_id: string;
+  kind: RecordKind;
+  key: string;
+  rev: number;
+  body: { [field: string]: unknown };
+  by: RecordBy;
+  created: string;
+}
+export interface RecordList {
+  records: RecordItem[];
+}
+export interface RecordPutBody {
+  kind: RecordKind;
+  body: { [field: string]: unknown };
+}
+export interface TrackVerdictBody {
+  verdict: TrackVerdict;
+  genre?: string;
+  note?: string;
+}
+export interface KindsBody {
+  kinds: RecordKind[];
+}
+export interface MayRender {
+  ok: boolean;
+  reasons: string[];
+}
+export interface Binding {
+  kind: RecordKind;
+  /** Body field equals; null means the field is absent. */
+  filter?: { [field: string]: string | boolean | null };
+  agg?: BindingAgg;
+  field?: string;
+}
+export interface Block {
+  /** Minted once; a recompose keeps it. */
+  id: string;
+  kind: BlockKind;
+  title: string;
+  /** 1..12 columns. */
+  span: number;
+  binding?: Binding;
+  config: { [key: string]: unknown };
+}
+export interface ReportSpec {
+  v: number;
+  vocab: number;
+  title: string;
+  blocks: Block[];
+  callout?: string;
+}
+export interface SeriesPoint {
+  t: string;
+  v: number;
+}
+export interface StageCount {
+  label: string;
+  count: number;
+}
+export interface BlockValue {
+  count?: number;
+  value?: number;
+  series?: SeriesPoint[];
+  items?: RecordItem[];
+  stages?: StageCount[];
+  cards?: Card[];
+}
+export interface ReportView {
+  spec: ReportSpec;
+  /** True: no composed spec yet (or the last compose failed); the kinds' default layout. */
+  default: boolean;
+  rendered_at: string;
+  dropped: number;
+  reasons: string[];
+  /** By block id, computed from records, never from the model. */
+  values: { [blockId: string]: BlockValue };
+  pinned: string[];
+  composed_at?: string;
+}
+export interface PinsBody {
+  pinned: string[];
+}
+
 export const ROUTES = {
   health: "/health",
   engine: "/engine",
@@ -1312,4 +1491,11 @@ export const ROUTES = {
   browser_note: "/browser/note",
   mcp: "/mcp",
   mcp_lease: "/mcp/lease",
+  space_records: "/spaces/{id}/records",
+  record_history: "/records/{id}/history",
+  record_verdict: "/records/{id}/verdict",
+  space_kinds: "/spaces/{id}/kinds",
+  space_report: "/spaces/{id}/report",
+  space_report_compose: "/spaces/{id}/report/compose",
+  space_report_pins: "/spaces/{id}/report/pins",
 } as const;
