@@ -21,6 +21,7 @@
   const NONCE = "__ATHENA_NONCE__";
   const PACKET_CAP = 1500;
   const FIND_CAP = 20;
+  const LINKS_CAP = 200;
   const LABEL_CAP = 120;
   const SNAPSHOT_TEXT_CAP = 200000;
   const NOT_TEXT = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "SVG", "HEAD"]);
@@ -226,6 +227,22 @@
       snapshots.set(snapSeq, { text: text.slice(0, SNAPSHOT_TEXT_CAP), total: text.length });
       if (snapshots.size > 4) snapshots.delete(snapshots.keys().next().value);
       return ok(packet(snapSeq, text.slice(0, SNAPSHOT_TEXT_CAP), text.length, 0), here());
+    },
+
+    // The page's links as `label  address`, one per line (a read: a routine's page text carries no
+    // addresses, and a list of uploads or threads is only useful with them). Deduplicated by address.
+    page_links() {
+      const rows = [];
+      const seen = new Set();
+      for (const el of deep(document.documentElement)) {
+        if (!el.matches || !el.matches("a[href]")) continue;
+        const href = el.href;
+        if (!href || /^(javascript|mailto|tel):/i.test(href) || seen.has(href)) continue;
+        seen.add(href);
+        if (rows.length < LINKS_CAP) rows.push(`${labelOf(el) || "(no label)"}  ${href}`);
+      }
+      if (!rows.length) return ok("no links", { shown: 0, total: 0 });
+      return ok([...rows, `(showing ${rows.length} of ${seen.size})`].join("\n"), { shown: rows.length, total: seen.size });
     },
 
     page_find(input) {

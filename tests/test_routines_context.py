@@ -55,6 +55,20 @@ def test_read_gives_the_text_of_a_kept_site_and_closes_its_hidden_tab(daemon: Da
     assert daemon.conversation.list(ctx.space_id) == []  # no turn: nothing in the conversation
 
 
+def test_read_carries_the_pages_links_with_their_addresses(daemon: Daemon) -> None:
+    """Page text has no addresses; an upload or a thread is only kept with one (found on the built
+    shell by the routines seam: four uploads seen, none kept)."""
+    ctx = _ctx(daemon)
+    trust(daemon, ctx.space_id)
+    with FakeShell(daemon.relay) as shell:
+        shell.pages[PAGE] = {"links": [f"Night Drive in Glass  {ORIGIN}/watch?v=nd1"]}
+        page = ctx.read(PAGE)
+    assert page.text.startswith("Night Drive in Glass")
+    assert (
+        f"Links on the page (label, then address):\nNight Drive in Glass  {ORIGIN}/watch?v=nd1" in page.text
+    )
+
+
 @pytest.mark.parametrize(
     "page",
     [

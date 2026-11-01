@@ -170,7 +170,7 @@ class RunContext:
             access, reason = sites.decide(origin, sites.Seen(True, url=final, password=password))
             if access == "signed_out":
                 raise Skip("signed_out", reason)
-            return PageText(final, self._text(tab, host), False)
+            return PageText(final, self._text(tab, host) + self._links(tab), False)
         finally:
             if isinstance(tab, int):
                 daemon.relay.call("close", tab=tab)
@@ -201,6 +201,15 @@ class RunContext:
                 parts.append(output)
             break
         return "\n".join(parts)
+
+    def _links(self, tab: int) -> str:
+        """The page's links (label and address): page text carries no addresses, and an upload or a
+        thread is only kept with one. Empty when the page has none or the hand did not answer."""
+        found = self.daemon.relay.call("page_links", {}, tab=tab)
+        output = str(found.get("output", "")).strip()
+        if not found.get("ok") or not output or output == "no links":
+            return ""
+        return "\n\nLinks on the page (label, then address):\n" + output
 
     def extract(self, system: str, user: str, key: str) -> dict[str, Any]:
         """One tool-less model call (surface `routine`, one ledger row), answered as the JSON object under

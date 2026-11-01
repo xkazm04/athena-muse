@@ -69,6 +69,20 @@ describe("hands.js", () => {
     expect(all.output).toContain("Save draft");
   });
 
+  it("lists the page's links with their addresses, once each, and never a script link", async () => {
+    document.body.innerHTML =
+      '<a href="/watch?v=lt1">Night Ferry</a><a href="/watch?v=lt1">Night Ferry again</a>' +
+      '<a href="javascript:void(0)">Menu</a><a href="mailto:a@b.example">Mail</a><a href="/videos">Videos</a>';
+    const hands = load();
+    const links = await ask(hands, "page_links");
+    const rows = links.output.split("\n");
+    expect(rows[0]).toMatch(/^Night Ferry {2}http.*\/watch\?v=lt1$/);
+    expect(rows.filter((r: string) => r.includes("watch?v=lt1"))).toHaveLength(1);
+    expect(links.output).not.toContain("javascript:");
+    expect(links.output).not.toContain("mailto:");
+    expect(links.output).toContain("(showing 2 of 2)");
+  });
+
   it("refuses a Public control even when asked, and checks the label it was shown", async () => {
     document.body.innerHTML =
       '<label><input type="radio" name="v" value="public"> Public</label><button id="b">Comment</button>';

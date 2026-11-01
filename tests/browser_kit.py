@@ -62,6 +62,7 @@ class FakeShell:
                 "load": 1,
                 "text": "Night Drive in Glass",
                 "password": page.get("password", False),
+                "links": page.get("links", []),
                 "hidden": bool(args.get("hidden")),
             }
             return {"ok": True, "output": f"opened tab {tab}", "tab": self.info(tab)}
@@ -77,6 +78,9 @@ class FakeShell:
             return {"ok": True, "output": f"tab {tab}", "tab": now}
         if hand == "page_read":
             return {"ok": True, "output": self.tabs[tab]["text"], "tab": now}
+        if hand == "page_links":
+            links = self.tabs[tab].get("links") or []
+            return {"ok": True, "output": "\n".join(links) if links else "no links", "tab": now}
         if hand == "page_find" and args.get("role") == "password":
             found = "ref_p_1  password  Password\n(showing 1 of 1)" if self.tabs[tab]["password"] else ""
             return {"ok": True, "output": found or "nothing matched", "tab": now}
