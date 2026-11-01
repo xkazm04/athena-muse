@@ -73,6 +73,7 @@ import {
   type VerdictBody,
 } from "./contract";
 import { request, streamNdjson } from "./daemon";
+import type { DeviceKind, DevicesView, Grant, JoinView, OverlayPeers, PairingWindow } from "./fleet";
 
 export interface SpaceDraft {
   name: string;
@@ -227,3 +228,48 @@ export const disconnect = (kind: ChannelKind) =>
   request<Connection>("POST", path(ROUTES.connector_disconnect, { kind }));
 export const probeConnection = (kind: ChannelKind) =>
   request<Connection>("POST", path(ROUTES.connector_probe, { kind }));
+
+// Devices (ADR 0017): this computer, the ones it pairs with, and the requests waiting on its person.
+// `/devices/events` (the nudge stream) is followed in fleet.ts, not here.
+export const devices = () => request<DevicesView>("GET", "/devices");
+/** The other devices on the private network, to pick the join form's address from. */
+export const overlayPeers = () => request<OverlayPeers>("GET", "/devices/overlay");
+export const renameSelf = (name: string) =>
+  request<{ ok: boolean; self: DevicesView["self"] }>("PUT", "/devices/self", { name });
+export const setBeacon = (on: boolean) =>
+  request<{ ok: boolean; beacon: DevicesView["beacon"] }>("PUT", "/devices/beacon", { on });
+/** Open a pairing window: a phone's QR url, or a code another PC types in. */
+export const openPairing = (kind: DeviceKind) => request<PairingWindow>("POST", "/devices/pairing", { kind });
+/** Approve (grants may only narrow what was asked) or decline one pending request. */
+export const answerPending = (
+  pairingId: string,
+  choice: "approve" | "decline",
+  grants: readonly Grant[] | null,
+  expiresDays: number | null = null,
+) =>
+  request<{ ok: boolean; state: string; peer: unknown }>("POST", `/devices/pending/${encodeURIComponent(pairingId)}`, {
+    choice,
+    grants: grants === null ? null : [...grants],
+    expires_days: expiresDays,
+  });
+/** Revoke a peer, at once: its next request is refused. */
+export const revokeDevice = (peerId: string) =>
+  request<{ ok: boolean; revoked: string }>("DELETE", `/devices/${encodeURIComponent(peerId)}`);
+/** Ask the PC at `address` to let this one in, with the code its person read out. */
+export const joinDevice = (address: string, code: string, grants: readonly Grant[], port?: number) =>
+  request<{ ok: boolean; join: JoinView }>("POST", "/devices/join", {
+    address,
+    code,
+    requested_grants: [...grants],
+    ...(port !== undefined ? { port } : {}),
+  });
+
+// A message to another computer, and that computer's turn read back through this one (ADR 0017).
+/** Send a message to a paired computer; its Athena runs it as a turn and answers with a job id. */
+export const sendMessage = (peerId: string, text: string) =>
+  request<{ ok: boolean; request_id: string; peer_id: string }>(
+    "POST",
+    `/devices/${encodeURIComponent(peerId)}/message`,
+    { text },
+  );
+export { peerTurn as turn } from "./relay";

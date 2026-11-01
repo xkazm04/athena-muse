@@ -9,6 +9,7 @@ written to `<data>/daemon.json` (owner-only) for the desktop shell to read.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import hmac
 import json
 import os
@@ -38,13 +39,16 @@ from athena.drafts import routes as routes_drafts
 from athena.engine import Engine
 from athena.errors import ApiError
 from athena.keys import KeyStore
+from athena.peer import devices as peer_devices
+from athena.peer import wiring as peer_wiring
+from athena.peer.listener import DEFAULT_PEER_PORT as PEER_PORT
 from athena.twins import poller
 from athena.twins import routes as routes_twins
 
 # The desktop's origins: Tauri on Windows/Linux and macOS, and the Vite dev server.
 APP_ORIGINS = ("http://tauri.localhost", "tauri://localhost", "http://localhost:1420")
 OPEN_PATHS = frozenset({"/health", routes_mcp.LEASE_PATH})
-QUERY_TOKEN_PATHS = frozenset({"/events"})
+QUERY_TOKEN_PATHS = frozenset({"/events", peer_devices.EVENTS_PATH})
 
 
 async def health(_: Request) -> Response:
@@ -62,6 +66,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_connectors.routes(daemon),
         *routes_browser.routes(daemon),
         *routes_mcp.routes(daemon),
+        *peer_wiring.install(daemon),
     ]
 
     async def guard(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -86,24 +91,31 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
 
     @asynccontextmanager
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
-        """The twins' poller runs while the app does, unless ATHENA_TWIN_POLL is 0 (the tests)."""
-        seconds = poller.interval()
-        if seconds is None:
-            yield
-            return
-        keys = KeyStore(daemon.data_dir)
-
-        def engine() -> Engine:
-            return engine_mod.build_engine(
-                keys, stored=daemon.settings.engine_choice(), transport=routes_turn.TRANSPORT
-            )
-
-        running = poller.Poller(daemon, engine, seconds)
-        running.start()
+        """The twins' poller runs while the app does, unless ATHENA_TWIN_POLL is 0 (the tests); the
+        peer host's tick and presence probe run while it does, when the daemon has one."""
+        if daemon.peers is not None:
+            await asyncio.to_thread(daemon.peers.start)
         try:
-            yield
+            seconds = poller.interval()
+            if seconds is None:
+                yield
+                return
+            keys = KeyStore(daemon.data_dir)
+
+            def engine() -> Engine:
+                return engine_mod.build_engine(
+                    keys, stored=daemon.settings.engine_choice(), transport=routes_turn.TRANSPORT
+                )
+
+            running = poller.Poller(daemon, engine, seconds)
+            running.start()
+            try:
+                yield
+            finally:
+                await running.stop()
         finally:
-            await running.stop()
+            if daemon.peers is not None:
+                await asyncio.to_thread(daemon.peers.close)
 
     return Starlette(
         lifespan=lifespan,
@@ -136,9 +148,13 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="athena-daemon")
     parser.add_argument("--data", type=Path, required=True, help="data directory (the app's data dir)")
     parser.add_argument("--port", type=int, default=0, help="0 = any free port")
+    parser.add_argument(
+        "--peer-port", type=int, default=PEER_PORT, help="port for other devices (overlay only)"
+    )
+    parser.add_argument("--no-peer", action="store_true", help="turn the whole multi-device surface off")
     args = parser.parse_args(argv)
 
-    daemon = Daemon.open(args.data)
+    daemon = Daemon.open(args.data, peers=not args.no_peer, peer_port=args.peer_port)
     token = os.environ.get("ATHENA_TOKEN") or secrets.token_urlsafe(32)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -40,6 +40,8 @@ const ACTION: Record<Card["action"], string> = {
   page_upload: "Upload a file",
   page_download: "Download a file",
   wheel_handoff: "Take over her browser",
+  setup_read: "Look at the private network",
+  setup_act: "Set up this computer",
 };
 
 /** A twin's draft (ADR 0009) carries its text, which the person may rewrite before signing. */

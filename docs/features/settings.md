@@ -4,7 +4,7 @@ Built 2026-10-31. Decision: [ADR 0012](../adr/0012-settings-live-in-the-daemon-a
 
 ## What it does
 
-`#settings` in the main window (**Settings** in the dock, or its tile on the surface) is an overview in the variant's mind idiom (ADR 0016): four instruments, each
+`#settings` in the main window (**Settings** in the dock, or its tile on the surface) is an overview in the variant's mind idiom (ADR 0016): five instruments, each
 a glyph with a standing word and one line.
 
 | Tile | Standing | Level (`#settings/<item>`) |
@@ -13,6 +13,7 @@ a glyph with a standing word and one line.
 | Look | the theme | Theme (auto, dark, light), text size (standard, large), motion (system, calm). Both windows change at once. |
 | Accounts | set / not yet / needs you | Gmail and Notion as connected for Twins, read-only, with a link to Twins where they are connected. |
 | Data | local | The folder this computer's Athena keeps everything in, and what is in it. |
+| Devices | N paired / none yet / N waiting for you / checking | Pair a phone or another computer: [Devices](devices.md) (ADR 0017). |
 
 Below the instruments, **Show the welcome again** draws the first run again. Nothing already set changes.
 

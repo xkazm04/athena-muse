@@ -6,9 +6,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as api from "../../lib/api";
 import type { Connection, EngineId, Look, SettingsView } from "../../lib/contract";
+import type { DevicesView } from "../../lib/fleet";
 import { MOTION_CHOICES, THEME_CHOICES, TYPE_SCALES, applyLook } from "../../ui/look";
 import { toggleAthena } from "../../lib/windows";
 import { SettingGlyph } from "../shell/glyphs";
+import { DevicesPanel } from "./devices/Devices";
+import { useDevices } from "./devices/store";
 import { MuseKey } from "./MuseKey";
 import { reasonOf, useMain } from "../store";
 import {
@@ -23,6 +26,7 @@ import {
   accountLabel,
   accountsFact,
   dataFact,
+  devicesFact,
   engineBlocked,
   engineFact,
   isItem,
@@ -46,20 +50,31 @@ export function SettingsView({ item }: { item: string | null }) {
   const problem = useMain((s) => s.settingsProblem);
   const loadSettings = useMain((s) => s.loadSettings);
   const [accounts, setAccounts] = useState<Accounts>({ list: null, problem: "" });
+  // The tile reads the list once to word itself; the level keeps its own, live, in the devices store.
+  const [tiled, setTiled] = useState<DevicesView | null>(null);
+  const live = useDevices((s) => s.view);
 
   useEffect(() => {
     void loadSettings();
-    let live = true;
+    let open = true;
     void (async () => {
       try {
         const list = await api.connections();
-        if (live) setAccounts({ list: Array.isArray(list) ? list : [], problem: "" });
+        if (open) setAccounts({ list: Array.isArray(list) ? list : [], problem: "" });
       } catch (e) {
-        if (live) setAccounts({ list: null, problem: reasonOf(e, "the daemon did not answer") });
+        if (open) setAccounts({ list: null, problem: reasonOf(e, "the daemon did not answer") });
+      }
+    })();
+    void (async () => {
+      try {
+        const read = await api.devices();
+        if (open) setTiled(read ?? null);
+      } catch {
+        if (open) setTiled(null);
       }
     })();
     return () => {
-      live = false;
+      open = false;
     };
   }, [loadSettings]);
 
@@ -69,8 +84,9 @@ export function SettingsView({ item }: { item: string | null }) {
       look: lookFact(view?.look ?? null),
       accounts: accountsFact(accounts.list, accounts.problem),
       data: dataFact(view),
+      devices: devicesFact(live ?? tiled),
     }),
-    [view, accounts],
+    [view, accounts, live, tiled],
   );
 
   return (
@@ -114,7 +130,7 @@ function Overview({ facts }: { facts: Record<Item, Fact> }) {
       <header className="m-settings__head">
         <p className="eyebrow">Settings</p>
         <h1 className="marquee">How Athena is set up</h1>
-        <p className="m-lead">The engine she thinks with, how she looks, and where it all lives.</p>
+        <p className="m-lead">The engine she thinks with, how she looks, where it all lives, and the other devices she shares with.</p>
       </header>
       <ul className="m-settings__tiles" aria-label="Settings">
         {ITEMS.map((item) => (
@@ -223,6 +239,7 @@ function Level({
           {item === "look" && <LookLevel view={view} writes={writes} />}
           {item === "accounts" && <AccountsLevel accounts={accounts} />}
           {item === "data" && <DataLevel view={view} />}
+          {item === "devices" && <DevicesPanel />}
         </div>
       </div>
     </>

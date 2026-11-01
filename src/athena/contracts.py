@@ -70,6 +70,8 @@ ActionName = Literal[
     "page_upload",
     "page_download",
     "wheel_handoff",
+    "setup_read",
+    "setup_act",
 ]
 AppEventType = Literal[
     "card_filed",
@@ -135,6 +137,10 @@ CATALOG: dict[ActionName, ActionClass] = {
     "page_upload": "gated",
     "page_download": "gated",
     "wheel_handoff": "gated",
+    # Setting up the private network for several devices (ADR 0017): offered only in the setup
+    # conversation. A read answers at once; every change files a card, one per machine-changing step.
+    "setup_read": "auto",
+    "setup_act": "gated",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------

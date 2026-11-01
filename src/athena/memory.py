@@ -6,8 +6,11 @@ Every memory is stamped with the space it was written in (CORE = ""). A view see
 
 from __future__ import annotations
 
+import hashlib
 import re
 import sqlite3
+from collections.abc import Mapping
+from typing import Any
 
 from athena.clock import mint, now_iso
 from athena.contracts import MemoryKind, MemoryPage, MemoryRow, SpaceCounts
@@ -16,6 +19,11 @@ from athena.store import Store
 
 LINE_MAX = 240
 TERMS_MAX = 12
+#: What replicates between devices (ADR 0017): write-once kinds in the core space, ids shaped like our own.
+REPLICATED_KINDS = ("episode", "fact")
+_MEM_ID = re.compile(r"^mem_[0-9a-f]{12}$")
+_STAMP = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+RECEIVE_TEXT_MAX = 1_048_576
 
 
 def visible_spaces(active: str) -> tuple[str, ...]:
@@ -144,3 +152,63 @@ class Memory:
             gone = self.counts(space_id)
             self._store.run("DELETE FROM memory WHERE space_id = ?", (space_id,))
         return gone
+
+    # --- replication (ADR 0017): core episodes and facts only; a project's space ids are per-device ---
+
+    def replicable_page(self, since: str | None, after: str | None, limit: int) -> list[dict[str, Any]]:
+        """Core episodes and facts from `since` (inclusive; past `after` when given) by (created, id)."""
+        marks = ",".join("?" * len(REPLICATED_KINDS))
+        where, params = f"space_id = '' AND kind IN ({marks})", list(REPLICATED_KINDS)
+        if since is not None and after is not None:
+            where += " AND (created > ? OR (created = ? AND id > ?))"
+            params += [since, since, after]
+        elif since is not None:
+            where += " AND created >= ?"
+            params.append(since)
+        rows = self._store.query(
+            f"SELECT id, kind, text, created FROM memory WHERE {where} ORDER BY created, id LIMIT ?",
+            (*params, limit),
+        )
+        return [{"id": r["id"], "kind": r["kind"], "text": r["text"], "created": r["created"]} for r in rows]
+
+    def replicable(self, mem_id: str) -> dict[str, Any] | None:
+        """One core episode or fact as a replication row, or None for anything else."""
+        rows = self._store.query(
+            "SELECT id, kind, text, created FROM memory WHERE id = ? AND space_id = ''", (mem_id,)
+        )
+        if not rows or rows[0]["kind"] not in REPLICATED_KINDS:
+            return None
+        r = rows[0]
+        return {"id": r["id"], "kind": r["kind"], "text": r["text"], "created": r["created"]}
+
+    def receive(self, row: Mapping[str, Any]) -> str:
+        """File a memory another device wrote, under its own id and stamp: `added`, `same` or `differs`.
+
+        Idempotent. Core space only, episodes and facts only, an id shaped like ours: anything else is
+        ValueError. An id already held with other text (or kept in a project) stays as it is and answers
+        `differs`. It goes through the same insert as a local write, so the FTS triggers keep recall honest.
+        """
+        mem_id, kind, text, created = (row.get(k) for k in ("id", "kind", "text", "created"))
+        if not (isinstance(mem_id, str) and _MEM_ID.match(mem_id)):
+            raise ValueError("not a memory id")
+        if kind not in REPLICATED_KINDS:
+            raise ValueError("only an episode or a fact is received")
+        if not isinstance(text, str) or not text or len(text) > RECEIVE_TEXT_MAX:
+            raise ValueError("a memory has text")
+        if not isinstance(created, str) or not _STAMP.match(created):
+            raise ValueError("created is a UTC stamp")
+        with self._store.tx() as db:
+            have = db.execute("SELECT kind, text, space_id FROM memory WHERE id = ?", (mem_id,)).fetchone()
+            if have is not None:
+                same = have["text"] == text and have["kind"] == kind and have["space_id"] == ""
+                return "same" if same else "differs"
+            db.execute(
+                "INSERT INTO memory(id, kind, text, space_id, created) VALUES (?,?,?,?,?)",
+                (mem_id, kind, text, "", created),
+            )
+        return "added"
+
+
+def memory_sha(text: str) -> str:
+    """The digest two devices compare a memory by."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()

@@ -42,6 +42,7 @@ vi.mock("../lib/windows", () => ({
     handOver = fn;
     return () => undefined;
   }),
+  onSetupStart: vi.fn(async () => () => undefined),
 }));
 
 const m = vi.mocked(api);

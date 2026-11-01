@@ -1,0 +1,32 @@
+/* A message to a paired computer, in its drawer (ADR 0017): the box and a recessed log of the reply.
+ * Tokens only; the log scrolls inside itself so a long answer never moves the stage. */
+.m-talk {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.m-talk__log {
+  display: grid;
+  gap: var(--sp-1);
+  max-height: 18rem;
+  overflow: auto;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-emphasis);
+  background: var(--recessed);
+}
+.m-talk__line {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.m-talk__line--you {
+  font-weight: 600;
+}
+.m-talk__line--tool,
+.m-talk__line--card {
+  color: var(--muted-foreground);
+}
+.m-talk__line--problem {
+  color: var(--status-error);
+}

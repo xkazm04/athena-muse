@@ -17,6 +17,7 @@ from athena.gate import Gate
 from athena.ledger import Ledger
 from athena.mcp import Leases
 from athena.memory import Memory
+from athena.peer.listener import PeerHost
 from athena.settings import Settings
 from athena.spaces import Spaces
 from athena.store import Store
@@ -42,10 +43,11 @@ class Daemon:
     files: Files  # a project's files (ADR 0013)
     sites: Sites  # a project's sites: the browser's trust list, set up by onboarding (ADR 0014)
     mcp: Leases  # who may call the MCP server, and for which project (ADR 0015)
+    peers: PeerHost | None = None  # other devices (ADR 0017); None = off (tests, --no-peer, no data dir)
     mcp_url: str | None = None  # set once the server knows its port; None = no MCP (tests, unless set)
 
     @classmethod
-    def open(cls, data_dir: Path | None) -> Daemon:
+    def open(cls, data_dir: Path | None, *, peers: bool = False, peer_port: int | None = None) -> Daemon:
         if data_dir is not None:
             data_dir.mkdir(parents=True, exist_ok=True)
         store = Store(data_dir / "athena.db" if data_dir is not None else ":memory:")
@@ -69,9 +71,15 @@ class Daemon:
             files=Files(store, data_dir),
             sites=Sites(store),
             mcp=Leases(),
+            peers=_peer_host(data_dir, peer_port) if peers and data_dir is not None else None,
         )
 
     def active_space(self) -> str:
         """The active project, failing closed to core when its space is gone."""
         active = self.settings.active_space()
         return active if self.spaces.exists(active) else ""
+
+
+def _peer_host(data_dir: Path, port: int | None) -> PeerHost:
+    """The peer surface (ADR 0017). Nothing is written, and nothing listens, until a device pairs."""
+    return PeerHost(data_dir / "peer") if port is None else PeerHost(data_dir / "peer", port=port)

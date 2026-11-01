@@ -4,8 +4,17 @@
 
 import { create } from "zustand";
 import * as api from "../lib/api";
-import { CORE, type AppEvent, type Card, type EngineStatus, type SpaceSummary, type Turn } from "../lib/contract";
+import {
+  CORE,
+  type AppEvent,
+  type Card,
+  type EngineStatus,
+  type SpaceSummary,
+  type Turn,
+  type TurnEvent,
+} from "../lib/contract";
 import { DaemonError, getConnection, streamRun, UNREACHABLE } from "../lib/daemon";
+import { setupConversation, streamSetup } from "../lib/setup";
 import type { SealState } from "../theme";
 import { applyLook } from "../ui/look";
 
@@ -46,12 +55,16 @@ export interface HerState {
   pendingId?: string;
   /** The signed flourish is showing. */
   signed: boolean;
+  /** The transcript is the setup conversation (ADR 0017), not the active project's. */
+  setup: boolean;
 
   /** Words the surface handed over while a reply was still being written; the composer takes them. */
   handed: string;
 
   boot(): Promise<void>;
-  send(text: string): Promise<void>;
+  send(text: string, opts?: { start?: boolean }): Promise<void>;
+  /** "Set up with Athena": show the setup conversation and have her speak first. */
+  beginSetup(): Promise<void>;
   /** Words from the surface's ask (ADR 0016): sent as the next turn, or left in the composer when a
    *  reply is still being written. */
   hand(text: string): Promise<void>;
@@ -78,6 +91,7 @@ const initial = {
   live: null,
   pendingId: undefined,
   signed: false,
+  setup: false,
   handed: "",
 };
 
@@ -113,7 +127,7 @@ export const useHer = create<HerState>()((set, get) => {
   const loadConversation = async (spaceId: string): Promise<boolean> => {
     const mine = ++ticket;
     try {
-      const turns = await api.conversation(spaceId);
+      const turns = get().setup ? await setupConversation() : await api.conversation(spaceId);
       if (mine !== ticket || get().activeId !== spaceId) return false;
       set({ turns });
       return true;
@@ -129,7 +143,7 @@ export const useHer = create<HerState>()((set, get) => {
   };
 
   const show = (spaceId: string): Promise<boolean> => {
-    set({ activeId: spaceId, pendingId: undefined, live: null, sent: "", turns: [], problem: "" });
+    set({ activeId: spaceId, pendingId: undefined, live: null, sent: "", turns: [], problem: "", setup: false });
     return loadConversation(spaceId);
   };
 
@@ -170,9 +184,11 @@ export const useHer = create<HerState>()((set, get) => {
       return booting;
     },
 
-    async send(raw) {
+    async send(raw, opts) {
       const text = raw.trim();
-      if (!text || get().streaming) return;
+      // A setup conversation can open with no words of the person's: `start` makes her speak first.
+      const start = opts?.start === true && get().setup;
+      if ((!text && !start) || get().streaming) return;
       const ctrl = new AbortController();
       controller = ctrl;
       const spaceId = get().activeId;
@@ -180,8 +196,10 @@ export const useHer = create<HerState>()((set, get) => {
       const patch = (fn: (l: Live) => Live) => set((s) => (s.live ? { live: fn(s.live) } : {}));
       let ended = false;
       try {
-        await streamRun(
-          { text, space_id: spaceId },
+        const run = get().setup
+          ? (on: (e: TurnEvent) => void, signal: AbortSignal) => streamSetup(text ? { text } : { start: true }, on, signal)
+          : (on: (e: TurnEvent) => void, signal: AbortSignal) => streamRun({ text, space_id: spaceId }, on, signal);
+        await run(
           (e) => {
             switch (e.type) {
               case "start":
@@ -241,8 +259,19 @@ export const useHer = create<HerState>()((set, get) => {
     },
 
     async retry() {
-      const { sent, streaming } = get();
-      if (sent && !streaming) await get().send(sent);
+      const { sent, streaming, setup } = get();
+      if (streaming) return;
+      if (sent) await get().send(sent);
+      else if (setup) await get().send("", { start: true });
+    },
+
+    async beginSetup() {
+      if (get().status !== "ready") await get().boot();
+      if (get().status !== "ready") return;
+      set({ setup: true, live: null, sent: "", problem: "", pendingId: undefined });
+      if (get().streaming) return;
+      await loadConversation(get().activeId);
+      await get().send("", { start: true });
     },
 
     stop() {
@@ -261,6 +290,11 @@ export const useHer = create<HerState>()((set, get) => {
 
     decided(card) {
       learnCard(card);
+      // A signed step of the setup conversation: she picks up from what came of it.
+      const s = get();
+      if (s.setup && card.action === "setup_act" && card.state === "approved" && !s.streaming) {
+        void s.send("", { start: true });
+      }
     },
 
     settle() {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Connection, SettingsView } from "../../lib/contract";
-import { accountsFact, dataFact, engineBlocked, engineFact, isItem, lookFact } from "./model";
+import type { DevicesView } from "../../lib/fleet";
+import { ITEMS, accountsFact, dataFact, devicesFact, engineBlocked, engineFact, isItem, lookFact } from "./model";
 
 const view = (over: Partial<SettingsView> = {}): SettingsView => ({
   look: { theme: "auto", type_scale: "standard", motion: "system" },
@@ -78,5 +79,37 @@ describe("the other facts", () => {
   it("knows its items", () => {
     expect(isItem("look")).toBe(true);
     expect(isItem("voice")).toBe(false);
+  });
+});
+
+describe("the devices fact", () => {
+  const devices = (over: Partial<DevicesView> = {}): DevicesView => ({
+    ok: true,
+    self: { device_id: "dev_0000000000a1", name: "Study PC" },
+    peers: [],
+    pending: [],
+    beacon: { on: false, url: null },
+    overlay: { state: "up" },
+    listener: { up: true, address: null, port: 1, error: null },
+    joining: [],
+    ...over,
+  });
+  const peer = { peer_id: "p", name: "Laptop", kind: "pc" as const, grants: [], created: "", expires: null, last_seen: null };
+  const row = { pairing_id: "q", name: "Phone", kind: "phone" as const, requested_grants: [], expires_at: "", pair_back: false, address: null, replaces: null };
+
+  it("is a setting of its own", () => {
+    expect(ITEMS).toContain("devices");
+    expect(isItem("devices")).toBe(true);
+  });
+
+  it("is unknown when the daemon did not answer, never 'nothing paired'", () => {
+    expect(devicesFact(null)).toMatchObject({ standing: "unknown", word: "checking" });
+  });
+
+  it("is not yet with nothing paired, done with some, and needs you when a request waits", () => {
+    expect(devicesFact(devices())).toMatchObject({ standing: "todo", word: "No other device paired" });
+    expect(devicesFact(devices({ peers: [peer] }))).toMatchObject({ standing: "done", word: "1 paired" });
+    expect(devicesFact(devices({ peers: [peer, { ...peer, peer_id: "r" }] })).word).toBe("2 paired");
+    expect(devicesFact(devices({ peers: [peer], pending: [row] }))).toMatchObject({ standing: "missing", word: "1 waiting for you" });
   });
 });

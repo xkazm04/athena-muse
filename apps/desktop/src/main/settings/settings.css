@@ -18,11 +18,16 @@
 
 .m-settings__tiles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin: var(--sp-3) 0 0;
   padding: 0;
   list-style: none;
+}
+@media (max-width: 900px) {
+  .m-settings__tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .m-settings__tile {
   display: grid;

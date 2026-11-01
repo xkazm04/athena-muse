@@ -1,0 +1,23 @@
+/* "Set up with Athena" at the bottom of the Devices level (ADR 0017). Tokens only. */
+.m-setup {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-default);
+}
+.m-setup__title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.m-setup__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.m-setup__problem {
+  margin: 0;
+  color: var(--status-error);
+  font-size: var(--fs-sm);
+}

@@ -68,7 +68,7 @@ const DRAWINGS: Record<PlaceKey, ReactNode> = {
 
 /** Settings' instruments, the variant's mind glyphs: the engine's cut stone, the look's half-lit sun,
  * the accounts' two rings and a key, the data's drum. */
-export const SETTING_DRAWINGS: Record<"engine" | "look" | "accounts" | "data", ReactNode> = {
+export const SETTING_DRAWINGS: Record<"engine" | "look" | "accounts" | "data" | "devices", ReactNode> = {
   engine: DRAWINGS.settings,
   look: (
     <g fill="none" strokeLinecap="round">
@@ -96,6 +96,18 @@ export const SETTING_DRAWINGS: Record<"engine" | "look" | "accounts" | "data", R
       <path d="M26 20v42c0 6 15 11 34 11s34-5 34-11V20" stroke="var(--accent)" strokeWidth="2" />
       <path d="M26 41c0 6 15 11 34 11s34-5 34-11M26 62c0 6 15 11 34 11" stroke="var(--accent)" strokeOpacity=".5" strokeWidth="1.6" />
       <circle cx="88" cy="58" r="3" fill="var(--status-success)" />
+    </g>
+  ),
+  devices: (
+    <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="60" cy="42" rx="44" ry="28" stroke="var(--muted-foreground)" strokeOpacity=".5" strokeWidth="1.4" strokeDasharray="2 5" />
+      <path d="M60 42 L24 36 M60 42 L96 36" stroke="var(--accent)" strokeOpacity=".6" strokeWidth="1.6" />
+      <rect x="44" y="30" width="32" height="22" rx="3" fill={tint(14)} stroke="var(--focus)" strokeWidth="2" />
+      <path d="M54 58h12M60 52v6" stroke="var(--accent)" strokeWidth="2" />
+      <rect x="14" y="26" width="16" height="22" rx="3" fill="var(--card-bg)" stroke="var(--accent)" strokeWidth="2" />
+      <path d="M20 43h4" stroke="var(--accent)" strokeWidth="1.6" />
+      <rect x="88" y="28" width="22" height="16" rx="2.5" fill="var(--card-bg)" stroke="var(--accent)" strokeWidth="2" />
+      <circle cx="99" cy="62" r="3" fill="var(--status-success)" />
     </g>
   ),
 };

@@ -54,7 +54,9 @@ export type ActionName =
   | "page_submit"
   | "page_upload"
   | "page_download"
-  | "wheel_handoff";
+  | "wheel_handoff"
+  | "setup_read"
+  | "setup_act";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -115,6 +117,9 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   page_upload: "gated",
   page_download: "gated",
   wheel_handoff: "gated",
+  // The setup conversation (ADR 0017): a read answers at once, every change is a card.
+  setup_read: "auto",
+  setup_act: "gated",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------

@@ -7,6 +7,8 @@ import { DaemonError } from "../../lib/daemon";
 import { App } from "../App";
 import { parseHash, toHash } from "../route";
 import { resetMain, useMain } from "../store";
+import type { DevicesView } from "../../lib/fleet";
+import { resetDevicesForTests } from "./devices/store";
 
 vi.mock("../../lib/api");
 vi.mock("../../lib/windows");
@@ -67,6 +69,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  resetDevicesForTests();
   vi.resetAllMocks();
   for (const a of ["data-theme", "data-type-scale", "data-motion"]) root().removeAttribute(a);
 });
@@ -194,5 +197,62 @@ describe("accounts and data", () => {
   it("says where it lives", async () => {
     await open("#settings/data");
     expect(screen.getByText("athena-data")).toBeTruthy();
+  });
+});
+
+describe("devices", () => {
+  const paired = (over: Partial<DevicesView> = {}): DevicesView => ({
+    ok: true,
+    self: { device_id: "dev_0000000000a1", name: "Study PC" },
+    peers: [{ peer_id: "dev_0000000000a2", name: "Laptop", kind: "pc", grants: ["chat"], created: "2026-10-20T09:00:00Z", expires: null, last_seen: null, presence: "online" }],
+    pending: [],
+    beacon: { on: false, url: null },
+    overlay: { state: "up" },
+    listener: { up: true, address: "100.64.0.7", port: 17491, error: null },
+    joining: [],
+    ...over,
+  });
+
+  it("is the fifth tile, worded from one read of the list", async () => {
+    vi.mocked(api.devices).mockResolvedValue(paired());
+    await open("#settings");
+    const tiles = screen.getByRole("list", { name: "Settings" });
+    expect(tiles.querySelectorAll("li")).toHaveLength(5);
+    expect(tiles.textContent).toContain("Devices");
+    expect(tiles.textContent).toContain("1 paired");
+    expect(api.devices).toHaveBeenCalledTimes(1);
+  });
+
+  it("says checking when the daemon did not answer, and needs you when a request waits", async () => {
+    vi.mocked(api.devices).mockRejectedValue(new DaemonError(0, "bad_request", "not reachable"));
+    await open("#settings");
+    expect(screen.getByRole("list", { name: "Settings" }).textContent).toContain("checking");
+    cleanup();
+    vi.mocked(api.devices).mockResolvedValue(
+      paired({ pending: [{ pairing_id: "pair_0000000000b1", name: "Phone", kind: "phone", requested_grants: ["chat"], expires_at: "", pair_back: false, address: null, replaces: null }] }),
+    );
+    await open("#settings");
+    expect(screen.getByRole("list", { name: "Settings" }).textContent).toContain("1 waiting for you");
+  });
+
+  it("opens the level: the constellation with this computer at the centre", async () => {
+    vi.mocked(api.devices).mockResolvedValue(paired());
+    vi.mocked(api.overlayPeers).mockRejectedValue(new DaemonError(404, "unknown_ref", "no overlay"));
+    await open("#settings/devices");
+    expect(screen.getByRole("heading", { level: 1, name: "Devices" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Your devices, around this computer" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Study PC, this computer/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Laptop, computer, online/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Add a phone/ })).toBeTruthy();
+  });
+
+  it("says it could not read the devices, and reads again", async () => {
+    vi.mocked(api.devices).mockRejectedValue(new DaemonError(0, "bad_request", "The daemon did not answer."));
+    await open("#settings/devices");
+    expect(screen.getAllByRole("alert").some((a) => a.textContent?.includes("could not read this computer"))).toBe(true);
+    vi.mocked(api.devices).mockResolvedValue(paired());
+    const again = screen.getAllByRole("button", { name: "Read again" });
+    await act(async () => fireEvent.click(again[again.length - 1]!));
+    expect(screen.getByRole("button", { name: /^Study PC, this computer/ })).toBeTruthy();
   });
 });

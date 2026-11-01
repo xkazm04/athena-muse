@@ -1,0 +1,982 @@
+/* The Devices level of Settings (ADR 0017): a constellation and a wizard on one stage.
+ * The stage is one grid cell that both layers share, so the wizard is as tall as it needs and the sky
+ * stays under it. Colours, sizes of type, spacing and radii are tokens; the geometry of a node is the
+ * only free number. Calm motion is stilled for the whole window by ui/look.css. */
+.m-devices {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+  container-type: inline-size;
+}
+.m-devices__stage {
+  display: grid;
+  min-width: 0;
+}
+.m-devices__stage > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.m-devices__code {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+}
+.m-devices__field {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.m-devices__label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.m-devices__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--sp-2) var(--sp-5);
+  margin: 0;
+}
+.m-devices__facts > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.m-devices__facts dt {
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+.m-devices__facts dd {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  margin: 0;
+  font-size: var(--fs-md);
+  overflow-wrap: anywhere;
+}
+
+/* -- Layer 1: the sky -------------------------------------------------------------------------- */
+.m-sky {
+  --node: clamp(40px, 6.2cqw, 58px);
+  position: relative;
+  aspect-ratio: 1000 / 640;
+  min-height: 320px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-subtle);
+  background:
+    radial-gradient(closest-side at 50% 50%, color-mix(in srgb, var(--primary) 14%, transparent), transparent),
+    radial-gradient(farthest-corner at 50% 50%, var(--depth-1), var(--depth-2));
+  overflow: hidden;
+  transition:
+    opacity var(--dur-base) var(--ease-settle),
+    transform var(--dur-base) var(--ease-settle);
+}
+.m-sky[data-dim] {
+  opacity: 0.2;
+  transform: scale(0.97);
+}
+@container (max-width: 560px) {
+  .m-sky {
+    aspect-ratio: 1 / 1;
+  }
+}
+.m-sky__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.m-sky__orbit {
+  fill: none;
+  stroke: var(--border-default);
+  stroke-width: 1;
+  stroke-dasharray: 2 7;
+}
+.m-sky__orbit--inner {
+  stroke: var(--border-subtle);
+}
+.m-sky__link line {
+  stroke: var(--border-emphasis);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+}
+.m-sky__link[data-state="online"] line {
+  stroke: color-mix(in srgb, var(--status-success) 55%, transparent);
+  stroke-width: 1.75;
+}
+.m-sky__link[data-state="online"] .m-sky__flow {
+  stroke: var(--status-success);
+  stroke-width: 3;
+  /* A slow breath, opacity only. */
+  animation: m-sky-flow calc(var(--dur-base) * 14) ease-in-out infinite alternate;
+}
+.m-sky__link[data-state="asleep"] line {
+  stroke: var(--border-default);
+}
+.m-sky__link[data-state="unreachable"] line {
+  stroke: color-mix(in srgb, var(--status-warning) 60%, transparent);
+  stroke-dasharray: 5 7;
+}
+.m-sky__link[data-state="stale"] line {
+  stroke: var(--border-default);
+  stroke-dasharray: 2 5;
+}
+.m-sky__link[data-state="keyless"] line {
+  stroke: color-mix(in srgb, var(--status-warning) 60%, transparent);
+  stroke-dasharray: 1 6;
+  stroke-width: 2;
+}
+.m-sky__link[data-state="removed"] line {
+  stroke: color-mix(in srgb, var(--status-error) 70%, transparent);
+  stroke-dasharray: 5 7;
+}
+.m-sky__link[data-state="pending"] line {
+  stroke: var(--status-pending);
+  stroke-dasharray: 1 6;
+  stroke-width: 2;
+  animation: m-sky-ask 2.4s ease-in-out infinite alternate;
+}
+.m-sky__link[data-state="joining"] line {
+  stroke: color-mix(in srgb, var(--primary) 70%, transparent);
+  stroke-dasharray: 1 6;
+  stroke-width: 2;
+}
+@keyframes m-sky-flow {
+  from {
+    opacity: 0.2;
+  }
+}
+@keyframes m-sky-ask {
+  from {
+    opacity: 0.35;
+  }
+}
+
+.m-sky__invite {
+  position: absolute;
+  top: 9%;
+  left: 50%;
+  width: min(30rem, 80%);
+  margin: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  color: var(--muted-foreground);
+}
+.m-sky__nodes {
+  position: absolute;
+  inset: 0;
+}
+
+/* A node is a button whose disc sits on its spot; its name and caption hang under it. */
+.m-cnode {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: 10rem;
+  padding: 0 var(--sp-1) var(--sp-1);
+  font: inherit;
+  color: var(--foreground);
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-card);
+  transform: translate(-50%, calc(var(--node) / -2));
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-settle),
+    opacity var(--dur-fast) var(--ease-settle);
+}
+.m-cnode:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.m-cnode__disc {
+  display: grid;
+  place-items: center;
+  width: var(--node);
+  height: var(--node);
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-emphasis);
+  background: var(--card-bg);
+  color: var(--muted-foreground);
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color var(--dur-fast) var(--ease-settle),
+    box-shadow var(--dur-fast) var(--ease-settle),
+    background var(--dur-fast) var(--ease-settle);
+}
+.m-cnode__glyph,
+.m-cnode__plus {
+  width: 56%;
+  height: 56%;
+  fill: color-mix(in srgb, var(--primary) 12%, transparent);
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-cnode__plus {
+  fill: none;
+  stroke-width: 2.2;
+}
+/* A halo in the sky's own colour, so a line that runs under a label does not strike it through. */
+.m-cnode__name,
+.m-cnode__caption {
+  text-shadow:
+    0 0 4px var(--background),
+    0 0 8px var(--background);
+}
+.m-cnode__name {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  overflow-wrap: anywhere;
+}
+.m-cnode__caption {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-body);
+  color: var(--muted-foreground);
+}
+.m-cnode:hover .m-cnode__disc,
+.m-cnode[data-selected] .m-cnode__disc {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 4px var(--glow);
+}
+
+.m-cnode--self {
+  --node: clamp(56px, 8.6cqw, 84px);
+  max-width: 16rem;
+}
+.m-cnode--self .m-cnode__disc {
+  color: var(--foreground);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--card-bg));
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--primary) 10%, transparent),
+    0 0 32px 4px var(--glow);
+}
+.m-cnode--self[data-overlay="absent"] .m-cnode__disc,
+.m-cnode--self[data-overlay="logged_out"] .m-cnode__disc {
+  border-style: dashed;
+  border-color: var(--status-warning);
+}
+
+.m-cnode[data-presence="online"] .m-cnode__disc {
+  color: var(--foreground);
+  border-color: var(--status-success);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-success) 16%, transparent);
+}
+.m-cnode[data-presence="asleep"] .m-cnode__disc {
+  opacity: 0.6;
+}
+.m-cnode[data-presence="unreachable"] .m-cnode__disc {
+  border-style: dashed;
+  border-color: var(--status-warning);
+  opacity: 0.8;
+}
+
+/* A request waits on this person: a ring breathes out of the disc until it is answered. */
+.m-cnode--pending .m-cnode__disc {
+  position: relative;
+  color: var(--foreground);
+  border-color: var(--status-pending);
+}
+.m-cnode--pending .m-cnode__disc::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--status-pending);
+  animation: m-cnode-ask 2.2s ease-out infinite;
+}
+.m-cnode--pending .m-cnode__caption {
+  color: var(--foreground);
+}
+@keyframes m-cnode-ask {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+.m-cnode--joining .m-cnode__disc {
+  border-style: dotted;
+  border-color: var(--primary);
+}
+
+.m-cnode--add .m-cnode__disc {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--primary) 70%, transparent);
+  background: color-mix(in srgb, var(--primary) 6%, var(--card-bg));
+  color: var(--primary);
+  box-shadow: none;
+}
+.m-cnode--add .m-cnode__name {
+  color: var(--primary);
+}
+.m-cnode--add:hover {
+  transform: translate(-50%, calc(var(--node) / -2)) scale(1.06);
+}
+.m-cnode--add:hover .m-cnode__disc {
+  border-style: solid;
+}
+
+.m-sky__legend {
+  position: absolute;
+  left: 14px;
+  bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+.m-sky__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.m-sky__legend li::before {
+  content: "";
+  width: 18px;
+  border-top: 2px solid var(--border-default);
+}
+.m-sky__legend li[data-state="online"]::before {
+  border-top-color: var(--status-success);
+}
+.m-sky__legend li[data-state="unreachable"]::before {
+  border-top-style: dashed;
+  border-top-color: var(--status-warning);
+}
+.m-sky__legend li[data-state="stale"]::before {
+  border-top-style: dashed;
+}
+.m-sky__legend li[data-state="keyless"]::before {
+  border-top-color: var(--status-warning);
+}
+.m-sky__legend li[data-state="removed"]::before {
+  border-top-style: dashed;
+  border-top-color: var(--status-error);
+}
+.m-sky__legend li[data-state="none"]::before {
+  border-top-color: var(--border-emphasis);
+}
+.m-sky__legend li[data-state="keyless"]::before,
+.m-sky__legend li[data-state="pending"]::before,
+.m-sky__legend li[data-state="joining"]::before {
+  border-top-style: dotted;
+}
+.m-sky__legend li[data-state="pending"]::before {
+  border-top-color: var(--status-pending);
+}
+.m-sky__legend li[data-state="joining"]::before {
+  border-top-color: var(--primary);
+}
+/* A narrow stage keeps the drawing and the names; how each stands moves to its drawer and the list. */
+@container (max-width: 560px) {
+  .m-sky__legend,
+  .m-cnode--peer .m-cnode__caption,
+  .m-cnode--joining .m-cnode__caption {
+    display: none;
+  }
+  .m-cnode {
+    max-width: 7rem;
+  }
+}
+
+/* -- The drawer: a node's details under the stage, its caret under the node -------------------- */
+.m-cdrawer {
+  position: relative;
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-emphasis);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-1);
+  animation: m-cdrawer-in var(--dur-base) var(--ease-settle) both;
+}
+.m-cdrawer::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: clamp(18px, var(--caret), calc(100% - 18px));
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid var(--border-emphasis);
+  border-left: 1px solid var(--border-emphasis);
+  background: var(--card-bg);
+  transform: translateX(-50%) rotate(45deg);
+}
+@keyframes m-cdrawer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.m-cdrawer__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.m-cdrawer__disc {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-emphasis);
+  color: var(--foreground);
+}
+.m-cdrawer__disc .m-cnode__glyph {
+  width: 60%;
+  height: 60%;
+}
+.m-cdrawer__titles {
+  flex: 1;
+  min-width: 0;
+}
+.m-cdrawer__name {
+  margin: 0;
+  font-size: var(--fs-lg);
+  overflow-wrap: anywhere;
+}
+.m-cdrawer__body {
+  display: grid;
+  gap: var(--sp-3);
+}
+.m-cdrawer__beacon {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.m-cdrawer__beacon p {
+  margin: 0;
+}
+
+/* A pending request, wherever it is answered: the wizard's Approve step or a node's drawer. */
+.m-devices__card {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 14px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-emphasis);
+  background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+}
+.m-devices__card p {
+  margin: 0;
+}
+.m-devices__ask {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.m-devices__ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.m-devices__tick {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.m-devices__tick[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--card-raised);
+  color: var(--foreground);
+}
+.m-devices__tick:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* -- Layer 2: the wizard, grown from a '+' node -------------------------------------------------
+ * Its transform origin is the node (set inline). It grows on the base clock and folds back the same
+ * way; under Calm the clock is 0 ms and it simply appears and goes. */
+.m-cwizard {
+  z-index: 1;
+  align-self: start;
+  display: grid;
+  gap: 14px;
+  margin: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-emphasis);
+  background: var(--card-raised);
+  box-shadow:
+    var(--shadow-1),
+    0 18px 48px -12px var(--scrim);
+  animation: m-cwizard-grow var(--dur-base) var(--ease-settle) both;
+}
+.m-cwizard[data-closing] {
+  animation: m-cwizard-fold var(--dur-base) var(--ease-settle) both;
+}
+@keyframes m-cwizard-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.06);
+  }
+}
+@keyframes m-cwizard-fold {
+  to {
+    opacity: 0;
+    transform: scale(0.06);
+  }
+}
+.m-cwizard__head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.m-cwizard__titles {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.m-cwizard__title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.m-cwizard__title:focus {
+  outline: none;
+}
+.m-cwizard__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-settle),
+    color var(--dur-fast) var(--ease-settle);
+}
+.m-cwizard__close:hover {
+  background: var(--hover-wash);
+  color: var(--foreground);
+}
+.m-cwizard__close:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.m-cwizard__close svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* The step rail: three small stars on a thread, the one now lit. */
+.m-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  max-width: 26rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-rail__step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.m-rail__step + .m-rail__step::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: calc(50% + 10px);
+  width: calc(100% - 20px);
+  border-top: 1.5px solid var(--border-default);
+}
+.m-rail__step[data-state="done"] + .m-rail__step::before {
+  border-top-color: var(--primary);
+}
+.m-rail__dot {
+  width: 13px;
+  height: 13px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-emphasis);
+  background: var(--card-bg);
+  transition:
+    background var(--dur-base) var(--ease-settle),
+    border-color var(--dur-base) var(--ease-settle),
+    box-shadow var(--dur-base) var(--ease-settle);
+}
+.m-rail__step[data-state="done"] .m-rail__dot {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.m-rail__step[data-state="now"] .m-rail__dot {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 30%, var(--card-bg));
+  box-shadow: 0 0 0 4px var(--glow);
+}
+.m-rail__label {
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.m-rail__step[data-state="now"] .m-rail__label {
+  color: var(--foreground);
+}
+
+.m-cwizard__body {
+  min-width: 0;
+}
+.m-cwizard__code {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-4) var(--sp-6);
+}
+@container (max-width: 620px) {
+  .m-cwizard__code {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}
+.m-cwizard__words {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+}
+.m-cwizard__words p {
+  margin: 0;
+}
+.m-cwizard__words > .btn {
+  justify-self: start;
+}
+.m-cwizard__codeline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.m-cwizard__codeline .m-devices__code {
+  font-size: var(--fs-xl);
+}
+.m-cwizard__address {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.m-cwizard__url {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--recessed);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The lens: paper for the code, and the countdown ring around it. Dark ink on light paper in both
+ * themes, because a phone camera reads a light-on-dark code badly or not at all. */
+.m-lens {
+  --qr-paper: var(--foreground);
+  --qr-ink: var(--background);
+  position: relative;
+  width: clamp(220px, 34cqw, 300px);
+  aspect-ratio: 1;
+}
+:root[data-theme="light"] .m-lens {
+  --qr-paper: var(--card-raised);
+  --qr-ink: var(--foreground);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .m-lens {
+    --qr-paper: var(--card-raised);
+    --qr-ink: var(--foreground);
+  }
+}
+.m-lens__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.m-lens__track,
+.m-lens__left {
+  fill: none;
+  stroke-width: 2.4;
+}
+.m-lens__track {
+  stroke: var(--border-default);
+}
+.m-lens__left {
+  stroke: var(--primary);
+  stroke-linecap: round;
+  transition: stroke var(--dur-base) var(--ease-settle);
+}
+.m-lens[data-low] .m-lens__left {
+  stroke: var(--status-warning);
+}
+.m-lens__paper {
+  position: absolute;
+  inset: 7%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  background: var(--qr-paper);
+  color: var(--qr-ink);
+  transition:
+    opacity var(--dur-base) var(--ease-settle),
+    filter var(--dur-base) var(--ease-settle);
+}
+.m-lens--empty .m-lens__paper {
+  background: var(--recessed);
+  border: 1px dashed var(--border-default);
+}
+.m-lens[data-expired] .m-lens__paper {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+.m-lens__over {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.m-lens__code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.m-lens__time {
+  font-variant-numeric: tabular-nums;
+}
+.m-qr {
+  display: block;
+  width: 74%;
+  height: auto;
+}
+.m-qr__paper {
+  fill: var(--qr-paper);
+}
+.m-qr__ink {
+  fill: var(--qr-ink);
+}
+
+/* The computer's first choice: two drawn tiles, not two radio buttons. */
+.m-cwizard__choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--sp-3);
+}
+.m-choice {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: var(--sp-4) 18px;
+  font: inherit;
+  text-align: left;
+  color: var(--foreground);
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-settle),
+    background var(--dur-fast) var(--ease-settle),
+    transform var(--dur-fast) var(--ease-settle);
+}
+.m-choice:hover {
+  border-color: var(--primary);
+  background: var(--hover-wash);
+  transform: translateY(-2px);
+}
+.m-choice:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.m-choice__art {
+  width: 96px;
+  height: 60px;
+  margin-bottom: var(--sp-1);
+  fill: color-mix(in srgb, var(--primary) 10%, transparent);
+  stroke: var(--muted-foreground);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-choice__code {
+  stroke: var(--foreground);
+  stroke-width: 2.4;
+}
+.m-choice__arrow {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+}
+.m-choice__title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.m-choice__line {
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+
+.m-cwizard__join {
+  display: grid;
+  gap: var(--sp-3);
+}
+.m-cwizard__picks {
+  display: grid;
+  gap: var(--sp-1);
+}
+.m-cwizard__picks p {
+  margin: 0;
+}
+.m-picks {
+  display: grid;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-picks__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-interactive);
+  background: var(--recessed);
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.m-picks__row:hover {
+  border-color: var(--border-emphasis);
+  background: var(--hover-wash);
+}
+.m-picks__row[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.m-picks__row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.m-cwizard__join > .btn {
+  justify-self: start;
+}
+.m-cwizard__joining {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-cwizard__joining li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.m-cwizard__beat {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--status-pending);
+  animation: m-sky-ask 1.2s ease-in-out infinite alternate;
+}
+
+.m-cwizard__done {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px var(--sp-6);
+}
+.m-done__mark {
+  width: 96px;
+  height: 96px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m-done__mark circle {
+  stroke: var(--border-emphasis);
+  stroke-width: 1.5;
+}
+.m-cwizard__done[data-in] .m-done__mark circle {
+  stroke: var(--status-success);
+  fill: color-mix(in srgb, var(--status-success) 12%, transparent);
+}
+.m-done__tick {
+  stroke: var(--foreground);
+  stroke-width: 3;
+  /* The mark settles in by opacity and scale from its own centre. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: m-done-in var(--dur-base) var(--ease-settle) var(--dur-base) both;
+}
+@keyframes m-done-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-sky__flow,
+  .m-sky__link line,
+  .m-cnode--pending .m-cnode__disc::after,
+  .m-cwizard__beat,
+  .m-cdrawer,
+  .m-cwizard,
+  .m-done__tick {
+    animation: none;
+  }
+  .m-cnode--add:hover {
+    transform: translate(-50%, calc(var(--node) / -2));
+  }
+  .m-choice:hover {
+    transform: none;
+  }
+}

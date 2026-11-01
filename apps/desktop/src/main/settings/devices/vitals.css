@@ -1,0 +1,62 @@
+/* -- A computer's room (ADR 0017, vitals): the drawer's figures and the meter ---------------------
+ * A meter is a hairline track with the figure in words beside it, so the hue is never the only
+ * carrier; past the gate's line it takes the warning hue. Its fill eases on the base clock, which
+ * reduced motion stills. */
+.m-vitals__load {
+  display: grid;
+  gap: var(--sp-2);
+}
+.m-vitals__sub,
+.m-vitals__line {
+  display: block;
+}
+.m-vitals__sub {
+  margin-top: 2px;
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}
+.m-vitals__held {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border-left: 3px solid var(--status-warning);
+  background: var(--recessed);
+  font-size: var(--fs-md);
+}
+.m-vmeter {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.m-vmeter__bar {
+  position: relative;
+  flex: none;
+  width: 4.5rem;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-default);
+  background: var(--recessed);
+}
+.m-vmeter__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-pill);
+  background: var(--primary);
+  transform: scaleX(var(--fill));
+  transform-origin: left center;
+  transition: transform var(--dur-base) var(--ease-settle);
+}
+.m-vmeter[data-high] .m-vmeter__fill {
+  background: var(--status-warning);
+}
+.m-vmeter__text {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: reduce) {
+  .m-vmeter__fill {
+    transition: none;
+  }
+}

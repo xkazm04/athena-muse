@@ -63,3 +63,30 @@ export async function onHanded(fn: (text: string) => void): Promise<() => void> 
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   return getCurrentWindow().listen<{ text: string }>(ASK_EVENT, (e) => fn(e.payload.text));
 }
+
+/** The event that tells her window to open the setup conversation (ADR 0017). */
+export const SETUP_EVENT = "athena://setup";
+
+/**
+ * Show her window and tell it to open the setup conversation, where she speaks first. Outside Tauri
+ * there is no window to open, and the answer is `false`.
+ */
+export async function startSetupInAthena(): Promise<boolean> {
+  if (!isTauri()) return false;
+  const { Window } = await import("@tauri-apps/api/window");
+  const { emitTo } = await import("@tauri-apps/api/event");
+  const her = await Window.getByLabel("athena");
+  if (her) {
+    await her.show();
+    await her.setFocus();
+  }
+  await emitTo("athena", SETUP_EVENT, {});
+  return true;
+}
+
+/** Her window's side: called when the person pressed "Set up with Athena". Resolves to the unlisten. */
+export async function onSetupStart(fn: () => void): Promise<() => void> {
+  if (!isTauri()) return () => undefined;
+  const { getCurrentWindow } = await import("@tauri-apps/api/window");
+  return getCurrentWindow().listen(SETUP_EVENT, () => fn());
+}

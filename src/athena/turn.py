@@ -583,6 +583,10 @@ def execute(daemon: Daemon, card: Card) -> str:
         return _portal_for(daemon, args).execute(args)
     if card["action"] in browser.NAMES:
         return browser.execute(daemon, card)
+    if card["action"] == "setup_act":
+        from athena.peer import setup  # a machine-changing step of the setup conversation (ADR 0017)
+
+        return setup.sign(daemon, card)
     if card["action"] in ("twin_send", "twin_note"):
         # One Gmail message in-thread, or one Notion note (ADR 0009). Imported here: the twins
         # package runs its setup turn through this module.

@@ -5,6 +5,7 @@
 // surface that kept "the engine is ready" after the program was uninstalled is not a state this
 // file can reach: every fact is recomputed from the last `SettingsView` and connection list.
 
+import type { DevicesView } from "../../lib/fleet";
 import type {
   Connection,
   EngineId,
@@ -17,7 +18,7 @@ import type {
 } from "../../lib/contract";
 
 /** The overview's tiles, in the order a person wants them resolved. */
-export const ITEMS = ["engine", "look", "accounts", "data"] as const;
+export const ITEMS = ["engine", "look", "accounts", "data", "devices"] as const;
 export type Item = (typeof ITEMS)[number];
 
 export function isItem(name: string): name is Item {
@@ -29,6 +30,7 @@ export const ITEM_NAME: Record<Item, string> = {
   look: "Look",
   accounts: "Accounts",
   data: "Data",
+  devices: "Devices",
 };
 
 /**
@@ -175,4 +177,19 @@ export function dataFact(view: SettingsView | null): Fact {
 function said(text: string | undefined): string {
   if (!text) return "It cannot run here.";
   return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
+/**
+ * The other computers and phones (ADR 0017), worded from `GET /devices`. `null` is "not read": the
+ * daemon did not answer, which is not the same fact as nothing being paired.
+ */
+export function devicesFact(view: DevicesView | null): Fact {
+  if (!view || !Array.isArray(view.peers)) return fact("unknown", "Athena has not said which devices are paired yet.");
+  const waiting = view.pending.length;
+  if (waiting > 0) {
+    return fact("missing", `${waiting} ${waiting === 1 ? "device is" : "devices are"} waiting for you to let ${waiting === 1 ? "it" : "them"} in.`, `${waiting} waiting for you`);
+  }
+  const paired = view.peers.length;
+  if (paired === 0) return fact("todo", "No other device is paired. Add a phone or another computer and they share one Athena.", "No other device paired");
+  return fact("done", `${view.self.name} is paired with ${paired} other ${paired === 1 ? "device" : "devices"}.`, `${paired} paired`);
 }

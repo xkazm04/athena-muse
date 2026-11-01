@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MouseEvent } from "react";
-import { hideThisWindow, isTauri, onHanded, startDrag } from "../lib/windows";
+import { hideThisWindow, isTauri, onHanded, onSetupStart, startDrag } from "../lib/windows";
 import { Seal } from "../theme";
 import { ProjectPill, useAppEvents } from "../ui";
 import { Composer } from "./Composer";
@@ -74,6 +74,18 @@ export function App() {
       off?.();
     };
   }, [hand]);
+
+  // "Set up with Athena" (ADR 0017): the main window shows this one and she speaks first.
+  const beginSetup = useHer((s) => s.beginSetup);
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let live = true;
+    void onSetupStart(() => void beginSetup()).then((fn) => (live ? (off = fn) : fn()));
+    return () => {
+      live = false;
+      off?.();
+    };
+  }, [beginSetup]);
 
   // When she is shown (the shortcut, or a click on her), the person can type at once.
   useEffect(() => {
