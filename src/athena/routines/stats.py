@@ -45,4 +45,4 @@ def run(ctx: RunContext) -> None:
         seen.add(metric)
         ctx.found += 1
         ctx.put("stat", {"metric": metric, "value": value, "measured_at": measured_at})
-    ctx.note = f"Read {pages.plural(ctx.found, 'figure')} at {measured_at}."
+    ctx.note = f"Read {pages.plural(ctx.found, 'figure')}."

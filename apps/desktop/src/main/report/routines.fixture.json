@@ -1,0 +1,175 @@
+{
+  "simulated": true,
+  "routines": {
+    "routines": [
+      {
+        "id": "rtn_5e5dd2efc710",
+        "space_id": "spc_cb5d07ede5dc",
+        "kind": "watch",
+        "name": "Watch followed creators for new tracks",
+        "cadence_s": 21600,
+        "ceiling_usd": 0.25,
+        "state": "on",
+        "last_run": {
+          "id": "run_e5ebe8b3f721",
+          "routine_id": "rtn_5e5dd2efc710",
+          "started": "2026-11-01T16:12:22Z",
+          "outcome": "partial",
+          "found": 0,
+          "kept": 0,
+          "cards": 0,
+          "ended": "2026-11-01T16:12:24Z",
+          "of": 4,
+          "spent_usd": 0.3,
+          "note": "It stopped at its spending limit of $0.25 (est.)."
+        },
+        "next_at": "2026-11-01T22:12:22Z"
+      },
+      {
+        "id": "rtn_76419373b1d4",
+        "space_id": "spc_cb5d07ede5dc",
+        "kind": "inbox",
+        "name": "Read the mailbox for replies",
+        "cadence_s": 1800,
+        "ceiling_usd": 0.25,
+        "state": "paused",
+        "last_run": {
+          "id": "run_1975ff3ab3cc",
+          "routine_id": "rtn_76419373b1d4",
+          "started": "2026-11-01T16:12:25Z",
+          "outcome": "skipped",
+          "found": 0,
+          "kept": 0,
+          "cards": 0,
+          "reason": "nothing_to_do",
+          "ended": "2026-11-01T16:12:25Z",
+          "note": "set the mailbox address"
+        }
+      },
+      {
+        "id": "rtn_cf0c0622cd77",
+        "space_id": "spc_cb5d07ede5dc",
+        "kind": "stats",
+        "name": "Read the channel's numbers",
+        "cadence_s": 86400,
+        "ceiling_usd": 0.25,
+        "state": "on",
+        "url": "https://youtube.example/studio/analytics",
+        "last_run": {
+          "id": "run_93b949d42469",
+          "routine_id": "rtn_cf0c0622cd77",
+          "started": "2026-11-01T16:12:24Z",
+          "outcome": "ran",
+          "found": 2,
+          "kept": 2,
+          "cards": 0,
+          "ended": "2026-11-01T16:12:25Z",
+          "spent_usd": 0.002,
+          "note": "Read 2 figures."
+        },
+        "next_at": "2026-11-02T16:12:24Z"
+      },
+      {
+        "id": "rtn_d46cc0ed7b60",
+        "space_id": "spc_cb5d07ede5dc",
+        "kind": "outreach",
+        "name": "Draft offers to creators of kept tracks",
+        "cadence_s": 3600,
+        "ceiling_usd": 0.25,
+        "state": "on",
+        "last_run": {
+          "id": "run_161ed7074063",
+          "routine_id": "rtn_d46cc0ed7b60",
+          "started": "2026-11-01T16:12:25Z",
+          "outcome": "skipped",
+          "found": 0,
+          "kept": 0,
+          "cards": 0,
+          "reason": "nothing_to_do",
+          "ended": "2026-11-01T16:12:25Z",
+          "note": "every creator of a kept track has been written to"
+        },
+        "next_at": "2026-11-01T16:12:22Z"
+      }
+    ]
+  },
+  "runs": {
+    "rtn_5e5dd2efc710": {
+      "runs": [
+        {
+          "id": "run_e5ebe8b3f721",
+          "routine_id": "rtn_5e5dd2efc710",
+          "started": "2026-11-01T16:12:22Z",
+          "outcome": "partial",
+          "found": 0,
+          "kept": 0,
+          "cards": 0,
+          "ended": "2026-11-01T16:12:24Z",
+          "of": 4,
+          "spent_usd": 0.3,
+          "note": "It stopped at its spending limit of $0.25 (est.)."
+        }
+      ]
+    },
+    "rtn_76419373b1d4": {
+      "runs": [
+        {
+          "id": "run_1975ff3ab3cc",
+          "routine_id": "rtn_76419373b1d4",
+          "started": "2026-11-01T16:12:25Z",
+          "outcome": "skipped",
+          "found": 0,
+          "kept": 0,
+          "cards": 0,
+          "reason": "nothing_to_do",
+          "ended": "2026-11-01T16:12:25Z",
+          "note": "set the mailbox address"
+        }
+      ]
+    },
+    "rtn_cf0c0622cd77": {
+      "runs": [
+        {
+          "id": "run_93b949d42469",
+          "routine_id": "rtn_cf0c0622cd77",
+          "started": "2026-11-01T16:12:24Z",
+          "outcome": "ran",
+          "found": 2,
+          "kept": 2,
+          "cards": 0,
+          "ended": "2026-11-01T16:12:25Z",
+          "spent_usd": 0.002,
+          "note": "Read 2 figures."
+        },
+        {
+          "id": "run_765edcb9962d",
+          "routine_id": "rtn_cf0c0622cd77",
+          "started": "2026-11-01T16:12:22Z",
+          "outcome": "skipped",
+          "found": 0,
+          "kept": 0,
+          "cards": 0,
+          "reason": "no_browser",
+          "ended": "2026-11-01T16:12:22Z",
+          "note": "Her browser is not open."
+        }
+      ]
+    },
+    "rtn_d46cc0ed7b60": {
+      "runs": [
+        {
+          "id": "run_161ed7074063",
+          "routine_id": "rtn_d46cc0ed7b60",
+          "started": "2026-11-01T16:12:25Z",
+          "outcome": "skipped",
+          "found": 0,
+          "kept": 0,
+          "cards": 0,
+          "reason": "nothing_to_do",
+          "ended": "2026-11-01T16:12:25Z",
+          "note": "every creator of a kept track has been written to"
+        }
+      ]
+    }
+  }
+}

@@ -36,6 +36,8 @@ BRIEF = (
 )
 SITE = "https://youtube.example"  # a made-up address: nothing here is a real channel
 GENRES = ("lo-fi", "synthwave", "ambient", "chillhop")
+#: Business addresses the simulated mailbox (athena.browser.fixture) sends from.
+EMAILS = {"lumen-tide-sim": "lumen.tide@creators.example", "paper-orbit-sim": "paper.orbit@creators.example"}
 
 CREATORS = (
     ("Lumen Tide (simulated)", "lumen-tide-sim"),
@@ -97,9 +99,10 @@ def seed(daemon: Daemon, today: datetime | None = None) -> str:
     records.set_kinds(space, {"kinds": list(typing.get_args(RecordKind))})
 
     for name, handle in CREATORS:
-        records.put(
-            space, "creator", {"name": name, "channel_url": channel_url(handle), "followed": True}, "athena"
-        )
+        creator: dict[str, Any] = {"name": name, "channel_url": channel_url(handle), "followed": True}
+        if handle in EMAILS:  # the simulated mailbox's senders (browser.fixture), for the inbox routine
+            creator["emails"] = [EMAILS[handle]]
+        records.put(space, "creator", creator, "athena")
 
     tracks: dict[int, dict[str, Any]] = {}
     for n, (title, who, verdict, genre) in enumerate(TRACKS):

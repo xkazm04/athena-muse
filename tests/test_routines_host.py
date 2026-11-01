@@ -279,7 +279,7 @@ def test_a_run_stops_at_its_ceiling_as_partial(daemon: Daemon, monkeypatch: pyte
     run = host(daemon, engine).run_now(routine_id)
     ceiling = daemon.routines.get(routine_id)["ceiling_usd"]
     assert ceiling == 0.25  # the default exists without configuration
-    assert run["outcome"] == "partial" and "ceiling of $0.25" in run["note"]
+    assert run["outcome"] == "partial" and "spending limit of $0.25" in run["note"]
     assert run["spent_usd"] <= ceiling + 0.04  # at most one call past it
     assert engine.calls == run["found"] == 7  # 0.24 spent leaves room for one more, then it stops
     rows = [r for r in daemon.ledger.page(50, space)["rows"] if r["surface"] == "routine"]

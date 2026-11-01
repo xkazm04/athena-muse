@@ -111,7 +111,7 @@ class RunContext:
     def check_ceiling(self) -> None:
         """CeilingReached when what the run has spent leaves no room for another call."""
         if self.counted() >= self.ceiling - _EPS:
-            raise CeilingReached(f"It stopped at its ceiling of {_money(self.ceiling)}.")
+            raise CeilingReached(f"It stopped at its spending limit of {_money(self.ceiling)} (est.).")
 
     def charge(self, cost: float | None) -> None:
         if cost is None:
