@@ -1,6 +1,12 @@
 # A business run through Athena - the AI-music channel, and the gaps it finds
 
-Status: **Phase 0 built** (2026-10-31): her browser (tabs, hands, per-origin trust, upload, download, hand the wheel), Athena's MCP server, and Claude Code with tools on. Its acceptance holds on local simulated pages ([Phase 0](#phase-0---hands-and-the-engine-built-2026-10-31)); the run on a real YouTube test channel waits for the owner. Phases 1-4 are planned with work packages in the [plan of record (2026-11-01)](#plan-of-record-2026-11-01---phases-1-4), which supersedes the design brief below where they differ. A live end-to-end run with the owner signing in follows Phase 4.
+Status: **Phases 0-2 built.**
+
+- **Phase 0** (2026-10-31): her browser, Athena's MCP server, and Claude Code with tools on.
+- **Phase 1** (2026-11-01, [ADR 0018](../../adr/0018-projects-keep-records-and-her-report-is-composed-from-a-closed-kit.md)): records, `may_render`, and the composed report on a project's front page.
+- **Phase 2** (2026-11-01, [ADR 0019](../../adr/0019-routines-are-the-daemons-only-background-host.md)): the routine host with the Twins poller folded in; the watch, inbox, stats and outreach routines; the twin's web channels.
+
+Each phase holds on local simulated pages; nothing has run on the owner's real accounts yet. Phases 3 and 4 are planned in the [plan of record (2026-11-01)](#plan-of-record-2026-11-01---phases-1-4), which supersedes the design brief below where they differ. [Where we stopped](#where-we-stopped-2026-11-01) lists what is next and the follow-ups. A live end-to-end run with the owner signing in follows Phase 4.
 
 Purpose: one real business is walked through Athena step by step, and every step she cannot take today becomes a named feature. The business is a YouTube channel that publishes music videos for good Suno tracks by creators nobody has heard of. It is a real need, and it exercises everything a long-running Project has to do: delegated correspondence, recurring web checks, the owner's judgement, files moving both ways, a peer app doing heavy work, a gated publish, and a report of where things stand.
 
@@ -657,6 +663,38 @@ ADR: amends 0007 (and 0010, for a third rubric). Gap: G1.
 | 4.1 | The rubric and writing the Project | `drafts/rubric.py`, `drafts/save.py` | Coverage for the new slots is computed from the sketch. At the keep, the agreed sketch writes the Project's routines (paused until access ends), its record kinds, a Twin with the `mail_web`, `bio` and `comment` channels, and a first report spec |
 | 4.2 | The stage's views | `main/stage/*` | Both views (Drawing, Orbit) draw the four new slots. The `voices` slot opens Twins' setup for the business Twin and comes back. The access step covers YouTube, Studio and Proton. The hand-off card lands on the first report |
 | 4.3 | The staged need and the seam | `scripts/stage_seam.py`, `stage_fixture.py` | The music channel is the second staged need. The seam walks it from describe to keep and the first report on Claude Code, with no page scroll, no console error and no banned word, and records the cost from the ledger (est.) |
+
+### Where we stopped (2026-11-01)
+
+**Built and on `main`:**
+- Phase 1 (through f8a28b8).
+- Phase 2 (through 8b6d9c9).
+
+Each phase has its "as built" section above, with its measured seam.
+
+**Next, in order:**
+1. **Phase 3 - Gravitone and the release.** Start with WP 3.0 in gravitone-gcloud: the `gt_mv` family (`import`, `launch` with `--still` and `budget_usd: 0`, `collect`) under its MCP rules and its 240-character test, and confirm `gt_job status` on a `job:run:mv.*` job. Then:
+   - the MCP client ported from athena-portable into `src/athena/peers_mcp/`;
+   - the render routine, gated by `may_render` and its ceiling;
+   - the `release` record and the private-draft upload card.
+2. **Phase 4 - the business branch on the stage.** `BUSINESS_RUBRIC`, writing the Project (kinds, routines, the Twin on web channels, the first report), and the music channel as the second staged need.
+3. **The live end-to-end run** (the parked spark `youtube-live-e2e`), on the new business YouTube channel and Proton mailbox.
+
+**Follow-ups found while building, each small:**
+- **A routine run does not count the pages it read.** A partial watch says "4 creators to read, found 0". Add `read` to `RoutineRun`.
+- **A pasted sample carries its channel only in its words.** Add `channel` to `Sample`.
+- **Development CORS is fixed to port 1420.** An environment variable for extra development origins would fix it.
+- **The mailbox site is recognised by "mail" or "proton" in its address or name.** Phase 4's onboarding should set the channel's compose page.
+- **The drop reasons of a report composition are not stored.** Add a `reasons` column to `reports`.
+- **The simulated engine cannot compose a report.** It should echo the current spec.
+- **`RecordPutBody` has no `key` for a thread.**
+- **A verdict does not refresh "Latest tracks" until the next read.**
+- **The wheel's line is cut at 200 characters.** A clipboard hand would carry the whole draft.
+
+**Waiting on the owner:**
+- The partnership offer: the Twin drafts from a placeholder and promises nothing concrete until then.
+- The genre list.
+- The new business YouTube channel and Proton mailbox, for the end-to-end run.
 
 ### After Phase 4: the live end-to-end run
 

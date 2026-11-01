@@ -5,7 +5,7 @@
 Athena on Muse, for the Meta hackathon. What is built lives in `docs/features/` (chore onboarding,
 ADR 0007; Twins, ADRs 0008-0010, whose real-account run waits for the owner). Concepts in
 `docs/concepts/` are designs not yet built: `blue-hour-onboarding/` (parked; its key paste and
-probe stand) and `business-channel/` (next, phased). A concept moves to `docs/features/` once built.
+probe stand) and `business-channel/` (phases 0-2 built, 3-4 next). A concept moves to `docs/features/` once built.
 Chores are data under `playbooks/<id>/`, rehearsed on a headless bench (ADR 0005).
 
 ## Commands
