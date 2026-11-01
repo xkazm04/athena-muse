@@ -821,7 +821,8 @@ class AppEvent(TypedDict):
     """One SSE message on `/events`. Payload keys by type:
     card_filed / card_resolved: `card`; space_changed: `space_id` (and `erased: true` on erase);
     active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`; settings: `look`;
-    wheel: `wheel`; site: `space_id`, `site` (a look at one of the project's sites changed what it found).
+    wheel: `wheel`; site: `space_id`, `site` (a look at one of the project's sites changed what it found);
+    report: `space_id` (Athena arranged that project's report again).
     """
 
     type: AppEventType

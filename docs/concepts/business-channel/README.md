@@ -517,6 +517,45 @@ ADR: *Projects keep records, and her report is composed from a closed kit.* Gaps
 
 Phase 1's live check: a report composed on seeded music-channel records, where every number traces to a records query, followed by a verdict that appends a revision.
 
+#### Phase 1, as built (2026-11-01, [ADR 0018](../../adr/0018-projects-keep-records-and-her-report-is-composed-from-a-closed-kit.md))
+
+- **Records.**
+  - A project keeps records of the kinds it picks from a fixed catalog of eight: creator, track, thread, agreement, file, render, release and stat.
+  - Each kind is code. It checks the fields, cleans the text and decides the key: a creator by channel address, a track by its address, a stat by metric and time.
+  - A record is never edited. A change adds a new revision, and an unchanged put adds nothing.
+  - Athena keeps what she finds (creators and tracks) at once. Any other kind waits for the person to sign a card. Her later find of a track never drops the person's verdict, genre or note.
+  - A file record points at one of the project's own files.
+  - `may_render` answers, in plain words, what stands between a track and a video.
+  - `scripts/business_fixture.py` seeds a simulated music channel through the daemon's own code.
+- **The report.**
+  - The kit's registry (`report/vocab.py`) is the one authority. The composer's instructions are generated from it and from the kind catalog.
+  - One validation door (`report/validate.py`) checks a spec when it is composed and again when it is shown. Every dropped part gets a reason in screen words.
+  - A digit in anything the model writes is refused. Every figure is computed from records (`report/compute.py`): a count of nothing is a real zero, and a sum or reading with no records is absent.
+  - Composing is one engine call on surface `report` that returns the view. The design brief above said it streams; the built route returns the view instead.
+  - A failed compose keeps the last good spec.
+  - Pins reach the composer as constraints, and a pinned part comes back by id.
+  - A kind going from none to some, or from some to none, rearranges the report at most once an hour. A verdict never does.
+  - The ledger answers per project (`GET /ledger?space=`).
+- **The front page.**
+  - A project that keeps records opens on its report, under the crumb and above the name, brief and sites. Any other project looks as before.
+  - The title row says when Athena arranged it ("Athena has not arranged this yet" until she has), beside "Arrange again".
+  - Below it come her one sentence, then "1 part could not be shown" with the reasons behind a fold, then the parts on a 12-column grid.
+  - The grid scrolls inside its own region, so the window does not scroll at 1024x700.
+  - Each part says when it is reading, empty, old ("as of 3 h ago") or unreadable, and has a pin.
+  - The queue plays a YouTube track in place, one at a time. It takes Keep / Pass / Later with a genre, suggested from the project's own tracks, and a note. A verdict takes the track out without moving anything else.
+  - The trend is one thin line, and the funnel is one bar per stage with its count.
+- **Verified.**
+  - Gates: 865+ Python tests and 575 desktop tests.
+  - Screenshots at 1024x700 and 1440x900, light and dark, on the daemon-generated simulated channel.
+  - The live check on the built app waits for the seam run (below).
+- **Known gaps:**
+  - The drop reasons of a composition are not stored, so a later read shows only the drops found at render time.
+  - The simulated engine cannot compose; the default layout stands in.
+  - The fixture's tracks are not on YouTube, so the player shows only in the preview.
+  - `RecordPutBody` has no `key` for a thread.
+  - A verdict does not refresh "Latest tracks" until the next read.
+  - No screen chooses a project's kinds yet; that comes in Phase 4.
+
 ### Phase 2 - routines, the folded poller and the Twin's channels
 
 ADR: *Routines are the daemon's only background host.* Gaps: G5, G6, G9, G11, G12, G22.

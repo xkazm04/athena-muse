@@ -61,7 +61,7 @@ def test_an_unknown_block_is_dropped_with_its_reason_and_counted(daemon: Daemon)
     sid = project(daemon)
     out = compose.compose(daemon, Fake([json.dumps(spec(QUEUE, block("g", "gauge", "Speed")))]), sid)
     assert [b["id"] for b in out["spec"]["blocks"]] == ["q"]
-    assert out["dropped"] == 1 and out["reasons"] == ["“Speed”: 'gauge' is not a block the report can show."]
+    assert out["dropped"] == 1 and out["reasons"] == ["“Speed”: 'gauge' is not a part the report can show."]
 
 
 @pytest.mark.parametrize(

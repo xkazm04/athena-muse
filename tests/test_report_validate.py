@@ -42,10 +42,10 @@ def test_a_good_spec_passes_whole_and_is_stamped() -> None:
 
 
 def test_each_drop_has_its_reason() -> None:
-    assert "is not a block the report can show" in _one(block("x", "gauge"))[0]
-    assert "not tied to any records" in _one(block("x", "stat"))[0]
+    assert "is not a part the report can show" in _one(block("x", "gauge"))[0]
+    assert "not tied to any entries" in _one(block("x", "stat"))[0]
     assert (
-        "keeps no release records"
+        "keeps no release entries"
         in _one(block("x", "stat", binding={"kind": "release"}), kinds=["track"])[0]
     )
     assert "Athena does not keep" in _one(block("x", "stat", binding={"kind": "invoice"}))[0]
@@ -79,7 +79,7 @@ def test_config_contracts() -> None:
         "show 11 items"
         in _one(block("x", "list", binding={"kind": "track"}, config={"fields": ["title"], "limit": 11}))[0]
     )
-    assert "takes no `size`" in _one(block("x", "cards", config={"size": "big"}))[0]
+    assert "takes no size" in _one(block("x", "cards", config={"size": "big"}))[0]
     assert (
         "each pipeline stage is a count"
         in _one(
@@ -110,7 +110,8 @@ def test_a_digit_in_a_title_label_unit_or_callout_is_refused() -> None:
     )
     out, reasons = validate(spec(CARDS, callout="You gained 1200 views."), MUSIC)
     assert "callout" not in out and reasons == [
-        "The callout had a number in it, so it is not shown (numbers on the report come from records only)."
+        "The callout had a number in it, so it is not shown "
+        "(numbers on the report come from what the project keeps)."
     ]
     # A callout block with nothing to show goes too, with its own reason.
     checked = check(spec(CARDS, block("co", "callout", "Note"), callout="Up 40%"), MUSIC)
@@ -128,13 +129,13 @@ def test_more_than_blocks_max_drops_the_tail() -> None:
     blocks = [block(f"c{i}", "cards", "Waiting", span=1) for i in range(BLOCKS_MAX + 2)]
     out, reasons = validate(spec(*blocks), MUSIC)
     assert [b["id"] for b in out["blocks"]] == [f"c{i}" for i in range(BLOCKS_MAX)]
-    assert len(reasons) == 2 and all(f"at most {BLOCKS_MAX} blocks" in r for r in reasons)
+    assert len(reasons) == 2 and all(f"at most {BLOCKS_MAX} parts" in r for r in reasons)
 
 
 def test_a_duplicate_id_keeps_the_first() -> None:
     checked = check(spec(CARDS, block("c", "queue", "Again", binding={"kind": "track"})), MUSIC)
     assert [b["kind"] for b in checked.spec["blocks"]] == ["cards"]
-    assert checked.reasons == ["“Again”: another block already has the id “c”; the first was kept."]
+    assert checked.reasons == ["“Again”: another part already has the id “c”; the first was kept."]
 
 
 def test_nothing_left_is_the_default_spec_and_says_so() -> None:

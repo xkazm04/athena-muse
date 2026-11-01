@@ -10,16 +10,32 @@ import {
   type ChoreSummary,
   type EngineStatus,
   type LedgerPage,
+  type RecordItem,
+  type ReportView,
   type SettingsView,
   type Site,
   type SpaceCounts,
   type SpaceSummary,
+  type TrackVerdictBody,
 } from "../lib/contract";
 import { DaemonError } from "../lib/daemon";
 import { applyLook } from "../ui/look";
 import { parseHash, routeSpace, toHash, type Route } from "./route";
 
 export type Load = "idle" | "reading" | "ready" | "problem";
+
+/** A project's report as the daemon last answered it, and what is happening to it now. */
+export interface ReportState {
+  load: Load;
+  /** Kept on screen through a refresh, and through a refresh that failed (then `problem` says why). */
+  view: ReportView | null;
+  problem: string;
+  composing: boolean;
+  /** Why the last recompose did not land, verbatim; the report on screen stands. */
+  composeProblem: string;
+}
+
+export const REPORT_IDLE: ReportState = { load: "idle", view: null, problem: "", composing: false, composeProblem: "" };
 
 /** Plain words for anything thrown at us; a daemon refusal is shown verbatim. */
 export function reasonOf(e: unknown, fallback = "Something went wrong"): string {
@@ -57,6 +73,8 @@ interface Data {
   sites: Record<string, Site[]>;
   /** The last `wheel` event (her browser's tab moved on, closed, or timed out), numbered so a repeat is new. */
   wheel: { tab: number; state: string; n: number } | null;
+  /** A project's report (business Phase 1), by project id; only projects that keep records have one. */
+  reports: Record<string, ReportState>;
 }
 
 interface Actions {
@@ -87,6 +105,14 @@ interface Actions {
   loadSites: (spaceId: string) => Promise<void>;
   /** A site as a look or a sign-in answered it. */
   putSite: (spaceId: string, site: Site) => void;
+  /** Reads a project's report; a refresh keeps the last one on screen. */
+  loadReport: (spaceId: string) => Promise<void>;
+  /** Asks Athena to arrange the report again; a refusal keeps the last one and says why. */
+  composeReport: (spaceId: string) => Promise<void>;
+  /** Pins or unpins one part of the report (kept by id through a recompose); throws on a refusal. */
+  pinBlock: (spaceId: string, blockId: string, on: boolean) => Promise<void>;
+  /** A track's verdict; answers its new revision and throws on a refusal. The report is not re-read. */
+  verdict: (recordId: string, body: TrackVerdictBody) => Promise<RecordItem>;
 }
 
 export type MainState = Data & Actions;
@@ -112,6 +138,7 @@ const initial = (): Data => ({
   welcome: false,
   sites: {},
   wheel: null,
+  reports: {},
 });
 
 const putSpace = (list: SpaceSummary[], s: SpaceSummary) =>
@@ -231,18 +258,33 @@ export const useMain = create<MainState>()((set, get) => ({
   handleEvent: (e) => {
     const s = get();
     switch (e.type) {
-      case "space_changed":
-        void s.loadSpaces();
+      case "space_changed": {
+        // The open project's report follows its kinds: a kind added or dropped changes what it shows.
+        const open = openReport(s);
+        const before = open ? kindsOf(s.spaces, open) : "";
+        void s.loadSpaces().then(() => {
+          if (open && get().reports[open] && kindsOf(get().spaces, open) !== before) void get().loadReport(open);
+        });
         void s.loadCoreCounts();
         if (e.erased && e.space_id && routeSpace(s.route) === e.space_id) s.navigate({ view: "projects" });
         break;
+      }
       case "active_space":
         set({ active: e.space_id ?? CORE });
         break;
       case "card_filed":
-      case "card_resolved":
+      case "card_resolved": {
         void s.loadCards();
+        // The report's cards part shows what waits in this project.
+        const open = openReport(s);
+        if (open) void s.loadReport(open);
         break;
+      }
+      case "report": {
+        const open = openReport(s);
+        if (open && e.space_id === open) void s.loadReport(open);
+        break;
+      }
       case "engine":
         if (e.status) set({ engine: e.status });
         else void s.loadEngine().catch(() => undefined);
@@ -284,6 +326,39 @@ export const useMain = create<MainState>()((set, get) => ({
     set({ sites: { ...get().sites, [spaceId]: next } });
   },
 
+  loadReport: async (spaceId) => {
+    const at = () => get().reports[spaceId] ?? REPORT_IDLE;
+    const put = (patch: Partial<ReportState>) => set({ reports: { ...get().reports, [spaceId]: { ...at(), ...patch } } });
+    // Only the first read shows placeholders; a refresh keeps the report on screen.
+    if (!at().view) put({ load: "reading", problem: "" });
+    try {
+      put({ view: await api.spaceReport(spaceId), load: "ready", problem: "" });
+    } catch (e) {
+      put({ load: "problem", problem: reasonOf(e, "Could not read the report") });
+    }
+  },
+
+  composeReport: async (spaceId) => {
+    const at = () => get().reports[spaceId] ?? REPORT_IDLE;
+    const put = (patch: Partial<ReportState>) => set({ reports: { ...get().reports, [spaceId]: { ...at(), ...patch } } });
+    put({ composing: true, composeProblem: "" });
+    try {
+      put({ view: await api.composeReport(spaceId), load: "ready", problem: "", composing: false });
+    } catch (e) {
+      put({ composing: false, composeProblem: reasonOf(e, "Athena could not arrange the report") });
+    }
+  },
+
+  pinBlock: async (spaceId, blockId, on) => {
+    const view = get().reports[spaceId]?.view;
+    const pinned = (view?.pinned ?? []).filter((p) => p !== blockId);
+    const next = await api.setReportPins(spaceId, on ? [...pinned, blockId] : pinned);
+    const at = get().reports[spaceId] ?? REPORT_IDLE;
+    set({ reports: { ...get().reports, [spaceId]: { ...at, view: next, load: "ready", problem: "" } } });
+  },
+
+  verdict: (recordId, body) => api.trackVerdict(recordId, body),
+
   clearNotice: () => set({ notice: "" }),
 
   loadSettings: async () => {
@@ -302,6 +377,15 @@ export const useMain = create<MainState>()((set, get) => ({
 
   setWelcome: (welcome) => set({ welcome }),
 }));
+
+/** The project whose page is open, when its report has been read (only projects that keep records). */
+function openReport(s: MainState): string | undefined {
+  const id = s.route.view === "project" ? routeSpace(s.route) : undefined;
+  return id && s.reports[id] ? id : undefined;
+}
+
+const kindsOf = (spaces: SpaceSummary[], id: string): string =>
+  [...(spaces.find((x) => x.id === id)?.kinds ?? [])].sort().join(",");
 
 /** Tests start from a clean store. */
 export function resetMain(): void {

@@ -23,7 +23,7 @@ from athena.report.default import default_spec
 
 _DIGIT = re.compile(r"\d")
 _AGGS = frozenset(("count", "sum", "last", "series"))
-NUMBER = "numbers on the report come from records only"
+NUMBER = "numbers on the report come from what the project keeps"
 
 
 class Checked(NamedTuple):
@@ -46,7 +46,7 @@ def _name(raw: dict[str, Any]) -> str:
     title, kind = raw.get("title"), raw.get("kind")
     if isinstance(title, str) and title.strip() and not _DIGIT.search(title):  # never echo her figure
         return f"“{_cut(title, 40)}”"
-    return f"a {kind} block" if isinstance(kind, str) and kind in vocab.BLOCKS else "a block"
+    return f"a {kind} part" if isinstance(kind, str) and kind in vocab.BLOCKS else "a part"
 
 
 def _words(raw: Any, where: str, n: int) -> str:
@@ -62,24 +62,24 @@ def _limit(config: dict[str, Any], out: dict[str, Any]) -> None:
     if "limit" in config:
         n = config["limit"]
         if isinstance(n, bool) or not isinstance(n, int) or not 1 <= n <= vocab.ITEMS_MAX:
-            raise _Drop(f"it asks to show {n!r} items; a block shows 1 to {vocab.ITEMS_MAX}")
+            raise _Drop(f"it asks to show {n!r} items; a part shows 1 to {vocab.ITEMS_MAX}")
         out["limit"] = n
 
 
 def _only(config: dict[str, Any], kind: BlockKind, allowed: set[str]) -> None:
     extra = sorted(set(config) - allowed)
     if extra:
-        raise _Drop(f"a {kind} block takes no `{extra[0]}`")
+        raise _Drop(f"a {kind} part takes no {extra[0]}")
 
 
 def _binding(raw: Any, kinds: list[RecordKind]) -> Binding:
     if not isinstance(raw, dict):
-        raise _Drop("it is not tied to any records")
+        raise _Drop("it is not tied to any entries")
     kind = raw.get("kind")
     if not isinstance(kind, str) or kind not in vocab.RECORD_KINDS:
-        raise _Drop(f"it is tied to records Athena does not keep ({kind!r})")
+        raise _Drop(f"it is tied to entries Athena does not keep ({kind!r})")
     if kind not in kinds:
-        raise _Drop(f"this project keeps no {kind} records")
+        raise _Drop(f"this project keeps no {kind} entries")
     out: Binding = {"kind": kind}
     if "filter" in raw and raw["filter"] is not None:
         f = raw["filter"]
@@ -91,7 +91,7 @@ def _binding(raw: Any, kinds: list[RecordKind]) -> Binding:
         known = vocab.fields(kind)
         unknown = [k for k in f if known is not None and k not in known]
         if unknown:
-            raise _Drop(f"{kind} records have no `{unknown[0]}`")
+            raise _Drop(f"{kind} entries have no {unknown[0]}")
         if f:
             out["filter"] = dict(f)
     if "agg" in raw and raw["agg"] is not None:
@@ -112,7 +112,7 @@ def _numeric(b: Binding) -> None:
     if field is None:
         raise _Drop(f"it does not say which field to {'sum' if b.get('agg') == 'sum' else 'read'}")
     if field not in vocab.numeric(b["kind"]):
-        raise _Drop(f"`{field}` is not a figure {b['kind']} records keep")
+        raise _Drop(f"{field} is not a figure {b['kind']} entries keep")
     if b["kind"] == "stat" and not isinstance(b.get("filter", {}).get("metric"), str):
         raise _Drop("it reads stats without naming one metric")
 
@@ -120,22 +120,22 @@ def _numeric(b: Binding) -> None:
 def _block(raw: dict[str, Any], kinds: list[RecordKind]) -> Block:
     kind = raw.get("kind")
     if not isinstance(kind, str) or kind not in vocab.BLOCKS:
-        raise _Drop(f"{kind!r} is not a block the report can show")
+        raise _Drop(f"{kind!r} is not a part the report can show")
     bk = kind
     span = raw.get("span")
     if isinstance(span, bool) or not isinstance(span, int) or not 1 <= span <= 12:
-        raise _Drop(f"it is {span!r} columns wide; a block is 1 to 12")
+        raise _Drop(f"it is {span!r} columns wide; a part is 1 to 12")
     title = _words(raw.get("title", ""), "title", REPORT_TITLE_MAX)
     config = raw.get("config", {})
     if config is None:
         config = {}
     if not isinstance(config, dict):
-        raise _Drop("its config is not a set of settings")
+        raise _Drop("its settings are not settings")
     block: Block = {"id": raw["id"], "kind": bk, "title": title, "span": span, "config": {}}
     spec = vocab.BLOCKS[bk]
     if spec["needs_binding"]:
         if raw.get("binding") is None:
-            raise _Drop("it is not tied to any records")
+            raise _Drop("it is not tied to any entries")
         block["binding"] = _binding(raw["binding"], kinds)
     # A block that takes no binding ignores a stray one: there is nothing to tie it to.
     out = block["config"]
@@ -173,7 +173,7 @@ def _block(raw: dict[str, Any], kinds: list[RecordKind]) -> Block:
         _only(config, bk, {"limit"})
         assert b is not None
         if b["kind"] != "thread":
-            raise _Drop("a thread block holds conversations")
+            raise _Drop("a thread part holds conversations")
         _limit(config, out)
     elif bk == "list":
         _only(config, bk, {"fields", "limit"})
@@ -188,7 +188,7 @@ def _block(raw: dict[str, Any], kinds: list[RecordKind]) -> Block:
         known = vocab.fields(b["kind"])
         missing = [n for n in names if known is not None and n not in known]
         if missing:
-            raise _Drop(f"{b['kind']} records have no `{missing[0]}`")
+            raise _Drop(f"{b['kind']} entries have no {missing[0]}")
         out["fields"] = list(names)
         _limit(config, out)
     elif bk == "pipeline":
@@ -236,12 +236,12 @@ def check(raw: Any, kinds: list[RecordKind], name: str = "") -> Checked:
     blocks: list[Any] = raw["blocks"]
     # Caps first, so the door is never wedged by the document it judges.
     for extra in blocks[BLOCKS_MAX:]:
-        who = _name(extra) if isinstance(extra, dict) else "a block"
-        reasons.append(f"{who[0].upper()}{who[1:]}: a report holds at most {BLOCKS_MAX} blocks.")
+        who = _name(extra) if isinstance(extra, dict) else "a part"
+        reasons.append(f"{who[0].upper()}{who[1:]}: a report holds at most {BLOCKS_MAX} parts.")
     seen: set[str] = set()
     for item in blocks[:BLOCKS_MAX]:
         if not isinstance(item, dict):
-            reasons.append("A block was not a block.")
+            reasons.append("A part was not a part.")
             continue
         who = _name(item)
         who = f"{who[0].upper()}{who[1:]}"
@@ -250,7 +250,7 @@ def check(raw: Any, kinds: list[RecordKind], name: str = "") -> Checked:
             reasons.append(f"{who}: it has no id.")
             continue
         if block_id in seen:
-            reasons.append(f"{who}: another block already has the id “{block_id}”; the first was kept.")
+            reasons.append(f"{who}: another part already has the id “{block_id}”; the first was kept.")
             continue
         try:
             block = _block(item, kinds)

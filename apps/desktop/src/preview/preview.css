@@ -196,3 +196,19 @@
   display: grid;
   gap: var(--sp-2);
 }
+
+/* the report at the main window's body size: 1024 by 700 less the bar and the dock */
+.pv-report {
+  --bar-h: 0px;
+  --dock-h: 0px;
+  height: 560px;
+  max-width: 1180px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card);
+  background: var(--background);
+}
+.pv-report > .rp {
+  height: 100%;
+  max-height: none;
+}

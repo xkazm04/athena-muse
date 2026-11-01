@@ -47,9 +47,14 @@ import {
   type NewTwinBody,
   type PagesBody,
   type PiecesBody,
+  type PinsBody,
   type Probe,
+  type RecordItem,
+  type RecordKind,
+  type RecordList,
   type RehearsalEvent,
   type RehearseBody,
+  type ReportView,
   type SamplesBody,
   type SayBody,
   type SettingsView,
@@ -68,6 +73,7 @@ import {
   type TwinPreview,
   type TwinRehearsalEvent,
   type TwinSayBody,
+  type TrackVerdictBody,
   type TwinSetupEvent,
   type Verdict,
   type VerdictBody,
@@ -171,6 +177,17 @@ export const siteCheck = (id: string, origin: string) =>
   request<Site>("POST", path(ROUTES.space_site_check, { id }), { origin } satisfies SiteBody);
 export const siteSignIn = (id: string, origin: string) =>
   request<SignInStarted>("POST", path(ROUTES.space_site_sign_in, { id }), { origin } satisfies SiteBody);
+
+// Records and the report (business Phase 1): the report answers whole, with every number computed by
+// the daemon; a verdict answers the track's new revision.
+export const spaceReport = (id: string) => request<ReportView>("GET", path(ROUTES.space_report, { id }));
+export const composeReport = (id: string) => request<ReportView>("POST", path(ROUTES.space_report_compose, { id }));
+export const setReportPins = (id: string, pinned: string[]) =>
+  request<ReportView>("PUT", path(ROUTES.space_report_pins, { id }), { pinned } satisfies PinsBody);
+export const trackVerdict = (recordId: string, body: TrackVerdictBody) =>
+  request<RecordItem>("POST", path(ROUTES.record_verdict, { id: recordId }), body);
+export const spaceRecords = async (id: string, kind?: RecordKind) =>
+  (await request<RecordList>("GET", path(ROUTES.space_records, { id }) + query({ kind }))).records;
 
 // Twins (ADR 0008-0010): every setup change answers the whole twin. `say` and `rehearse` stream NDJSON.
 export const twins = () => request<TwinPage>("GET", ROUTES.twins);

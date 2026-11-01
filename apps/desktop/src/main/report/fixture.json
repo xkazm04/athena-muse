@@ -1,0 +1,428 @@
+{
+  "spec": {
+    "v": 1,
+    "vocab": 1,
+    "title": "Music channel (simulated)",
+    "blocks": [
+      {
+        "id": "d-queue",
+        "kind": "queue",
+        "title": "Tracks waiting for you",
+        "span": 8,
+        "binding": {
+          "kind": "track",
+          "filter": {
+            "verdict": null
+          }
+        },
+        "config": {}
+      },
+      {
+        "id": "d-creators",
+        "kind": "stat",
+        "title": "Creators followed",
+        "span": 4,
+        "binding": {
+          "kind": "creator",
+          "filter": {
+            "followed": true
+          },
+          "agg": "count"
+        },
+        "config": {}
+      },
+      {
+        "id": "d-pipeline",
+        "kind": "pipeline",
+        "title": "From offer to release",
+        "span": 12,
+        "config": {
+          "stages": [
+            {
+              "label": "Proposed",
+              "binding": {
+                "kind": "agreement",
+                "agg": "count",
+                "filter": {
+                  "state": "proposed"
+                }
+              }
+            },
+            {
+              "label": "Agreed",
+              "binding": {
+                "kind": "agreement",
+                "agg": "count",
+                "filter": {
+                  "state": "agreed"
+                }
+              }
+            },
+            {
+              "label": "Rendered",
+              "binding": {
+                "kind": "render",
+                "agg": "count",
+                "filter": {
+                  "state": "rendered"
+                }
+              }
+            },
+            {
+              "label": "Released",
+              "binding": {
+                "kind": "release",
+                "agg": "count"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "d-views",
+        "kind": "trend",
+        "title": "Views",
+        "span": 6,
+        "binding": {
+          "kind": "stat",
+          "filter": {
+            "metric": "views"
+          },
+          "agg": "series",
+          "field": "value"
+        },
+        "config": {
+          "unit": "views"
+        }
+      },
+      {
+        "id": "d-cards",
+        "kind": "cards",
+        "title": "Waiting for your signature",
+        "span": 6,
+        "config": {}
+      },
+      {
+        "id": "d-threads",
+        "kind": "thread",
+        "title": "Latest conversations",
+        "span": 6,
+        "binding": {
+          "kind": "thread"
+        },
+        "config": {
+          "limit": 5
+        }
+      },
+      {
+        "id": "d-tracks",
+        "kind": "list",
+        "title": "Latest tracks",
+        "span": 12,
+        "binding": {
+          "kind": "track"
+        },
+        "config": {
+          "fields": [
+            "title",
+            "genre",
+            "verdict"
+          ],
+          "limit": 5
+        }
+      },
+      {
+        "id": "d-file",
+        "kind": "stat",
+        "title": "Files",
+        "span": 3,
+        "binding": {
+          "kind": "file",
+          "agg": "count"
+        },
+        "config": {}
+      }
+    ]
+  },
+  "default": true,
+  "rendered_at": "2026-11-01T13:37:35Z",
+  "dropped": 0,
+  "reasons": [],
+  "values": {
+    "d-queue": {
+      "items": [
+        {
+          "id": "rec_41f10fb789c3",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0008",
+          "rev": 1,
+          "body": {
+            "creator_key": "https://youtube.example/@paper-orbit-sim",
+            "found_at": "2026-10-31T12:00:00Z",
+            "title": "Quiet Arcade (simulated)",
+            "url": "https://youtube.example/watch?v=sim0008"
+          },
+          "by": "athena",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_d1ae956b4d09",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0007",
+          "rev": 1,
+          "body": {
+            "creator_key": "https://youtube.example/@moss-arcade-sim",
+            "found_at": "2026-10-30T12:00:00Z",
+            "title": "Paper Moons (simulated)",
+            "url": "https://youtube.example/watch?v=sim0007"
+          },
+          "by": "athena",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_cd1fa5f495e3",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0006",
+          "rev": 1,
+          "body": {
+            "creator_key": "https://youtube.example/@moss-arcade-sim",
+            "found_at": "2026-10-29T12:00:00Z",
+            "title": "Low Tide Radio (simulated)",
+            "url": "https://youtube.example/watch?v=sim0006"
+          },
+          "by": "athena",
+          "created": "2026-11-01T13:37:35Z"
+        }
+      ]
+    },
+    "d-creators": {
+      "count": 4
+    },
+    "d-pipeline": {
+      "stages": [
+        {
+          "label": "Proposed",
+          "count": 1
+        },
+        {
+          "label": "Agreed",
+          "count": 1
+        },
+        {
+          "label": "Rendered",
+          "count": 0
+        },
+        {
+          "label": "Released",
+          "count": 0
+        }
+      ]
+    },
+    "d-views": {
+      "series": [
+        {
+          "t": "2026-10-19T12:00:00Z",
+          "v": 120.0
+        },
+        {
+          "t": "2026-10-20T12:00:00Z",
+          "v": 168.0
+        },
+        {
+          "t": "2026-10-21T12:00:00Z",
+          "v": 216.0
+        },
+        {
+          "t": "2026-10-22T12:00:00Z",
+          "v": 231.0
+        },
+        {
+          "t": "2026-10-23T12:00:00Z",
+          "v": 279.0
+        },
+        {
+          "t": "2026-10-24T12:00:00Z",
+          "v": 327.0
+        },
+        {
+          "t": "2026-10-25T12:00:00Z",
+          "v": 342.0
+        },
+        {
+          "t": "2026-10-26T12:00:00Z",
+          "v": 390.0
+        },
+        {
+          "t": "2026-10-27T12:00:00Z",
+          "v": 438.0
+        },
+        {
+          "t": "2026-10-28T12:00:00Z",
+          "v": 453.0
+        },
+        {
+          "t": "2026-10-29T12:00:00Z",
+          "v": 501.0
+        },
+        {
+          "t": "2026-10-30T12:00:00Z",
+          "v": 549.0
+        },
+        {
+          "t": "2026-10-31T12:00:00Z",
+          "v": 564.0
+        },
+        {
+          "t": "2026-11-01T12:00:00Z",
+          "v": 612.0
+        }
+      ]
+    },
+    "d-cards": {
+      "cards": []
+    },
+    "d-threads": {
+      "items": [
+        {
+          "id": "rec_06127af53f1a",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "thread",
+          "key": "velvet-comment",
+          "rev": 1,
+          "body": {
+            "channel": "comment",
+            "creator_key": "https://youtube.example/@velvet-static-sim",
+            "last_at": "2026-10-31T12:00:00Z",
+            "snippet": "Simulated message: happy to talk about a licence.",
+            "subject": "Comment under Tin Lanterns (simulated)"
+          },
+          "by": "person",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_5c7c265804fa",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "thread",
+          "key": "paper-bio",
+          "rev": 1,
+          "body": {
+            "channel": "bio",
+            "creator_key": "https://youtube.example/@paper-orbit-sim",
+            "last_at": "2026-10-30T12:00:00Z",
+            "snippet": "Simulated message: happy to talk about a licence.",
+            "subject": "Asked about Neon Pantry (simulated)"
+          },
+          "by": "person",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_ae88a7437fb0",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "thread",
+          "key": "lumen-offer",
+          "rev": 1,
+          "body": {
+            "channel": "mail_web",
+            "creator_key": "https://youtube.example/@lumen-tide-sim",
+            "last_at": "2026-10-29T12:00:00Z",
+            "snippet": "Simulated message: happy to talk about a licence.",
+            "subject": "Licence for Night Ferry (simulated)"
+          },
+          "by": "person",
+          "created": "2026-11-01T13:37:35Z"
+        }
+      ]
+    },
+    "d-tracks": {
+      "items": [
+        {
+          "id": "rec_eb19e8e030a5",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0000",
+          "rev": 3,
+          "body": {
+            "creator_key": "https://youtube.example/@lumen-tide-sim",
+            "file_id": "fil_d63e36175497",
+            "found_at": "2026-10-23T12:00:00Z",
+            "genre": "lo-fi",
+            "title": "Night Ferry (simulated)",
+            "url": "https://youtube.example/watch?v=sim0000",
+            "verdict": "keep"
+          },
+          "by": "person",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_41f10fb789c3",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0008",
+          "rev": 1,
+          "body": {
+            "creator_key": "https://youtube.example/@paper-orbit-sim",
+            "found_at": "2026-10-31T12:00:00Z",
+            "title": "Quiet Arcade (simulated)",
+            "url": "https://youtube.example/watch?v=sim0008"
+          },
+          "by": "athena",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_d1ae956b4d09",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0007",
+          "rev": 1,
+          "body": {
+            "creator_key": "https://youtube.example/@moss-arcade-sim",
+            "found_at": "2026-10-30T12:00:00Z",
+            "title": "Paper Moons (simulated)",
+            "url": "https://youtube.example/watch?v=sim0007"
+          },
+          "by": "athena",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_cd1fa5f495e3",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0006",
+          "rev": 1,
+          "body": {
+            "creator_key": "https://youtube.example/@moss-arcade-sim",
+            "found_at": "2026-10-29T12:00:00Z",
+            "title": "Low Tide Radio (simulated)",
+            "url": "https://youtube.example/watch?v=sim0006"
+          },
+          "by": "athena",
+          "created": "2026-11-01T13:37:35Z"
+        },
+        {
+          "id": "rec_c34e8c2051ca",
+          "space_id": "spc_6cd8d3afde87",
+          "kind": "track",
+          "key": "https://youtube.example/watch?v=sim0005",
+          "rev": 2,
+          "body": {
+            "creator_key": "https://youtube.example/@velvet-static-sim",
+            "found_at": "2026-10-28T12:00:00Z",
+            "genre": "ambient",
+            "title": "Rain Index (simulated)",
+            "url": "https://youtube.example/watch?v=sim0005",
+            "verdict": "later"
+          },
+          "by": "person",
+          "created": "2026-11-01T13:37:35Z"
+        }
+      ]
+    },
+    "d-file": {
+      "count": 1
+    }
+  },
+  "pinned": []
+}

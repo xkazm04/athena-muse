@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { APPS_MAX, BRIEF_MAX, NAME_MAX, type SpaceSummary } from "../../lib/contract";
 import { DaemonError } from "../../lib/daemon";
 import { hueColor } from "../../ui";
+import { Report } from "../report/Report";
 import { reasonOf, useMain } from "../store";
 import { SiteBlockers, SitesSection, useSites } from "./Sites";
 
@@ -81,12 +82,15 @@ function LevelBody({ space }: { space: SpaceSummary }) {
     if (brief.draft !== space.brief) void save({ brief: brief.draft }, "Brief saved");
   };
 
+  const keeps = (space.kinds?.length ?? 0) > 0;
+
   return (
-    <div className="m-level">
+    <div className={keeps ? "m-level m-level--report" : "m-level"}>
       <button type="button" className="m-crumb" onClick={() => navigate({ view: "projects" })}>
         All projects
       </button>
       <SiteBlockers spaceId={space.id} sites={sites.sites} />
+      {keeps && <Report space={space} />}
       <section className="plane m-section" style={{ ["--hue" as string]: hueColor(space.hue) }}>
         <label className="m-sr" htmlFor="level-name">
           Project name
