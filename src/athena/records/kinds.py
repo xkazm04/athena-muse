@@ -10,6 +10,7 @@ the store's question (it knows the project), not this module's.
 from __future__ import annotations
 
 import math
+import re
 import typing
 from datetime import datetime
 from typing import Any, TypedDict
@@ -31,7 +32,9 @@ FINDS: frozenset[RecordKind] = frozenset({"creator", "track"})
 
 KINDS: tuple[RecordKind, ...] = typing.get_args(RecordKind)
 KEY_MAX = 512  # a given key (a thread's), and any computed one
-LIST_MAX = 50  # items in a list field (bio links, job ids, reasons)
+LIST_MAX = 50  # items in a list field (bio links, emails, job ids, reasons)
+EMAIL_MAX = 254
+_EMAIL = re.compile(r"[^@\s<>(),;:\"\[\]]+@[^@\s<>(),;:\"\[\]]+\.[^@\s<>(),;:\"\[\].]+\Z")
 
 
 class KindSpec(TypedDict):
@@ -50,6 +53,7 @@ CATALOG: dict[RecordKind, KindSpec] = {
             "channel_url": "Their channel's address (the key)",
             "followed": "Whether the channel follows them (true or false)",
             "bio_links": "Optional: addresses from their bio",
+            "emails": "Optional: their business email addresses (to match their replies)",
             "note": "Optional: a note about them",
         },
         "numeric": [],
@@ -269,6 +273,21 @@ def _texts(body: dict[str, Any], name: str, *, urls: bool = False) -> list[str] 
     return out or None
 
 
+def _emails(body: dict[str, Any], name: str) -> list[str] | None:
+    """Email addresses, lower-cased and de-duplicated; a malformed one is refused by name."""
+    found = _texts(body, name)
+    if found is None:
+        return None
+    out: list[str] = []
+    for item in found:
+        address = item.lower()
+        if len(address) > EMAIL_MAX or not _EMAIL.match(address):
+            raise _bad(f"{name}: {item[:80]} is not an email address")
+        if address not in out:
+            out.append(address)
+    return out
+
+
 def _put(out: dict[str, Any], name: str, value: Any) -> None:
     if value is not None:
         out[name] = value
@@ -284,6 +303,7 @@ def _creator(b: dict[str, Any]) -> dict[str, Any]:
         "followed": _flag(b, "followed"),
     }
     _put(out, "bio_links", _texts(b, "bio_links", urls=True))
+    _put(out, "emails", _emails(b, "emails"))
     _put(out, "note", _text(b, "note", required=False))
     return out
 

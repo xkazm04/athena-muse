@@ -1,4 +1,4 @@
-"""Local test pages for her browser (simulated; not YouTube, not a mailbox).
+"""Local test pages for her browser (simulated; not YouTube, not a mailbox, not a studio).
 
 They reproduce the hard parts of the business channel's acceptance without the owner's accounts:
 
@@ -14,8 +14,19 @@ They reproduce the hard parts of the business channel's acceptance without the o
   `/signin?next=/account`, a page with a password field; `POST /signin` sets the mark (a random value
   the server remembers) and returns to `next`. `/account?away=1` sends a visitor who is not signed in
   to the sign-in page on another host (`localhost` instead of `127.0.0.1`).
+- `/channel/<handle>/videos` (also `/@<handle>/videos`): a creator's uploads with their dates, for
+  the two creators in `CREATORS`. `POST /fixture/new-upload` adds one more upload to the first
+  creator's page, so a seam can make "a new track" happen.
+- `/mail`: a Proton-like inbox (thread rows: subject, sender address, snippet, time). `/mail/<id>`:
+  a thread with its messages, a reply box labelled "Reply" and a "Send" button posting to
+  `/mail/<id>/reply` (journal `sent`). `/mail/new`: compose (To, Subject, body, Send; journal
+  `sent`). `/mail?locked=1` is the inbox behind the sign-in below. `POST /fixture/new-reply?thread=<id>`
+  adds a new message from the thread's creator, now.
+- `/studio/analytics`: the channel's numbers (Views, Subscribers, Watch time (hours)) under a
+  "last updated" date the page claims (a reader must keep its own read time instead).
 - `/expire`: forgets every mark, so the next visit to `/account` asks to sign in again (a lapse).
-- `/state`: the journal as JSON (comments, uploads, saves, downloads, sign-ins, lapses).
+- `/state`: the journal as JSON (comments, uploads, saves, downloads, sign-ins, lapses, sent mail,
+  new uploads, the mailbox's threads).
 
 Every page says on screen that it is a simulated test page.
 
@@ -33,6 +44,7 @@ import secrets
 import struct
 import threading
 import wave
+from datetime import UTC, datetime
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -40,7 +52,7 @@ from urllib.parse import parse_qs, urlsplit
 
 BANNER = (
     '<p style="background:#fde68a;padding:6px 10px;font:14px sans-serif;margin:0 0 12px">'
-    "Simulated test page (Athena fixture) - not YouTube, no real account</p>"
+    "Simulated test page - not a real site (Athena fixture, no real account)</p>"
 )
 TRACKS = (
     ("t1", "Night Drive in Glass", "3:12"),
@@ -49,6 +61,68 @@ TRACKS = (
 )
 MB_MAX = 200
 MARK = "athena_fixture_member"
+
+# --- the business routines' pages (business Phase 2) ---------------------------------------------
+# A seed that wants the inbox to match these senders keeps each creator with its address in `emails`.
+
+#: (handle, name, business email): the creators whose videos pages and mail the fixture serves.
+CREATORS = (
+    ("lumen-tide-sim", "Lumen Tide (simulated)", "lumen.tide@creators.example"),
+    ("paper-orbit-sim", "Paper Orbit (simulated)", "paper.orbit@creators.example"),
+)
+#: The channel's own mailbox address (the sender of what it sends) and a sender who is no creator.
+CHANNEL_EMAIL = "channel@business.example"
+STRANGER_EMAIL = "promo@growfast.example"
+#: handle -> uploads (video id, title, published date), newest first.
+UPLOADS: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "lumen-tide-sim": (
+        ("lt2", "Glass Harbour (simulated)", "2026-10-28"),
+        ("lt1", "Night Ferry (simulated)", "2026-10-20"),
+    ),
+    "paper-orbit-sim": (
+        ("po2", "Quiet Arcade (simulated)", "2026-10-30"),
+        ("po1", "Neon Pantry (simulated)", "2026-10-15"),
+    ),
+}
+#: The upload `POST /fixture/new-upload` adds to the first creator's page (newest).
+NEW_UPLOAD = ("lt3", "Harbour Lights (simulated)", "2026-11-01")
+#: The mailbox: thread id -> sender, subject and messages [sender, ISO time, text], oldest first.
+THREADS: dict[str, dict[str, Any]] = {
+    "m1": {
+        "from": CREATORS[0][2],
+        "subject": "Re: Licensing Night Ferry (simulated)",
+        "messages": [
+            [CHANNEL_EMAIL, "2026-10-30T10:00:00Z", "Hi, we love Night Ferry. May we make a video of it?"],
+            [CREATORS[0][2], "2026-11-01T09:12:00Z", "Hi! Happy to talk. Which plan do you need it on?"],
+        ],
+    },
+    "m2": {
+        "from": CREATORS[1][2],
+        "subject": "Re: Neon Pantry video (simulated)",
+        "messages": [
+            [CHANNEL_EMAIL, "2026-10-29T15:30:00Z", "Hello, could we feature Neon Pantry on our channel?"],
+            [CREATORS[1][2], "2026-10-31T18:05:00Z", "Sure, I am on the pro plan. Send me the terms."],
+        ],
+    },
+    "m3": {
+        "from": STRANGER_EMAIL,
+        "subject": "Grow your channel 10x overnight",
+        "messages": [[STRANGER_EMAIL, "2026-11-01T07:40:00Z", "Buy views now, limited offer."]],
+    },
+}
+#: The numbers the analytics page shows, and the date it claims (never a reading's time).
+ANALYTICS = (("Views", "12,480"), ("Subscribers", "1,204"), ("Watch time (hours)", "389.5"))
+ANALYTICS_CLAIMED = "2026-10-15"
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _shown(at: str) -> str:
+    """A message time as a mailbox shows it: 1 Nov 2026, 09:12 UTC."""
+    moment = datetime.fromisoformat(at)
+    return f"{moment.day} {moment.strftime('%b %Y, %H:%M')} UTC"
 
 
 def _page(title: str, body: str) -> bytes:
@@ -155,6 +229,9 @@ class Journal:
             "marks": [],
             "signins": 0,
             "expired": 0,
+            "sent": [],
+            "new_uploads": 0,
+            "threads": json.loads(json.dumps(THREADS)),
         }
 
     def add(self, key: str, item: Any) -> None:
@@ -164,6 +241,12 @@ class Journal:
     def bump(self, key: str) -> None:
         with self.lock:
             self.state[key] += 1
+
+    def uploads(self, handle: str) -> list[tuple[str, str, str]]:
+        """A creator's uploads now, newest first (with the new one once it was made to appear)."""
+        with self.lock:
+            fresh = self.state["new_uploads"] > 0 and handle == CREATORS[0][0]
+        return ([NEW_UPLOAD] if fresh else []) + list(UPLOADS.get(handle, ()))
 
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
@@ -214,6 +297,10 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
                         ("/studio", "Studio upload"),
                         ("/captcha", "About page behind a check"),
                         ("/account", "A members' page behind a sign-in"),
+                        (f"/channel/{CREATORS[0][0]}/videos", "A creator's uploads"),
+                        ("/mail", "A mailbox"),
+                        ("/mail/new", "Write a message"),
+                        ("/studio/analytics", "Channel analytics"),
                     )
                 )
                 self._send(200, _page("Athena fixture", f"<h1>Athena fixture</h1><ul>{links}</ul>"))
@@ -227,9 +314,11 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
                     f"<h2>Videos</h2><ul>{rows}</ul>"
                 )
                 self._send(200, _page("Mira Vale - simulated channel", body))
+            elif self._business_get(path, query):
+                return
             elif path == "/watch":
                 vid = (query.get("v") or ["t1"])[0]
-                title = next((t for i, t, _ in TRACKS if i == vid), "Unknown track")
+                title = next((t for i, t, _ in TRACKS if i == vid), "") or _upload_title(vid)
                 said = [c for c in journal.snapshot()["comments"] if c["video"] == vid]
                 comments = "".join(f"<li>{html.escape(c['text'])}</li>" for c in said)
                 body = (
@@ -306,8 +395,103 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
             else:
                 self._send(404, _page("Not found", "<h1>Not found</h1>"))
 
+        def _business_get(self, path: str, query: dict[str, list[str]]) -> bool:
+            """The business routines' pages; False when `path` is none of them."""
+            handle = _videos_handle(path)
+            if handle is not None:
+                self._videos(handle)
+            elif path == "/mail":
+                if query.get("locked") and self._mark() not in journal.snapshot()["marks"]:
+                    self._redirect("/signin?next=/mail?locked=1")
+                else:
+                    self._send(200, _page("Inbox - simulated mail", _inbox(journal.snapshot()["threads"])))
+            elif path == "/mail/new":
+                self._send(200, _page("New message - simulated mail", COMPOSE))
+            elif path.startswith("/mail/"):
+                thread_id = path.removeprefix("/mail/")
+                thread = journal.snapshot()["threads"].get(thread_id)
+                if thread is None:
+                    self._send(404, _page("Not found", "<h1>No such conversation</h1>"))
+                else:
+                    self._send(
+                        200, _page(f"{thread['subject']} - simulated mail", _thread(thread_id, thread))
+                    )
+            elif path == "/studio/analytics":
+                self._send(200, _page("Channel analytics - simulated studio", _analytics()))
+            else:
+                return False
+            return True
+
+        def _videos(self, handle: str) -> None:
+            name = next((n for h, n, _ in CREATORS if h == handle), None)
+            if name is None:
+                self._send(404, _page("Not found", "<h1>No such channel</h1>"))
+                return
+            uploads = journal.uploads(handle)
+            rows = "".join(
+                f'<li><a href="/watch?v={i}">{html.escape(t)}</a> <span>Published {d}</span></li>'
+                for i, t, d in uploads
+            )
+            body = f"<h1>{html.escape(name)}</h1><p>{len(uploads)} videos</p><h2>Videos</h2><ul>{rows}</ul>"
+            self._send(200, _page(f"{name} - videos - simulated channel", body))
+
+        def _form(self) -> dict[str, str]:
+            form = parse_qs(self._body().decode("utf-8"))
+            return {k: (v[0] if v else "").strip() for k, v in form.items()}
+
+        def _business_post(self, path: str, query: dict[str, list[str]]) -> bool:
+            """The business routines' posts; False when `path` is none of them."""
+            if path == "/fixture/new-upload":
+                journal.bump("new_uploads")
+                self._send(200, json.dumps({"upload": NEW_UPLOAD[0]}).encode(), "application/json")
+            elif path == "/fixture/new-reply":
+                thread_id = (query.get("thread") or ["m1"])[0]
+                with journal.lock:
+                    thread = journal.state["threads"].get(thread_id)
+                    if thread is not None:
+                        thread["messages"].append(
+                            [thread["from"], _now(), "One more thing: when can we start?"]
+                        )
+                code = 200 if thread is not None else 404
+                self._send(code, json.dumps({"thread": thread_id}).encode(), "application/json")
+            elif path == "/mail/new":
+                form = self._form()
+                if form.get("to") and form.get("body"):
+                    journal.add(
+                        "sent", {"to": form["to"], "subject": form.get("subject", ""), "text": form["body"]}
+                    )
+                self._redirect("/mail")
+            elif path.startswith("/mail/") and path.endswith("/reply"):
+                thread_id = path.removeprefix("/mail/").removesuffix("/reply")
+                text = self._form().get("body", "")
+                with journal.lock:
+                    thread = journal.state["threads"].get(thread_id)
+                    if thread is not None and text:
+                        thread["messages"].append([CHANNEL_EMAIL, _now(), text])
+                        journal.state["sent"].append(
+                            {
+                                "thread": thread_id,
+                                "to": thread["from"],
+                                "subject": thread["subject"],
+                                "text": text,
+                            }
+                        )
+                if thread is None:
+                    self._send(404, _page("Not found", "<h1>No such conversation</h1>"))
+                else:
+                    self.send_response(303)
+                    self.send_header("Location", f"/mail/{thread_id}")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+            else:
+                return False
+            return True
+
         def do_POST(self) -> None:
-            path = urlsplit(self.path).path
+            parts = urlsplit(self.path)
+            path = parts.path
+            if self._business_post(path, parse_qs(parts.query)):
+                return
             if path == "/comment":
                 form = parse_qs(self._body().decode("utf-8"))
                 video = (form.get("video") or ["t1"])[0]
@@ -338,6 +522,78 @@ def make_handler(journal: Journal) -> type[BaseHTTPRequestHandler]:
                 self._send(404, b"{}", "application/json")
 
     return Handler
+
+
+COMPOSE = """
+<h1>New message (simulated mail)</h1>
+<form method="post" action="/mail/new">
+<p><label>To <input type="email" name="to" aria-label="To" size="40"></label></p>
+<p><label>Subject <input type="text" name="subject" aria-label="Subject" size="60"></label></p>
+<p><textarea name="body" aria-label="Message" rows="8" cols="70"></textarea></p>
+<button type="submit">Send</button>
+</form>
+"""
+
+
+def _videos_handle(path: str) -> str | None:
+    """The handle of `/channel/<handle>/videos` or `/@<handle>/videos`, else None."""
+    for prefix in ("/channel/", "/@"):
+        if path.startswith(prefix) and path.endswith("/videos"):
+            handle = path.removeprefix(prefix).removesuffix("/videos")
+            if handle and "/" not in handle:
+                return handle
+    return None
+
+
+def _upload_title(vid: str) -> str:
+    for uploads in (*UPLOADS.values(), (NEW_UPLOAD,)):
+        for i, title, _ in uploads:
+            if i == vid:
+                return title
+    return "Unknown track"
+
+
+def _inbox(threads: dict[str, Any]) -> str:
+    def last(item: tuple[str, Any]) -> str:
+        return str(item[1]["messages"][-1][1])
+
+    rows = []
+    for thread_id, thread in sorted(threads.items(), key=last, reverse=True):
+        _, at, text = thread["messages"][-1]
+        rows.append(
+            f'<tr><td><a href="/mail/{thread_id}">{html.escape(thread["subject"])}</a></td>'
+            f"<td>{html.escape(thread['from'])}</td><td>{html.escape(text[:80])}</td>"
+            f"<td>{_shown(at)}</td></tr>"
+        )
+    return (
+        '<h1>Inbox (simulated mail)</h1><p><a href="/mail/new">New message</a></p>'
+        "<table><thead><tr><th>Subject</th><th>From</th><th>Snippet</th><th>Time</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
+def _thread(thread_id: str, thread: dict[str, Any]) -> str:
+    said = "".join(
+        f"<article><p><b>From:</b> {html.escape(sender)} - {_shown(at)}</p>"
+        f"<p>{html.escape(text)}</p></article>"
+        for sender, at, text in thread["messages"]
+    )
+    return (
+        f"<h1>{html.escape(thread['subject'])}</h1>{said}"
+        f'<form method="post" action="/mail/{thread_id}/reply">'
+        '<label for="reply">Reply</label><br>'
+        '<textarea id="reply" name="body" aria-label="Reply" rows="6" cols="70"></textarea><br>'
+        '<button type="submit">Send</button></form>'
+    )
+
+
+def _analytics() -> str:
+    rows = "".join(f"<tr><th>{html.escape(k)}</th><td>{html.escape(v)}</td></tr>" for k, v in ANALYTICS)
+    return (
+        "<h1>Channel analytics (simulated studio)</h1>"
+        f"<p>Last updated {ANALYTICS_CLAIMED}</p>"
+        f"<table><tbody>{rows}</tbody></table>"
+    )
 
 
 class _Server(ThreadingHTTPServer):
