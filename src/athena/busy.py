@@ -1,4 +1,9 @@
-"""Which spaces have a turn running. Erase and the active-space switch wait on it."""
+"""Which spaces have a turn running. Erase and the active-space switch wait on it.
+
+Two holders: `turn` counts every model turn (a chat, a mission, a draft step), and `chat` counts only
+the person's own chat turns (turn.py holds both). A routine waits only on `live`: a chat turn open in
+its space (business Phase 2); a mission or a draft step never holds a routine back.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +20,23 @@ class Busy:
         self._lock = threading.Lock()
         self._running: Counter[str] = Counter()
         self._closing: set[str] = set()
+        self._chats: Counter[str] = Counter()
+
+    def live(self, space_id: str) -> bool:
+        """A chat turn is open in the space (a routine waits for it to end)."""
+        with self._lock:
+            return self._chats[space_id] > 0
+
+    @contextmanager
+    def chat(self, space_id: str) -> Iterator[None]:
+        """Held for a chat turn's life, beside `turn`."""
+        with self._lock:
+            self._chats[space_id] += 1
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._chats[space_id] -= 1
 
     def running(self, space_id: str) -> bool:
         with self._lock:

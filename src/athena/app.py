@@ -19,6 +19,7 @@ from athena.mcp import Leases
 from athena.memory import Memory
 from athena.peer.listener import PeerHost
 from athena.records.store import Records
+from athena.routines.store import Routines
 from athena.settings import Settings
 from athena.spaces import Spaces
 from athena.store import Store
@@ -44,6 +45,7 @@ class Daemon:
     files: Files  # a project's files (ADR 0013)
     sites: Sites  # a project's sites: the browser's trust list, set up by onboarding (ADR 0014)
     records: Records  # a project's records, append-only revisions (business Phase 1)
+    routines: Routines  # a project's routines and their runs; the host's claims (business Phase 2)
     mcp: Leases  # who may call the MCP server, and for which project (ADR 0015)
     peers: PeerHost | None = None  # other devices (ADR 0017); None = off (tests, --no-peer, no data dir)
     mcp_url: str | None = None  # set once the server knows its port; None = no MCP (tests, unless set)
@@ -73,6 +75,7 @@ class Daemon:
             files=Files(store, data_dir),
             sites=Sites(store),
             records=Records(store, events),
+            routines=Routines(store, events),
             mcp=Leases(),
             peers=_peer_host(data_dir, peer_port) if peers and data_dir is not None else None,
         )

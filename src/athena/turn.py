@@ -430,7 +430,7 @@ def _stream(
     design: Design | None = None,
 ) -> Iterator[dict[str, Any]]:
     surface: Surface = design.surface if design is not None else "turn"
-    with daemon.busy.turn(space_id):
+    with daemon.busy.turn(space_id), daemon.busy.chat(space_id):
         turn_id = mint("turn_")
         yield {"type": "start", "turn_id": turn_id, "engine": engine.id, "simulated": engine.simulated}
         daemon.conversation.append(space_id, "person", text)

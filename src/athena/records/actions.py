@@ -10,10 +10,11 @@ records, or not that kind. The tools are offered only in a project that keeps at
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from athena.browser.actions import Dispatched
-from athena.contracts import Card, RecordItem, RecordKind, tool_event
+from athena.contracts import Card, RecordBy, RecordItem, RecordKind, tool_event
 from athena.errors import ApiError
 from athena.records.kinds import FINDS, KINDS
 
@@ -176,48 +177,96 @@ def _onto_latest(
     return merged
 
 
-def _put(daemon: Daemon, space_id: str, args: dict[str, Any]) -> Dispatched:
-    kind = args.get("kind")
+#: What a routine keeps at once (business Phase 2, the unattended class: reads, finds, drafts and
+#: stats); any other kind it puts files a card, as the chat's does. The chat's set stays `FINDS`.
+ROUTINE_FINDS: frozenset[RecordKind] = frozenset({"creator", "track", "thread", "stat"})
+
+
+@dataclass(frozen=True)
+class Put:
+    """What one put through the records' door did: kept (`item`, and `appended` when a revision was
+    added), filed a card (`card`), or was refused in plain words (`refused`)."""
+
+    item: RecordItem | None = None
+    appended: bool = False
+    card: Card | None = None
+    label: str = ""
+    refused: str = ""
+
+
+def put_as(
+    daemon: Daemon,
+    space_id: str,
+    kind: Any,
+    body: Any,
+    key: str | None = None,
+    by: RecordBy = "athena",
+    finds: frozenset[RecordKind] = FINDS,
+) -> Put:
+    """The records' one door for a put by Athena or a routine: the project must keep the kind, the
+    body is validated and laid over the latest revision (the person's track fields survive), a kind
+    in `finds` is kept at once by `by`, any other files a `record_put` card the person signs."""
     if kind not in KINDS:
-        return Dispatched(f"There is no record kind {str(kind)[:40]!r}; the kinds are {', '.join(KINDS)}.")
+        return Put(refused=f"There is no record kind {str(kind)[:40]!r}; the kinds are {', '.join(KINDS)}.")
     kept = daemon.records.kinds(space_id)
     if not kept:
-        return Dispatched("This project keeps no records, so nothing was kept.")
+        return Put(refused="This project keeps no records, so nothing was kept.")
     if kind not in kept:
-        return Dispatched(
-            f"This project does not keep {kind} records, so nothing was kept. It keeps: {', '.join(kept)}."
+        return Put(
+            refused=f"This project does not keep {kind} records, so nothing was kept. "
+            f"It keeps: {', '.join(kept)}."
         )
-    body = args.get("body")
     if isinstance(body, str):  # an engine that sends an object as JSON text
         try:
             body = json.loads(body)
         except ValueError:
             body = None
     if not isinstance(body, dict):
-        return Dispatched("Send the record's fields as an object in body.")
-    key_given = args.get("key")
-    if kind == "thread" and isinstance(key_given, str) and key_given.strip():
-        body = {**body, "key": key_given}
+        return Put(refused="Send the record's fields as an object in body.")
+    if kind == "thread" and isinstance(key, str) and key.strip():
+        body = {**body, "key": key}
     try:
-        key, cleaned = daemon.records.prepare(space_id, kind, body)
+        key_of, cleaned = daemon.records.prepare(space_id, kind, body)
     except ApiError as e:
-        return Dispatched(f"Not kept: {e.reason}.")
-    cleaned = _onto_latest(daemon, space_id, kind, key, cleaned)
-    label = label_of(daemon, space_id, kind, key, cleaned)
-    if kind in FINDS:
-        item = daemon.records.put(space_id, kind, cleaned, "athena")
-        said = label.removeprefix("Keep: ")
+        return Put(refused=f"Not kept: {e.reason}.")
+    cleaned = _onto_latest(daemon, space_id, kind, key_of, cleaned)
+    label = label_of(daemon, space_id, kind, key_of, cleaned)
+    if kind in finds:
+        before = daemon.records.latest(space_id, kind, key_of)
+        if kind == "thread":
+            cleaned = {**cleaned, "key": key_of}
+        item = daemon.records.put(space_id, kind, cleaned, by)
+        appended = not before or before[0]["id"] != item["id"]
+        return Put(item=item, appended=appended, label=label)
+    card_args: dict[str, Any] = {"kind": kind, "body": cleaned}
+    if kind == "thread":
+        card_args["key"] = key_of
+    return Put(card=daemon.gate.file(space_id, "record_put", card_args, label), label=label)
+
+
+def _put(daemon: Daemon, space_id: str, args: dict[str, Any]) -> Dispatched:
+    key_given = args.get("key")
+    done = put_as(
+        daemon,
+        space_id,
+        args.get("kind"),
+        args.get("body"),
+        key=key_given if isinstance(key_given, str) else None,
+    )
+    if done.refused:
+        return Dispatched(done.refused)
+    if done.item is not None:
+        item = done.item
+        said = done.label.removeprefix("Keep: ")
         return Dispatched(
             f"Kept {said} as revision {item['rev']} of {item['key']}.",
             [tool_event("record_put", f"Kept {said}")],
         )
-    card_args: dict[str, Any] = {"kind": kind, "body": cleaned}
-    if kind == "thread":
-        card_args["key"] = key
-    card = daemon.gate.file(space_id, "record_put", card_args, label)
+    assert done.card is not None
+    card = done.card
     return Dispatched(
         f"Filed card {card['id']} for the person to sign. Nothing is kept until they sign it.",
-        [tool_event("record_put", label), {"type": "card", "card": card}],
+        [tool_event("record_put", done.label), {"type": "card", "card": card}],
         card,
     )
 

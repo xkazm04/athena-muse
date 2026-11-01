@@ -45,6 +45,7 @@ from athena.peer.listener import DEFAULT_PEER_PORT as PEER_PORT
 from athena.records import routes as routes_records
 from athena.report import routes as routes_report
 from athena.routines import routes as routes_routines
+from athena.routines.host import TICK_S, Host
 from athena.twins import poller
 from athena.twins import routes as routes_twins
 
@@ -97,8 +98,9 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
 
     @asynccontextmanager
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
-        """The twins' poller runs while the app does, unless ATHENA_TWIN_POLL is 0 (the tests); the
-        peer host's tick and presence probe run while it does, when the daemon has one."""
+        """The routine host (the daemon's only background host, the twins' missions folded in) ticks
+        while the app runs, unless ATHENA_TWIN_POLL is 0 (the tests); the peer host's tick and presence
+        probe run while it does, when the daemon has one."""
         if daemon.peers is not None:
             await asyncio.to_thread(daemon.peers.start)
         try:
@@ -113,7 +115,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
                     keys, stored=daemon.settings.engine_choice(), transport=routes_turn.TRANSPORT
                 )
 
-            running = poller.Poller(daemon, engine, seconds)
+            running = Host(daemon, engine, tick_s=min(TICK_S, seconds))
             running.start()
             try:
                 yield
@@ -130,7 +132,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
             Middleware(
                 CORSMiddleware,
                 allow_origins=list(origins),
-                allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 allow_headers=["authorization", "content-type"],
             ),
             Middleware(BaseHTTPMiddleware, dispatch=guard),
