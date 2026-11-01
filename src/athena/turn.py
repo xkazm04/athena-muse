@@ -32,6 +32,7 @@ from athena.engine import Engine, EngineError, McpAccess, TextDelta, ToolCall, U
 from athena.engine.prices import estimate
 from athena.errors import ApiError
 from athena.memory import visible_spaces
+from athena.records import actions as records
 from athena.spaces import normalise_origin
 
 if TYPE_CHECKING:
@@ -205,6 +206,8 @@ def dispatch(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
     name = call.name
     if name in browser.NAMES:
         return browser.act(daemon, space_id, name, call.arguments)
+    if name in records.NAMES:  # a put of a non-find files a card whatever the class says
+        return records.act(daemon, space_id, name, call.arguments)
     if name not in CATALOG:
         return Dispatched("There is no such action.")
     if CATALOG[name] == "auto":
@@ -432,7 +435,7 @@ def _stream(
             if space_id != "":
                 tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
             if portal is None:
-                tools += browser.offered(daemon, space_id)
+                tools += browser.offered(daemon, space_id) + records.offered(daemon, space_id)
         if portal is not None:
             tools += portal.tools()
             messages[0]["content"] += (
@@ -583,6 +586,8 @@ def execute(daemon: Daemon, card: Card) -> str:
         return _portal_for(daemon, args).execute(args)
     if card["action"] in browser.NAMES:
         return browser.execute(daemon, card)
+    if card["action"] == "record_put":
+        return records.execute(daemon, card)
     if card["action"] == "setup_act":
         from athena.peer import setup  # a machine-changing step of the setup conversation (ADR 0017)
 

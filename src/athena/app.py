@@ -72,7 +72,7 @@ class Daemon:
             relay=Relay(),
             files=Files(store, data_dir),
             sites=Sites(store),
-            records=Records(store),
+            records=Records(store, events),
             mcp=Leases(),
             peers=_peer_host(data_dir, peer_port) if peers and data_dir is not None else None,
         )
