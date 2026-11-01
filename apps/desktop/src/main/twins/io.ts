@@ -21,6 +21,7 @@ export type TwinsIo = Pick<
   | "twinMark"
   | "twinGoLive"
   | "twinPreview"
+  | "twinPaste"
   | "twinThreads"
   | "twinGoals"
   | "startMission"
@@ -51,6 +52,7 @@ export const liveIo: TwinsIo = {
   twinMark: api.twinMark,
   twinGoLive: api.twinGoLive,
   twinPreview: api.twinPreview,
+  twinPaste: api.twinPaste,
   twinThreads: api.twinThreads,
   twinGoals: api.twinGoals,
   startMission: api.startMission,

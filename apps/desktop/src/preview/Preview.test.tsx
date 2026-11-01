@@ -24,6 +24,25 @@ describe("preview", () => {
     expect(scene.queryByRole("alert")).toBeNull();
   });
 
+  it("draws every routine row state, the daemon's and the derived ones, and a twin's paste panel, with no daemon", () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    render(<Preview />);
+    const routines = screen.getByRole("heading", { name: /^Routines \(simulated channel/ }).closest("section")!;
+    const strip = () => routines.querySelectorAll('[data-role="routine"]');
+    expect(strip().length).toBe(4);
+    fireEvent.click(within(routines).getByRole("button", { name: "every reason" }));
+    const reasons = new Set([...strip()].map((r) => r.getAttribute("data-reason") ?? r.getAttribute("data-outcome")));
+    for (const r of ["no_browser", "live_turn", "signed_out", "no_twin", "running", "paused", "no_engine", "nothing_to_do", "partial", "ran", "failed"]) expect(reasons.has(r), r).toBe(true);
+    fireEvent.click(within(routines).getByRole("button", { name: "no routines" }));
+    expect(routines.querySelector('[data-role="routines"]')).toBeNull();
+    const twins = screen.getByRole("heading", { name: /^Twins on web channels/ }).closest("section")!;
+    expect(twins.querySelector('[data-role="paste"]')).toBeTruthy();
+    expect(twins.querySelectorAll('[data-role="web-channel"]').length).toBeGreaterThan(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it("drives every state the stage must show from the staged streams, with no daemon, in both views", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);

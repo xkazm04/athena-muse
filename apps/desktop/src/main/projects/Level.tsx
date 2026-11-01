@@ -3,6 +3,7 @@ import { APPS_MAX, BRIEF_MAX, NAME_MAX, type SpaceSummary } from "../../lib/cont
 import { DaemonError } from "../../lib/daemon";
 import { hueColor } from "../../ui";
 import { Report } from "../report/Report";
+import { Routines } from "../report/Routines";
 import { reasonOf, useMain } from "../store";
 import { SiteBlockers, SitesSection, useSites } from "./Sites";
 
@@ -91,6 +92,7 @@ function LevelBody({ space }: { space: SpaceSummary }) {
       </button>
       <SiteBlockers spaceId={space.id} sites={sites.sites} />
       {keeps && <Report space={space} />}
+      <Routines space={space} />
       <section className="plane m-section" style={{ ["--hue" as string]: hueColor(space.hue) }}>
         <label className="m-sr" htmlFor="level-name">
           Project name

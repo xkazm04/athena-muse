@@ -46,6 +46,7 @@ import {
   type NewMissionBody,
   type NewTwinBody,
   type PagesBody,
+  type PasteBody,
   type PiecesBody,
   type PinsBody,
   type Probe,
@@ -55,6 +56,11 @@ import {
   type RehearsalEvent,
   type RehearseBody,
   type ReportView,
+  type Routine,
+  type RoutineBody,
+  type RoutineList,
+  type RoutineRun,
+  type RunList,
   type SamplesBody,
   type SayBody,
   type SettingsView,
@@ -189,6 +195,16 @@ export const trackVerdict = (recordId: string, body: TrackVerdictBody) =>
 export const spaceRecords = async (id: string, kind?: RecordKind) =>
   (await request<RecordList>("GET", path(ROUTES.space_records, { id }) + query({ kind }))).records;
 
+// Routines (business Phase 2): what Athena does on her own in a project. A change answers the routine;
+// Run now answers the run it recorded (it may take a minute); the runs come newest first.
+export const spaceRoutines = async (id: string) =>
+  (await request<RoutineList>("GET", path(ROUTES.space_routines, { id }))).routines;
+export const changeRoutine = (id: string, body: RoutineBody) =>
+  request<Routine>("PATCH", path(ROUTES.routine, { id }), body);
+export const runRoutine = (id: string) => request<RoutineRun>("POST", path(ROUTES.routine_run, { id }));
+export const routineRuns = async (id: string) =>
+  (await request<RunList>("GET", path(ROUTES.routine_runs, { id }))).runs;
+
 // Twins (ADR 0008-0010): every setup change answers the whole twin. `say` and `rehearse` stream NDJSON.
 export const twins = () => request<TwinPage>("GET", ROUTES.twins);
 export const createTwin = (spaceId: string) =>
@@ -235,6 +251,9 @@ export const twinGoals = async (id: string, body: GoalsBody) =>
   (await request<GoalList>("POST", path(ROUTES.twin_goals, { id }), body)).goals;
 /** How it sounds now: one engine call, kept by the daemon until its voice changes. */
 export const twinPreview = (id: string) => request<TwinPreview>("GET", path(ROUTES.twin_preview, { id }));
+/** A message the person wrote, kept for a web channel's voice; answers the whole twin. */
+export const twinPaste = (id: string, body: PasteBody) =>
+  request<TwinDetail>("POST", path(ROUTES.twin_paste, { id }), body);
 
 // Connected accounts (ADR 0008): Google sign-in runs in the browser, so `connect` starts a flow to watch.
 export const connections = async () => (await request<ConnectionList>("GET", ROUTES.connectors)).connections;

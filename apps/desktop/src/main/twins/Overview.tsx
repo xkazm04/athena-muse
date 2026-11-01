@@ -9,7 +9,7 @@ import type { Route } from "../route";
 import { barOf, beatAt, clearance, clearanceShort, handedBack, lastOf, money, num, rel, waitsOn } from "./format";
 import { Icon, Meter, Portrait, Stamp } from "./marks";
 import type { TwinsState } from "./types";
-import { CHANNEL_ICON, CHANNEL_LABEL, MISSION_BADGE, STATE_BADGE, WAIT, TWINS_WORDS as w } from "./words";
+import { CHANNEL_ICON, CHANNEL_LABEL, isWebChannel, MISSION_BADGE, STATE_BADGE, WAIT, TWINS_WORDS as w, WEB_WORDS } from "./words";
 
 export interface OverviewProps {
   state: TwinsState;
@@ -239,11 +239,19 @@ function Stats({ stats: st, rows, mode, before }: { stats?: TwinStats; rows: Twi
 
 function VisaMark({ c }: { c: TwinSummary["channels"][number] }) {
   const ok = c.status === "connected";
+  // A web channel has no account: it is fine, or its mailbox wants a sign-in, or the project keeps none.
+  const web = isWebChannel(c.kind);
+  const why = web ? (c.status === "disconnected" ? WEB_WORDS.noMailbox : WEB_WORDS.signInMailbox) : "sign in again";
   return (
-    <span className="vmark" data-ok={String(ok)} title={`${CHANNEL_LABEL[c.kind]}: ${ok ? c.account : "sign in again"}`}>
+    <span
+      className="vmark"
+      data-ok={String(ok)}
+      data-role={web ? "web-channel" : undefined}
+      title={`${CHANNEL_LABEL[c.kind]}: ${ok ? (web ? (c.scope ?? WEB_WORDS.yoursShort) : c.account) : why}`}
+    >
       <Icon name={CHANNEL_ICON[c.kind]} />
       {CHANNEL_LABEL[c.kind]}
-      {!ok && <em>sign in again</em>}
+      {!ok && <em>{web && c.status === "disconnected" ? "no mailbox" : "sign in again"}</em>}
     </span>
   );
 }

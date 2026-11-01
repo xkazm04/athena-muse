@@ -50,8 +50,23 @@ const ACTION: Record<Card["action"], string> = {
 
 /** A twin's draft (ADR 0009) carries its text, which the person may rewrite before signing. */
 function draftText(card: Card): string | null {
-  if (card.action !== "twin_send" && card.action !== "twin_note") return null;
+  if (card.action !== "twin_send" && card.action !== "twin_note" && card.action !== "twin_send_web") return null;
   return typeof card.args.text === "string" ? card.args.text : null;
+}
+
+/** Where a twin's message on a web channel goes (business Phase 2), in plain words. A comment names
+ *  its track as the card's label does ("Comment on <track>"). */
+export function webChannelLine(card: Card): string | null {
+  if (card.action !== "twin_send_web") return null;
+  const channel = card.args.channel;
+  if (channel === "mail_web") return "By mail in her browser";
+  if (channel === "bio") return "Through their bio link - you will send it yourself";
+  if (channel === "comment") {
+    const track = card.label.replace(/^Comment on\s+/i, "").trim();
+    const named = track && track !== card.label ? track : typeof card.args.to === "string" ? card.args.to : "their track";
+    return `As a comment on ${named}`;
+  }
+  return null;
 }
 
 /** A card Athena filed: nothing happens until the person signs it, and it runs once. A twin's draft
@@ -60,6 +75,7 @@ export function CardView({ card, onDecide, onResolved, where }: CardViewProps) {
   const [busy, setBusy] = useState<Verdict | null>(null);
   const [problem, setProblem] = useState("");
   const drafted = draftText(card);
+  const web = webChannelLine(card);
   const [text, setText] = useState(drafted ?? "");
   const changed = drafted !== null && text.trim() !== drafted.trim();
   const waiting = card.state === "waiting";
@@ -92,6 +108,11 @@ export function CardView({ card, onDecide, onResolved, where }: CardViewProps) {
         {where && <span className="card-where">{where}</span>}
       </header>
       <p className="card-label">{card.label}</p>
+      {web && (
+        <p className="card-channel" data-role="web-channel" data-channel={String(card.args.channel)}>
+          {web}
+        </p>
+      )}
       {drafted !== null &&
         (waiting ? (
           <>

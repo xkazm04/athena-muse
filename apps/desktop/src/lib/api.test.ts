@@ -80,6 +80,23 @@ describe("api paths", () => {
     expect(await called(() => api.chore("care-circle"))).toMatchObject({ method: "GET", url: "/chores/care-circle" });
     expect((await called(() => api.chore("a b"))).url).toBe("/chores/a%20b");
   });
+
+  it("builds the routine routes and the twin's paste, with their bodies", async () => {
+    expect(await called(() => api.spaceRoutines("spc_1"))).toMatchObject({ method: "GET", url: "/spaces/spc_1/routines" });
+    expect(await called(() => api.changeRoutine("rtn_1", { state: "paused" }))).toEqual({
+      method: "PATCH",
+      url: "/routines/rtn_1",
+      body: { state: "paused" },
+    });
+    expect(await called(() => api.runRoutine("rtn_1"))).toEqual({ method: "POST", url: "/routines/rtn_1/run" });
+    expect(await called(() => api.routineRuns("rtn_1"))).toMatchObject({ method: "GET", url: "/routines/rtn_1/runs" });
+    expect((await called(() => api.routineRuns("twin:tw_1"))).url).toBe("/routines/twin%3Atw_1/runs");
+    expect(await called(() => api.twinPaste("tw_1", { text: "Hi", channel: "bio" }))).toEqual({
+      method: "POST",
+      url: "/twins/tw_1/paste",
+      body: { text: "Hi", channel: "bio" },
+    });
+  });
 });
 
 describe("draft routes", () => {

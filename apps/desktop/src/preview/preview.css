@@ -212,3 +212,18 @@
   height: 100%;
   max-height: none;
 }
+.pv-twins {
+  height: 720px;
+  max-width: 1440px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card);
+  background: var(--background);
+}
+.pv-routines {
+  max-width: 1180px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card);
+  background: var(--background);
+}

@@ -22,7 +22,7 @@ import { DaemonError } from "../../lib/daemon";
 import { reasonOf } from "../store";
 import { createExampleIo } from "./example";
 import { liveIo, type TwinsIo } from "./io";
-import { applyPieceOps, currentTurn, pencilOf, rehearsalStep } from "./select";
+import { applyPieceOps, currentTurn, mailSamplesOf, pastedOf, pencilOf, rehearsalStep } from "./select";
 import type {
   Choices,
   ConnectView,
@@ -459,9 +459,16 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       let words = "";
       const runs: (() => Promise<TwinDetail>)[] = [];
       if (panel === "samples") {
-        const ids = t.samples.filter((x) => chosen(c, "samples", x, t.samples)).map((x) => x.id);
-        runs.push(() => io.twinSamples(id, ids));
-        words = `Learn from these ${ids.length}`;
+        // Pasted messages are kept as they are pasted; only the sent mail is picked here.
+        const mail = mailSamplesOf(t);
+        const ids = mail.filter((x) => chosen(c, "samples", x, mail)).map((x) => x.id);
+        if (ids.length) {
+          runs.push(() => io.twinSamples(id, ids));
+          words = `Learn from these ${ids.length}`;
+        } else {
+          const n = pastedOf(t).length;
+          words = `Learn from my ${n} message${n === 1 ? "" : "s"}`;
+        }
       } else if (panel === "style") {
         const dials = Object.fromEntries(dialsShown(s).filter((d) => d.source !== "learned").map((d) => [d.id, d.value]));
         const body: DialsBody = c.preset ? { dials, preset: c.preset } : { dials };
@@ -621,6 +628,12 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
           return;
         case "notion":
           return connect("notion", { key: a.key.trim() });
+        case "paste": {
+          const text = a.text.trim();
+          if (!t || !text) return;
+          await call("panel", a, () => io.twinPaste(t.id, { text, channel: a.channel }));
+          return;
+        }
         case "enough": {
           if (!t) return;
           const { goal, note } = goalOf(s);

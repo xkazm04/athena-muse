@@ -32,7 +32,7 @@ export const SECTION: Record<Place, string> = {
 /** What an empty section still promises. */
 export const SECTION_EMPTY: Record<Place, string> = {
   who: "Name, signature and purpose",
-  channels: "Gmail and Notion, once you sign in",
+  channels: "Gmail and Notion once you sign in, or her browser",
   voice: "Learned only from mail you sent",
   knowledge: "Notion pages you choose",
   chores: "Ready-made chores you pick",
@@ -48,6 +48,36 @@ export const CHANNEL_LABEL: Record<ChannelKind, string> = {
   mail_web: "Mail in her browser",
   bio: "Bio link",
   comment: "Comment",
+};
+
+/** The channels a twin speaks on through her browser (business Phase 2): no account to connect, and
+ * every message waits for the person's signature. */
+export const WEB_CHANNELS: readonly ChannelKind[] = ["mail_web", "bio", "comment"];
+export const isWebChannel = (kind: ChannelKind): boolean => WEB_CHANNELS.includes(kind);
+
+/** What a web channel may touch, in plain words. */
+export const WEB_SCOPE: Record<"mail_web" | "bio" | "comment", string> = {
+  mail_web: "only messages you sign, from your mailbox in her browser",
+  bio: "opens a creator's bio link; you send the message yourself",
+  comment: "only comments you sign, under a creator's track",
+};
+
+export const WEB_WORDS = {
+  yours: "Always yours to sign",
+  yoursShort: "always yours to sign",
+  noAccount: "No account to connect: it speaks through her browser",
+  noMailbox: "no mailbox kept for this project",
+  signInMailbox: "sign in to the mailbox again",
+  // the panel of the person's own messages
+  pasteTitle: "Your own messages",
+  pasteSub: "Paste a message you wrote yourself. Its voice on that channel comes from these.",
+  pasteText: "A message you wrote",
+  pastePlaceholder: "Paste one message, as you sent it",
+  pasteChannel: "Where you sent it",
+  pasteKeep: "Keep it",
+  pasteKeeping: "Keeping...",
+  pasteNone: "None kept yet.",
+  pasteKept: (n: number) => `${n} kept`,
 };
 
 /** The mark drawn beside a channel. */

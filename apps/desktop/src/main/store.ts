@@ -12,6 +12,9 @@ import {
   type LedgerPage,
   type RecordItem,
   type ReportView,
+  type Routine,
+  type RoutineBody,
+  type RoutineRun,
   type SettingsView,
   type Site,
   type SpaceCounts,
@@ -36,6 +39,16 @@ export interface ReportState {
 }
 
 export const REPORT_IDLE: ReportState = { load: "idle", view: null, problem: "", composing: false, composeProblem: "" };
+
+/** A project's routines (business Phase 2): what Athena does there on her own, as the daemon last said. */
+export interface RoutinesState {
+  load: Load;
+  /** Kept on screen through a refresh; a `routine` event replaces one in place. */
+  list: Routine[];
+  problem: string;
+}
+
+export const ROUTINES_IDLE: RoutinesState = { load: "idle", list: [], problem: "" };
 
 /** Plain words for anything thrown at us; a daemon refusal is shown verbatim. */
 export function reasonOf(e: unknown, fallback = "Something went wrong"): string {
@@ -75,6 +88,8 @@ interface Data {
   wheel: { tab: number; state: string; n: number } | null;
   /** A project's report (business Phase 1), by project id; only projects that keep records have one. */
   reports: Record<string, ReportState>;
+  /** A project's routines, by project id; read when its page opens. */
+  routines: Record<string, RoutinesState>;
 }
 
 interface Actions {
@@ -113,6 +128,14 @@ interface Actions {
   pinBlock: (spaceId: string, blockId: string, on: boolean) => Promise<void>;
   /** A track's verdict; answers its new revision and throws on a refusal. The report is not re-read. */
   verdict: (recordId: string, body: TrackVerdictBody) => Promise<RecordItem>;
+  /** Reads a project's routines; a refresh keeps the list on screen. */
+  loadRoutines: (spaceId: string) => Promise<void>;
+  /** One routine as the daemon answered it (a change, or a `routine` event): replaced in place. */
+  putRoutine: (routine: Routine) => void;
+  /** Pause, resume or give it its page; answers the routine and throws on a refusal. */
+  changeRoutine: (routineId: string, body: RoutineBody) => Promise<Routine>;
+  /** Runs it now; the run it recorded becomes its last run. Throws on a refusal. */
+  runRoutine: (routineId: string) => Promise<RoutineRun>;
 }
 
 export type MainState = Data & Actions;
@@ -139,6 +162,7 @@ const initial = (): Data => ({
   sites: {},
   wheel: null,
   reports: {},
+  routines: {},
 });
 
 const putSpace = (list: SpaceSummary[], s: SpaceSummary) =>
@@ -310,6 +334,10 @@ export const useMain = create<MainState>()((set, get) => ({
       case "wheel":
         if (e.wheel) set({ wheel: { tab: e.wheel.tab, state: e.wheel.state, n: (s.wheel?.n ?? 0) + 1 } });
         break;
+      case "routine":
+        // The one routine changes in place: no reload, nothing else on the page moves.
+        if (e.routine) s.putRoutine(e.routine);
+        break;
     }
   },
 
@@ -358,6 +386,42 @@ export const useMain = create<MainState>()((set, get) => ({
   },
 
   verdict: (recordId, body) => api.trackVerdict(recordId, body),
+
+  loadRoutines: async (spaceId) => {
+    const at = () => get().routines[spaceId] ?? ROUTINES_IDLE;
+    const put = (patch: Partial<RoutinesState>) => set({ routines: { ...get().routines, [spaceId]: { ...at(), ...patch } } });
+    if (at().load !== "ready") put({ load: "reading", problem: "" });
+    try {
+      put({ list: (await api.spaceRoutines(spaceId)) ?? [], load: "ready", problem: "" });
+    } catch (e) {
+      put({ load: "problem", problem: reasonOf(e, "Could not read what Athena does on her own") });
+    }
+  },
+
+  putRoutine: (routine) => {
+    const at = get().routines[routine.space_id];
+    // Only a project whose page has read its routines keeps them; another one reads them when it opens.
+    if (!at) return;
+    const list = at.list.some((r) => r.id === routine.id)
+      ? at.list.map((r) => (r.id === routine.id ? routine : r))
+      : [...at.list, routine];
+    set({ routines: { ...get().routines, [routine.space_id]: { ...at, list } } });
+  },
+
+  changeRoutine: async (routineId, body) => {
+    const changed = await api.changeRoutine(routineId, body);
+    get().putRoutine(changed);
+    return changed;
+  },
+
+  runRoutine: async (routineId) => {
+    const run = await api.runRoutine(routineId);
+    for (const at of Object.values(get().routines)) {
+      const found = at.list.find((r) => r.id === routineId);
+      if (found) get().putRoutine({ ...found, last_run: run });
+    }
+    return run;
+  },
 
   clearNotice: () => set({ notice: "" }),
 

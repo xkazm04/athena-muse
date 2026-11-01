@@ -4,7 +4,7 @@ import { parseHash, toHash, type Route } from "../route";
 import { EntryPage, ruleFor } from "./Entry";
 import { createExampleIo } from "./example";
 import { TWIN_FIXTURE as fx } from "./fixture/twins";
-import { stateOf, type TwinStateId } from "./states";
+import { stateOf, webIo, type TwinStateId } from "./states";
 import { createTwinsStore } from "./store";
 import { TwinsView, type TwinRoute } from "./Twins";
 
@@ -313,5 +313,76 @@ describe("the nested pages", () => {
   it("says plainly when a draft no longer waits", () => {
     show("overview-today", { view: "twin_draft", id: desk!.id, draft: "dr_404" });
     expect(screen.getByRole("alert").textContent).toMatch(/no longer waits/);
+  });
+});
+
+// Web channels (business Phase 2). The generated twins fixture has no twin on a web channel yet, so
+// these states are DERIVED from it in states.ts (onWeb): web channels in the shapes the daemon answers.
+describe("a twin on web channels", () => {
+  function showWeb(id: TwinStateId) {
+    const shown = stateOf(id);
+    const io = createExampleIo(fx, { pace: 0 });
+    const live = webIo(io, shown.state.setup.twin!);
+    const twinPaste = vi.fn(live.twinPaste);
+    const store = createTwinsStore(io, { pollMs: 0 });
+    store.getState().useExample({ ...live, twinPaste });
+    store.setState(shown.state);
+    const draw = () => render(<TwinsView route={shown.route} top={(extra) => <header>{extra}</header>} navigate={vi.fn()} store={store.getState()} />);
+    const view = draw();
+    return { store, twinPaste, rerender: () => view.rerender(<TwinsView route={shown.route} top={(extra) => <header>{extra}</header>} navigate={vi.fn()} store={store.getState()} />) };
+  }
+
+  it("draws a visa per web channel and asks no account for them: no Gmail visa on a twin on web channels only", () => {
+    showWeb("setup-web-paste");
+    const visas = [...document.querySelectorAll<HTMLElement>('.doc [data-role="web-channel"]')];
+    expect(visas.map((v) => v.dataset.kind)).toEqual(["mail_web", "comment"]);
+    expect(visas.map((v) => v.querySelector("b")!.textContent)).toEqual(["Mail in her browser", "Comment"]);
+    expect(visas.every((v) => v.textContent!.includes("Always yours to sign"))).toBe(true);
+    expect(document.querySelector('.doc [data-role="visa"][data-kind="gmail"]')).toBeNull();
+    expect(document.querySelector('[data-role="slip"][data-kind="connect"]')).toBeNull();
+  });
+
+  it("keeps a message the person pasted: the body is the text and its channel, and it is listed", async () => {
+    const { store, twinPaste, rerender } = showWeb("setup-web-paste");
+    const panel = document.querySelector<HTMLElement>('[data-role="paste"]')!;
+    expect(panel).toBeTruthy();
+    const before = panel.querySelectorAll('[data-role="pasted"]').length;
+    expect(before).toBe(2);
+    fireEvent.change(within(panel).getByLabelText("Where you sent it"), { target: { value: "comment" } });
+    fireEvent.change(within(panel).getByLabelText("A message you wrote"), { target: { value: "  So warm, the hiss under the keys is perfect.  " } });
+    await act(async () => fireEvent.submit(panel.querySelector("form")!));
+    for (let i = 0; i < 50 && store.getState().setup.work; i++) await act(async () => new Promise((r) => setTimeout(r, 0)));
+    expect(twinPaste).toHaveBeenCalledWith(fx.setup.twinId, { text: "So warm, the hiss under the keys is perfect.", channel: "comment" });
+    rerender();
+    const listed = [...document.querySelectorAll<HTMLElement>('[data-role="paste"] [data-role="pasted"]')];
+    expect(listed).toHaveLength(before + 1);
+    expect(listed.at(-1)!.dataset.channel).toBe("comment");
+    expect(listed.at(-1)!.textContent).toContain("So warm, the hiss under the keys is perfect.");
+    // the slip's own answer learns from what was pasted, not from mail
+    expect(document.querySelector('[data-role="slip-go"]')!.textContent).toBe("Learn from my 3 messages");
+  });
+
+  it("never offers Auto on a web channel: it is always the person's to sign", () => {
+    showWeb("setup-web-clearance");
+    const web = [...document.querySelectorAll<HTMLElement>('[data-role="slip"] [data-role="web-channel"]')];
+    expect(web.map((w) => w.dataset.kind)).toEqual(["mail_web", "bio"]);
+    for (const w of web) {
+      expect(w.textContent).toContain("Always yours to sign");
+      expect(within(w).queryByRole("button", { name: "Auto" })).toBeNull();
+      expect(w.querySelector(".seg")).toBeNull();
+    }
+    // Gmail beside it keeps its levels
+    expect(screen.getAllByRole("button", { name: "Auto" }).length).toBeGreaterThan(0);
+  });
+
+  it("names web channels in plain words on the overview, with what business mail needs", () => {
+    show("overview-web");
+    const marks = [...document.querySelectorAll<HTMLElement>('.vmark[data-role="web-channel"]')];
+    expect(marks.length).toBeGreaterThan(0);
+    const mail = marks.find((m) => m.getAttribute("title")!.startsWith("Mail in her browser"))!;
+    expect(mail.getAttribute("title")).toBe("Mail in her browser: sign in to the mailbox again");
+    expect(mail.querySelector("em")!.textContent).toBe("sign in again");
+    expect(document.body.textContent).toContain("always yours to sign");
+    expect(document.body.textContent).not.toMatch(/Mail in her browser:? Auto|Comment:? Auto/);
   });
 });

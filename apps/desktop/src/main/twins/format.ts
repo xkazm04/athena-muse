@@ -4,7 +4,7 @@
 
 import type { Mission, Place, TwinChannel, TwinDraft, TwinSummary } from "../../lib/contract";
 import type { Rubric } from "../stage/select";
-import { CHANNEL_LABEL, LEVEL, PLACE_LABEL } from "./words";
+import { CHANNEL_LABEL, isWebChannel, LEVEL, PLACE_LABEL, WEB_WORDS } from "./words";
 
 /** The places a twin is made of, in setup order, and what setup needs of each (SCHEMA.md `places`). */
 export const TWIN_RUBRIC: Rubric<Place> = {
@@ -48,14 +48,17 @@ export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s
 
 const levelOf = (c: TwinChannel) => LEVEL[c.autonomy].label;
 
-/** One channel's clearance, in full: "first message Assist, replies Auto at 80". */
+/** One channel's clearance, in full: "first message Assist, replies Auto at 80". A web channel's
+ * message always waits for the person, whatever its level says. */
 export function clearance(c: TwinChannel): string {
+  if (isWebChannel(c.kind)) return `${WEB_WORDS.yoursShort}${c.scope ? `, ${c.scope}` : ""}`;
   if (c.split) return `first message ${LEVEL[c.split.first_message].label}, replies ${LEVEL[c.split.reply].label} at ${c.bar}`;
   return `${levelOf(c)}${c.autonomy === "auto" ? ` at ${c.bar}` : ""}${c.scope ? `, ${c.scope}` : ""}`;
 }
 
 /** One channel's clearance, short: "Assist first, then Auto at 80". */
 export function clearanceShort(c: TwinChannel): string {
+  if (isWebChannel(c.kind)) return WEB_WORDS.yoursShort;
   if (c.split) return `${LEVEL[c.split.first_message].label} first, then ${LEVEL[c.split.reply].label} at ${c.bar}`;
   return `${levelOf(c)}${c.autonomy === "auto" ? ` at ${c.bar}` : ""}`;
 }

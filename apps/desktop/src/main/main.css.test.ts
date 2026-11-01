@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 const here = fileURLToPath(new URL(".", import.meta.url));
 const css = readFileSync(join(here, "main.css"), "utf8");
 /** The main window's other sheets (ADR 0016) hold to the same rules as main.css. */
-const SHEETS = ["shell/depth.css", "shell/surface.css", "shell/idiom.css", "report/report.css"];
+const SHEETS = ["shell/depth.css", "shell/surface.css", "shell/idiom.css", "report/report.css", "report/routines.css"];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

@@ -106,6 +106,42 @@ describe("CardView on a twin's draft", () => {
   });
 });
 
+describe("CardView on a twin's message on a web channel", () => {
+  // the args the daemon files a twin_send_web card with (twins/web.py draft)
+  const web = (channel: string, label: string, to: string): Card => ({
+    ...card,
+    action: "twin_send_web",
+    label,
+    args: { twin_id: "tw_1", channel, creator_key: "https://youtube.example/@paper-orbit-sim", to, text: "Loved Tidepool. Open to a feature?", purpose: "offer" },
+  });
+
+  it("says where it goes on each channel", () => {
+    render(<CardView card={web("mail_web", "Send to Paper Orbit by mail", "paper@orbit.example")} onDecide={vi.fn()} />);
+    expect(document.querySelector('[data-role="web-channel"]')!.textContent).toBe("By mail in her browser");
+    expect(screen.getByText("Send this message")).toBeTruthy();
+    cleanup();
+    render(<CardView card={web("comment", "Comment on Tidepool (sim)", "https://youtube.example/watch?v=sim1")} onDecide={vi.fn()} />);
+    expect(document.querySelector('[data-role="web-channel"]')!.textContent).toBe("As a comment on Tidepool (sim)");
+    cleanup();
+    render(<CardView card={web("bio", "Message Paper Orbit through their bio link", "https://bio.example/paper")} onDecide={vi.fn()} />);
+    expect(document.querySelector('[data-role="web-channel"]')!.textContent).toBe("Through their bio link - you will send it yourself");
+    cleanup();
+    render(<CardView card={card} onDecide={vi.fn()} />);
+    expect(document.querySelector('[data-role="web-channel"]')).toBeNull();
+  });
+
+  it("is edited as a twin's draft is: the person's words go as edited.text", async () => {
+    const c = web("mail_web", "Send to Paper Orbit by mail", "paper@orbit.example");
+    const onDecide = vi.fn().mockResolvedValue({ ...c, state: "approved" });
+    render(<CardView card={c} onDecide={onDecide} />);
+    const field = screen.getByRole("textbox", { name: /The message/ }) as HTMLTextAreaElement;
+    expect(field.value).toBe(c.args.text);
+    fireEvent.change(field, { target: { value: " Loved Tidepool. Could we feature it on Friday? " } });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign your words" })));
+    expect(onDecide).toHaveBeenCalledWith("approve", { text: "Loved Tidepool. Could we feature it on Friday?" });
+  });
+});
+
 describe("ProjectPill", () => {
   it("names the active project and switches through the menu", () => {
     const onSelect = vi.fn();

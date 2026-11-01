@@ -7,10 +7,11 @@ import { useClock } from "../stage/hooks";
 import { clock, day } from "./format";
 import { Icon, Stamp } from "./marks";
 import { PieceLine } from "./Document";
-import { pencilOf } from "./select";
+import { PastePanel } from "./Paste";
+import { mailSamplesOf, pastedOf, pencilOf, webChannelsOf } from "./select";
 import { chosen, dialsShown, INBOX, inboxPage } from "./store";
 import type { ChoiceGroup, SetupState, TwinsAction } from "./types";
-import { CONNECT_WORDS, LEVEL, RULE, SECTION } from "./words";
+import { CHANNEL_ICON, CHANNEL_LABEL, CONNECT_WORDS, LEVEL, RULE, SECTION, WEB_SCOPE, WEB_WORDS } from "./words";
 
 export interface SlipProps {
   s: SetupState;
@@ -347,45 +348,61 @@ function Rows<T extends { id: string }>({
 }
 
 function Samples({ s, dispatch }: SlipProps) {
-  const list = s.twin?.samples ?? [];
+  // The sent mail a Gmail voice is learned from; a web channel's voice is the person's pasted messages.
+  const list = mailSamplesOf(s.twin);
+  const web = webChannelsOf(s.twin);
+  const pasted = pastedOf(s.twin).length;
   const on = (x: (typeof list)[number]) => chosen(s.choices, "samples", x, list);
   const n = list.filter(on).length;
+  const mail = list.length > 0 || !web.length;
   return (
     <Shell
       kind="samples"
       lands="voice"
-      title={`${list.length === 6 ? "Six" : list.length} mails you sent`}
-      sub="Its voice comes only from mail you wrote yourself. Dashed ticks are her pencil."
+      title={mail ? `${list.length === 6 ? "Six" : list.length} mails you sent` : WEB_WORDS.pasteTitle}
+      sub={mail ? "Its voice comes only from mail you wrote yourself. Dashed ticks are her pencil." : "Its voice on each channel comes only from messages you wrote yourself. Paste one, say where you sent it, and keep it."}
       foot={
-        <>
-          <span className="slip__count">{n} kept</span>
-          <button type="button" className="btn btn-primary" disabled={!n || !!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
-            Learn from these {n}
-          </button>
-        </>
+        mail ? (
+          <>
+            <span className="slip__count">{n} kept</span>
+            <button type="button" className="btn btn-primary" disabled={!n || !!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
+              Learn from these {n}
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="slip__count">{WEB_WORDS.pasteKept(pasted)}</span>
+            <button type="button" className="btn btn-primary" disabled={!pasted || !!s.work} data-role="slip-go" onClick={() => dispatch({ type: "panel_go" })}>
+              Learn from my {pasted} message{pasted === 1 ? "" : "s"}
+            </button>
+          </>
+        )
       }
     >
-      <div className="rows">
-        <Rows
-          items={list}
-          group="samples"
-          s={s}
-          dispatch={dispatch}
-          on={on}
-          render={(x) => (
-            <>
-              <span className="row__t">
-                <b>{x.to}</b>
-                <span>{x.subject}</span>
-              </span>
-              <span className="row__d">
-                {day(x.date)} · {x.words} words
-              </span>
-              {x.why_not ? <span className="row__why">Not suggested: {x.why_not}</span> : <span className="row__x">{x.excerpt}</span>}
-            </>
-          )}
-        />
-      </div>
+      {list.length > 0 && (
+        <div className="rows">
+          <Rows
+            items={list}
+            group="samples"
+            s={s}
+            dispatch={dispatch}
+            on={on}
+            render={(x) => (
+              <>
+                <span className="row__t">
+                  <b>{x.to}</b>
+                  <span>{x.subject}</span>
+                </span>
+                <span className="row__d">
+                  {day(x.date)} · {x.words} words
+                </span>
+                {x.why_not ? <span className="row__why">Not suggested: {x.why_not}</span> : <span className="row__x">{x.excerpt}</span>}
+              </>
+            )}
+          />
+        </div>
+      )}
+      {web.length > 0 && <PastePanel twin={s.twin} channels={web} busy={!!s.work} headed={mail} onPaste={(text, channel) => dispatch({ type: "paste", text, channel })} />}
     </Shell>
   );
 }
@@ -580,6 +597,8 @@ function AutonomySlip({ s, dispatch }: SlipProps) {
   const anyAuto = a.first === "auto" || (a.split && a.reply === "auto");
   const gmail = s.twin?.channels.some((c) => c.kind === "gmail") ?? true;
   const notion = s.twin?.channels.some((c) => c.kind === "notion") ?? true;
+  // A web channel has no level to set: every message on it waits for the person's signature.
+  const web = webChannelsOf(s.twin);
   return (
     <Shell
       kind="autonomy"
@@ -640,6 +659,16 @@ function AutonomySlip({ s, dispatch }: SlipProps) {
           <p className="clr__says">Nothing leaves Notion; it sends alone at 60 or more.</p>
         </div>
       )}
+      {web.map((k) => (
+        <div key={k} className="clr" data-web="true" data-role="web-channel" data-kind={k}>
+          <div className="clr__h">
+            <Icon name={CHANNEL_ICON[k]} />
+            <b>{CHANNEL_LABEL[k]}</b>
+            <span className="clr__yours">{WEB_WORDS.yours}</span>
+          </div>
+          <p className="clr__says">{WEB_SCOPE[k as keyof typeof WEB_SCOPE]}. Her browser sends nothing until you sign it.</p>
+        </div>
+      ))}
       <p className="rule">{RULE}</p>
     </Shell>
   );

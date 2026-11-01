@@ -46,6 +46,7 @@
 .card-action { color: var(--muted-foreground); font-size: var(--fs-xs); }
 .card-where { margin-left: auto; color: var(--muted-foreground); font-size: var(--fs-xs); }
 .card-label { margin: 0; font-size: var(--fs-md); line-height: 1.45; overflow-wrap: anywhere; }
+.card-channel { margin: 0; color: var(--muted-foreground); font-size: var(--fs-sm); }
 .card-actions { display: flex; gap: var(--sp-2); }
 .card-problem { margin: 0; color: var(--status-error); font-size: var(--fs-sm); }
 

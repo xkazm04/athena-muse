@@ -511,6 +511,17 @@
   margin-left: auto;
   padding: 0 6px;
 }
+/* a web channel's visa: no account, her browser, always the person's to sign */
+[data-twins-view="passport"] .visa[data-web="true"] {
+  border-style: solid;
+  border-color: var(--border-default);
+  border-left: 3px solid var(--role-human);
+  background: var(--raised);
+}
+[data-twins-view="passport"] .visa__yours {
+  color: var(--role-human);
+  font-weight: 600;
+}
 /* voice */
 [data-twins-view="passport"] .specimen {
   display: flex;

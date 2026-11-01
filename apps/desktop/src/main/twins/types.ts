@@ -4,6 +4,7 @@
 
 import type {
   Autonomy,
+  ChannelKind,
   ConnectorKind,
   MissionState,
   MissionTurn,
@@ -159,6 +160,8 @@ export type TwinsAction =
   | { type: "gmail"; client_id?: string; client_secret?: string }
   | { type: "gmail_cancel" }
   | { type: "notion"; key: string }
+  /** A message the person wrote, kept for a web channel's voice. */
+  | { type: "paste"; text: string; channel: ChannelKind }
   | { type: "where" }
   | { type: "enough" }
   | { type: "rehearse" }

@@ -572,6 +572,68 @@ ADR: *Routines are the daemon's only background host.* Gaps: G5, G6, G9, G11, G1
 
 Phase 2's live check: on the built shell, the watch routine finds a new upload on the fixture's creator page during a live turn and runs only once the turn ends. The inbox routine files exactly one draft card per new reply.
 
+#### Phase 2, as built (2026-11-01, [ADR 0019](../../adr/0019-routines-are-the-daemons-only-background-host.md))
+
+Owner's design answers (2026-11-01):
+- Code reads a page and one tool-less model call extracts what it found.
+- One card per message, with a recipe that finds each control again when it is signed.
+- Twin setup screens in this phase.
+- The routines strip on the front page.
+- An outreach routine.
+
+- **The host.**
+  - `routines/host.py` is the daemon's only background host. It ticks every 30 s while the app runs.
+  - One admission decision records `paused`, `running`, `live_turn` (chat turns only: `busy.live`) and `no_engine` as named skips, each written once.
+  - A routine is due a cadence after its last completed run. Catch-up runs once and never back-fills.
+  - The ceiling is $0.25 per run (est.) and is checked before every model call. A run that reaches it ends `partial` and says so.
+  - The Twins poller is folded in: each live twin has a `twin:<id>` routine.
+  - A routine keeps its finds at once (creator, track, thread, stat). Anything else is a card.
+- **The routines.**
+  - `watch`: new uploads become tracks.
+  - `inbox`: replies matched to a creator's `emails` become threads, and the twin drafts one answer when the last message is theirs.
+  - `stats`: the analytics figures become stats, measured at the read time.
+  - `outreach`: one drafted offer per creator of a kept track with no conversation, by mail, else bio link, else comment; at most five per run.
+  - Each routine reads a page in a hidden tab of her browser, with its links (`page_links`). The page is fenced as data.
+- **The twin's web channels.**
+  - `mail_web`, `bio` and `comment` need no account. The voice comes from messages the person pastes, per channel.
+  - Every web message waits for a signature (`web_channel`). A twin on web channels only is never sent to connect Gmail or Notion.
+  - On sign:
+    - A reply or new mail is sent in her browser, finding each control again by its label.
+    - A comment is posted under the track.
+    - A bio link opens in front of the person, who sends it.
+  - A missing control stops, names the step, and leaves the card waiting.
+  - Only an edited, signed message becomes an example, for its channel.
+  - Until the person writes their offer, a placeholder offer fact stands in, and drafts promise nothing concrete.
+- **Security.** A tool round now runs only what it was offered. Scouting found a model could name any catalog action and have it run.
+- **The screens.**
+  - Under the report, "What Athena does on her own" lists each routine with:
+    - its last run in plain words, and the daemon's note;
+    - the next run;
+    - spend (est., only when priced);
+    - Pause / Resume, Run now, and a fold with the last runs;
+    - the "Mailbox address" or "Analytics page" field when one is missing.
+  - A signed-out run points to the project's "Sign in again".
+  - A twin's web channels show as "Always yours to sign", with no Auto. "Your own messages" takes a pasted message and its channel.
+  - `twin_send_web` cards show their channel and editable text.
+- **Verified.**
+  - Gates: 989 Python tests and 602 desktop tests.
+  - The live seam on the built shell (`uv run python scripts/routines_seam.py --engine claude_code`, simulated pages, 2026-11-01, n=1) passed 9 of 9 for $0.09 (est., from the ledger):
+    - watch kept all 4 uploads;
+    - asked during a live chat turn, it skipped `live_turn`, then kept exactly the new upload;
+    - inbox kept both creators' threads and drafted one reply each;
+    - a second inbox run filed nothing, and a new reply filed exactly one more card;
+    - stats kept 3 figures measured now;
+    - a signed reply went out once through her browser, as the simulated mailbox's journal showed.
+  - **Before the `page_links` fix the same seam passed 3 of 9.** Page text carries no link addresses, so watch kept no upload and the reply recipe opened a guessed address. No unit test could see it, because the stand-in shell's text included addresses.
+- **Known gaps:**
+  - A run does not count the pages it read, so a partial watch says "4 creators to read, found 0" rather than "read 1 of 4".
+  - A pasted sample carries its channel only in its words.
+  - The daemon's development CORS origin is fixed to port 1420.
+  - The mailbox site is recognised by its address or name.
+  - The wheel's line is cut at 200 characters.
+  - A draft for a creator who asks a concrete question (their plan) stays vague until the owner writes the offer.
+  - Proton's and Studio's real pages are the end-to-end run's first unknowns.
+
 ### Phase 3 - Gravitone and the release
 
 ADR: *Peer apps over MCP, with a policy as the gate.* Plus gravitone-gcloud's own change. Gaps: G16, G17, G18, G21.

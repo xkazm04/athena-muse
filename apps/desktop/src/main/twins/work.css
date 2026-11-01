@@ -442,6 +442,92 @@
   color: var(--muted-foreground);
   font-size: var(--fs-xs);
 }
+/* a web channel: no level to pick, every message is the person's to sign */
+[data-twins-view="passport"] .clr[data-web="true"] {
+  border-style: solid;
+  border-color: var(--border-default);
+  border-left: 3px solid var(--role-human);
+}
+[data-twins-view="passport"] .clr__yours {
+  margin-left: auto;
+  padding: 1px var(--sp-2);
+  border: 1px solid color-mix(in srgb, var(--role-human) 55%, transparent);
+  border-radius: var(--r-pill);
+  color: var(--role-human);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+/* your own messages, pasted for a web channel's voice */
+[data-twins-view="passport"] .paste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-twins-view="passport"] .paste__f {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+[data-twins-view="passport"] .paste__f label {
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+}
+[data-twins-view="passport"] .paste__f .field {
+  font-size: var(--fs-sm);
+}
+[data-twins-view="passport"] .paste__f textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+[data-twins-view="passport"] .paste__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+[data-twins-view="passport"] .paste__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-twins-view="passport"] .paste__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px var(--sp-2);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--role-human);
+  border-radius: var(--r-md);
+  background: var(--raised);
+}
+[data-twins-view="passport"] .paste__k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+[data-twins-view="passport"] .paste__k .ic {
+  width: 13px;
+  height: 13px;
+}
+[data-twins-view="passport"] .paste__k span {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+[data-twins-view="passport"] .paste__x {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 [data-twins-view="passport"] .clr__bar {
   display: flex;
   align-items: center;

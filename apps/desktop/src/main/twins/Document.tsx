@@ -4,12 +4,12 @@
 // rehearsal it folds to its trip page; going live presses the issue seal into it.
 
 import type { ReactNode } from "react";
-import type { MissionTurn, Piece, Place, StyleDial, TwinDetail } from "../../lib/contract";
+import type { ChannelKind, MissionTurn, Piece, Place, StyleDial, TwinDetail } from "../../lib/contract";
 import { day, firstSentence } from "./format";
 import { Icon, Portrait, Stamp } from "./marks";
-import { piecesAt, type RehearsalStep } from "./select";
+import { isPasted, pastedChannel, piecesAt, webChannelsOf, type RehearsalStep } from "./select";
 import type { ConnectView, SetupState } from "./types";
-import { CHANNEL_LABEL, PLACE_LABEL, SECTION, SECTION_EMPTY, TWINS_WORDS as w } from "./words";
+import { CHANNEL_ICON, CHANNEL_LABEL, PLACE_LABEL, SECTION, SECTION_EMPTY, TWINS_WORDS as w, WEB_WORDS } from "./words";
 
 export interface DocumentProps {
   s: SetupState;
@@ -255,21 +255,28 @@ function Voice({ s, onInk }: { s: SetupState; onInk: (id: string) => void }) {
   const sample = t?.samples.find((x) => x.picked) ?? t?.samples[0];
   const learned = (t?.dials.length ?? 0) > 0;
   const voicePencil = traits.some((p) => !p.confirmed);
+  // on web channels only, its voice is the person's pasted messages, not sent mail
+  const webOnly = webChannelsOf(t).length > 0 && !t?.channels.some((c) => c.kind === "gmail");
   if (!traits.length || !sample) {
     return (
       <>
         <blockquote className="specimen specimen--blank">
-          <span className="specimen__t">Specimen: a few lines of your own sent mail go here</span>
+          <span className="specimen__t">
+            Specimen: a few lines of {webOnly ? "a message you wrote yourself" : "your own sent mail"} go here
+          </span>
         </blockquote>
         <Particulars dials={learned ? t!.dials : BLANK_DIALS} blank={!learned} pencil />
       </>
     );
   }
+  // a pasted message is the person's own words for a web channel, not mail they sent
+  const pastedFor = isPasted(sample) ? pastedChannel(sample) : undefined;
+  const from = isPasted(sample) ? `a message of yours${pastedFor ? ` for ${CHANNEL_LABEL[pastedFor]}` : ""}` : `your mail to ${sample.to}`;
   return (
     <>
-      <blockquote className="specimen" title={`Specimen of your writing, from your mail to ${sample.to}, ${day(sample.date)}`}>
+      <blockquote className="specimen" title={`Specimen of your writing, ${from}, ${day(sample.date)}`}>
         <span className="specimen__t">
-          <span className="specimen__k">Specimen, your mail to {sample.to}:</span> {firstSentence(sample.excerpt)}
+          <span className="specimen__k">Specimen, {from}:</span> {firstSentence(sample.excerpt)}
         </span>
       </blockquote>
       <ul className="pcs pcs--lines pcs--voice">
@@ -377,6 +384,10 @@ export function TwinDocument({ s, lit, onInk, onVoice, issued, soundsLike }: Doc
   const has = (p: Place) => piecesAt(t, p).length > 0;
   const visasShown = !blank && (piecesAt(t, "channels").length > 0 || asked("channels"));
   const notionShown = !!t?.channels.some((c) => c.kind === "notion") || piecesAt(t, "channels").some((p) => p.label.toLowerCase() === "notion");
+  // A web channel needs no account (business Phase 2): a twin on web channels only has no Gmail visa
+  // to ask for, and shows one visa per channel it speaks on.
+  const web = webChannelsOf(t);
+  const gmailShown = !web.length || !!t?.channels.some((c) => c.kind === "gmail") || piecesAt(t, "channels").some((p) => p.label.toLowerCase() === "gmail") || (s.ask?.panel === "connect" && s.ask.channel === "gmail");
   return (
     <article className={`doc ${s.sealed ? "doc--sealed" : ""} ${blank ? "doc--blank" : ""}`.replace(/\s+/g, " ").trim()} aria-label={`The twin's document: ${name?.label ?? "unnamed"}`}>
       <div className="spread">
@@ -386,8 +397,11 @@ export function TwinDocument({ s, lit, onInk, onVoice, issued, soundsLike }: Doc
           </Sec>
           <Sec place="channels" s={s} lit={lit} printed={!visasShown}>
             <div className="visas">
-              {visasShown ? <Visa s={s} kind="gmail" /> : <EmptyVisa kind="gmail" first />}
-              {visasShown && notionShown ? <Visa s={s} kind="notion" /> : <EmptyVisa kind="notion" first={!visasShown} />}
+              {gmailShown && (visasShown ? <Visa s={s} kind="gmail" /> : <EmptyVisa kind="gmail" first />)}
+              {(!web.length || notionShown) && (visasShown && notionShown ? <Visa s={s} kind="notion" /> : <EmptyVisa kind="notion" first={!visasShown} />)}
+              {web.map((k) => (
+                <WebVisa key={k} s={s} kind={k} />
+              ))}
             </div>
           </Sec>
           <Sec
@@ -429,6 +443,23 @@ export function TwinDocument({ s, lit, onInk, onVoice, issued, soundsLike }: Doc
         {s.sealed && <IssuedSeal letter={name?.label[0] ?? "T"} issued={issued} />}
       </div>
     </article>
+  );
+}
+
+/** A web channel's visa: no account to connect; it is open once its piece is inked, and every
+ * message on it is the person's to sign. Business mail says when its mailbox needs a sign-in. */
+function WebVisa({ s, kind }: { s: SetupState; kind: ChannelKind }) {
+  const ch = s.twin?.channels.find((c) => c.kind === kind);
+  const open = !!ch;
+  const status = !ch ? null : ch.status === "needs_sign_in" ? WEB_WORDS.signInMailbox : ch.status === "disconnected" ? WEB_WORDS.noMailbox : null;
+  return (
+    <div className="visa" data-kind={kind} data-web="true" data-state={open ? "connected" : "empty"} data-role="web-channel" title={ch?.scope ?? WEB_WORDS.noAccount}>
+      <div className="visa__k">
+        <Icon name={CHANNEL_ICON[kind]} />
+        <b>{CHANNEL_LABEL[kind]}</b>
+      </div>
+      <span className={status ? "visa__w" : "visa__w visa__yours"}>{status ?? (open ? WEB_WORDS.yours : WEB_WORDS.noAccount)}</span>
+    </div>
   );
 }
 

@@ -3,18 +3,22 @@
 // the person's mark on it. Pure; the store, the example and the views share it.
 
 import type {
+  ChannelKind,
   CoverageValue,
   MissionTurn,
   Piece,
   PieceOp,
   Place,
   PlaceCoverage,
+  Sample,
   StyleDial,
   TwinDetail,
+  TwinSummary,
 } from "../../lib/contract";
 import { meets } from "../stage/select";
 import { TWIN_RUBRIC } from "./format";
 import type { RehearsalState, SetupState } from "./types";
+import { isWebChannel, WEB_CHANNELS } from "./words";
 
 /** Applies streamed ops as the daemon applied them: add and change carry the whole piece after it,
  * remove takes it away, dial carries the whole dial after it. Order is kept; nothing moves. */
@@ -140,3 +144,28 @@ export function currentTurn(s: SetupState): MissionTurn | undefined {
   if (step === "sent") return [...turns].reverse().find((t) => t.side === "twin");
   return undefined;
 }
+
+// --- web channels (business Phase 2) ---------------------------------------------------------------
+
+/** The daemon's words for a web channel on its pieces and pasted messages ("Business mail"). */
+const WEB_PIECE: Record<string, ChannelKind> = { "business mail": "mail_web", "bio links": "bio", comments: "comment" };
+
+/** The web channels a twin speaks on: its open channels, else the channel pieces that name one. */
+export function webChannelsOf(t: TwinDetail | TwinSummary | null | undefined): ChannelKind[] {
+  if (!t) return [];
+  const open = t.channels.map((c) => c.kind).filter(isWebChannel);
+  const named = "pieces" in t ? t.pieces.filter((p) => p.place === "channels").map((p) => WEB_PIECE[p.label.toLowerCase()]) : [];
+  return WEB_CHANNELS.filter((k) => open.includes(k) || named.includes(k));
+}
+
+/** A message the person pasted for a web channel (the daemon keeps it among the samples). */
+export const isPasted = (x: Sample): boolean => x.id.startsWith("ps_") || /^Pasted for /i.test(x.to);
+
+/** Which web channel a pasted message is for, from the daemon's "Pasted for business mail". */
+export function pastedChannel(x: Sample): ChannelKind | undefined {
+  return WEB_PIECE[x.to.replace(/^Pasted for\s+/i, "").toLowerCase()];
+}
+
+/** The sent mail its Gmail voice is learned from: every sample but the pasted ones. */
+export const mailSamplesOf = (t: TwinDetail | null | undefined): Sample[] => (t?.samples ?? []).filter((x) => !isPasted(x));
+export const pastedOf = (t: TwinDetail | null | undefined): Sample[] => (t?.samples ?? []).filter(isPasted);

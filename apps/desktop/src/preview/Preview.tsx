@@ -4,7 +4,9 @@ import { Catalogue } from "../main/chores/Chores";
 import { FIXTURE_CHORES, fixtureDetail } from "../main/chores/fixtures";
 import type { Load } from "../main/store";
 import { ReportSection } from "./ReportSection";
+import { RoutinesSection } from "./RoutinesSection";
 import { StageSection } from "./StageSection";
+import { TwinsWebSection } from "./TwinsWebSection";
 import { Backdrop, Seal, SPEED_REST, SPEED_WORKING, applyTheme, type SealState, type ThemeChoice } from "../theme";
 
 const STATES: SealState[] = ["rest", "working", "waiting", "signed"];
@@ -138,6 +140,10 @@ export function Preview() {
       <StageSection />
 
       <ReportSection />
+
+      <RoutinesSection />
+
+      <TwinsWebSection />
 
       <section className="pv-section">
         <h2>Primitives</h2>

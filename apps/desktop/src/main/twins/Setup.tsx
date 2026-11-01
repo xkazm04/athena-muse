@@ -11,7 +11,7 @@ import { PracticePage } from "./Practice";
 import { currentTurn, litPlace, piecesAt, rehearsalStep, turnsOf } from "./select";
 import { Slip } from "./Slip";
 import type { SetupState, TwinsAction } from "./types";
-import { LEVEL } from "./words";
+import { CHANNEL_LABEL, isWebChannel, LEVEL, WEB_WORDS } from "./words";
 
 /** The practice page's own words, when the example names them. */
 export interface PracticeWords {
@@ -34,7 +34,11 @@ export function liveWords(t: TwinDetail | null) {
   const name = t?.name ?? "Your twin";
   const stays: string[] = [];
   for (const c of t?.channels ?? []) {
-    const label = c.kind === "gmail" ? "Gmail" : c.scope ? "Notion practice page" : "Notion";
+    if (isWebChannel(c.kind)) {
+      stays.push(`${CHANNEL_LABEL[c.kind]}: ${WEB_WORDS.yoursShort}`);
+      continue;
+    }
+    const label = c.kind === "notion" && c.scope ? "Notion practice page" : CHANNEL_LABEL[c.kind];
     const lvl = (a: "review" | "assist" | "auto") => `${LEVEL[a].label}${a === "auto" && c.kind === "gmail" ? ` at ${c.bar}` : ""}`;
     if (c.split) {
       stays.push(`${label} first messages: ${lvl(c.split.first_message)}`, `${label} replies: ${lvl(c.split.reply)}`);

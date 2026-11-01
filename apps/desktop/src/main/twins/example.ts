@@ -237,6 +237,19 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
       return clone(found);
     },
 
+    twinPaste: async (_id, body) => {
+      // kept as the daemon keeps it: picked, among the samples, named for its channel
+      const text = body.text.trim();
+      const label = { mail_web: "business mail", bio: "bio links", comment: "comments" }[body.channel as "mail_web"];
+      if (!text || !label) throw new DaemonError(400, "bad_request", "paste a message for business mail, a bio link or a comment");
+      const first = text.split("\n").find((l) => l.trim()) ?? "";
+      twin.samples = [
+        ...twin.samples,
+        { id: `ps_${twin.samples.length + 1}`, to: `Pasted for ${label}`, subject: first.slice(0, 80), date: fx.now.slice(0, 10), words: text.split(/\s+/).length, excerpt: text.slice(0, 240), suggest: true, picked: true },
+      ];
+      return withInks(twin);
+    },
+
     twinThreads: async (id: string) => {
       const found = fx.threads[id];
       if (!found) return refuse("conversations for that twin");
@@ -281,7 +294,7 @@ export function createExampleIo(fx: TwinFixture = TWIN_FIXTURE, { pace = 500 }: 
       return {
         id: cardId,
         space_id: "",
-        action: d.channel === "gmail" ? "twin_send" : "twin_note",
+        action: d.channel === "gmail" ? "twin_send" : d.channel === "notion" ? "twin_note" : "twin_send_web",
         label: d.subject,
         args: edited ? { text: edited.text } : { text: d.text },
         state: verdict === "approve" ? "approved" : "declined",
