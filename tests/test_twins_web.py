@@ -88,6 +88,17 @@ def test_the_gmail_voice_slip_is_not_forced_on_a_twin_with_only_web_channels(dae
     assert setup.panel(daemon, mixed, "voice", nodes) == ("connect", "gmail")
 
 
+def test_a_twin_with_only_web_channels_is_not_sent_to_connect_notion(daemon: Daemon) -> None:
+    """Its knowledge is the business and the offer, said in the conversation: no Notion slip."""
+    _, web_only = web_twin(daemon, ("mail_web", "comment"), state="setting_up")
+    nodes = daemon.twins.sketch(web_only)["nodes"]
+    assert setup.panel(daemon, web_only, "knowledge", nodes) is None
+
+    _, mixed = web_twin(daemon, ("gmail", "mail_web"), state="setting_up")
+    nodes = daemon.twins.sketch(mixed)["nodes"]
+    assert setup.panel(daemon, mixed, "knowledge", nodes) == ("connect", "notion")
+
+
 def test_the_autonomy_slip_refuses_auto_on_a_web_channel(daemon: Daemon, client: TestClient) -> None:
     _, twin_id = web_twin(daemon, state="setting_up")
     for body in (

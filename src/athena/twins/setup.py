@@ -186,6 +186,8 @@ def panel(
         picked = any(r.get("picked") for r in daemon.twins.rows("samples", twin_id))
         return ("style", None) if picked else ("samples", None)
     if place == "knowledge":
+        if web_only(nodes):  # no Notion: what it knows is said in the conversation (the business, the offer)
+            return None
         return ("pages", None) if connected(daemon, "notion") else ("connect", "notion")
     slips: dict[str, SetupPanel] = {"chores": "chores", "autonomy": "autonomy", "memory": "memory"}
     return (slips[place], None) if place in slips else None

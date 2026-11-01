@@ -40,7 +40,8 @@ TWIN_RUBRIC = Rubric(
         "channels": "where it speaks: Gmail, Notion, or through her browser: business mail, bio links, "
         "comments",
         "voice": "how it sounds, learned only from mail the person wrote",
-        "knowledge": "what it knows: the Notion pages it may answer from",
+        "knowledge": "what it knows: the Notion pages it may answer from, or for a twin on web channels "
+        "only, what the business is and offers, said in the conversation",
         "chores": "what it does there: the ready-made chores it may run",
         "never": "what it must never do",
         "autonomy": "what it may send alone, per channel",
