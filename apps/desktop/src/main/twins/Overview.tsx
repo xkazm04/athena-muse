@@ -9,7 +9,7 @@ import type { Route } from "../route";
 import { barOf, beatAt, clearance, clearanceShort, handedBack, lastOf, money, num, rel, waitsOn } from "./format";
 import { Icon, Meter, Portrait, Stamp } from "./marks";
 import type { TwinsState } from "./types";
-import { CHANNEL_LABEL, MISSION_BADGE, STATE_BADGE, WAIT, TWINS_WORDS as w } from "./words";
+import { CHANNEL_ICON, CHANNEL_LABEL, MISSION_BADGE, STATE_BADGE, WAIT, TWINS_WORDS as w } from "./words";
 
 export interface OverviewProps {
   state: TwinsState;
@@ -241,7 +241,7 @@ function VisaMark({ c }: { c: TwinSummary["channels"][number] }) {
   const ok = c.status === "connected";
   return (
     <span className="vmark" data-ok={String(ok)} title={`${CHANNEL_LABEL[c.kind]}: ${ok ? c.account : "sign in again"}`}>
-      <Icon name={c.kind} />
+      <Icon name={CHANNEL_ICON[c.kind]} />
       {CHANNEL_LABEL[c.kind]}
       {!ok && <em>sign in again</em>}
     </span>
@@ -745,7 +745,7 @@ function TwinLedger({
         t.channels.length ? (
           t.channels.map((c) => (
             <span key={c.kind} className="lg__c" data-ok={String(c.status === "connected")} title={c.account}>
-              <Icon name={c.kind} />
+              <Icon name={CHANNEL_ICON[c.kind]} />
               {CHANNEL_LABEL[c.kind]}
               {c.status === "connected" ? <i data-health={c.health} aria-label={c.health} /> : <em>sign in</em>}
             </span>

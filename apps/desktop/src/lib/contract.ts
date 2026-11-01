@@ -22,6 +22,10 @@ export const REPORT_TITLE_MAX = 80;
 export const CALLOUT_MAX = 280;
 export const RECOMPOSE_MIN_S = 3600;
 export const VOCAB = 1;
+export const CADENCE_MIN_S = 900;
+export const ROUTINE_CEILING_CENTS = 25;
+export const RUNS_KEPT = 50;
+export const PASTE_MAX = 4000;
 export const SPACES_MAX = 100;
 export const HUE_MAX = 359;
 export const TEXT_MAX = 8000;
@@ -34,7 +38,7 @@ export type Role = "person" | "athena";
 export type ActionClass = "auto" | "gated";
 export type CardState = "waiting" | "approved" | "declined";
 export type Verdict = "approve" | "decline";
-export type Surface = "turn" | "probe" | "design" | "rehearsal" | "twin" | "report";
+export type Surface = "turn" | "probe" | "design" | "rehearsal" | "twin" | "report" | "routine";
 export type ActionName =
   | "recall"
   | "remember"
@@ -64,7 +68,8 @@ export type ActionName =
   | "setup_read"
   | "setup_act"
   | "record_list"
-  | "record_put";
+  | "record_put"
+  | "twin_send_web";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -75,7 +80,8 @@ export type AppEventType =
   | "settings"
   | "wheel"
   | "site"
-  | "report";
+  | "report"
+  | "routine";
 /** Her browser's answer when a hand did not run (ADR 0013). */
 export type HandReason = "no_browser" | "no_tab" | "moved" | "refused" | "timeout" | "failed" | "unknown_ref";
 export type WheelState = "back" | "closed" | "timeout";
@@ -98,6 +104,20 @@ export type ThreadChannel = "mail_web" | "bio" | "comment";
 export type RenderState = "staged" | "running" | "rendered" | "refused" | "failed";
 export type BlockKind = "stat" | "trend" | "queue" | "pipeline" | "list" | "thread" | "cards" | "callout";
 export type BindingAgg = "count" | "sum" | "last" | "series";
+
+// Routines (business Phase 2): the daemon's only background host.
+export type RoutineKind = "watch" | "inbox" | "stats" | "outreach" | "twin";
+export type RoutineState = "on" | "paused";
+export type RunOutcome = "ran" | "partial" | "skipped" | "failed";
+export type SkipReason =
+  | "running"
+  | "live_turn"
+  | "paused"
+  | "no_browser"
+  | "signed_out"
+  | "no_engine"
+  | "no_twin"
+  | "nothing_to_do";
 
 // Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 /** `auto` follows the system. */
@@ -145,6 +165,8 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   // A project's records (business Phase 1): a put of a find runs at once, any other kind files a card.
   record_list: "auto",
   record_put: "auto",
+  // A twin's message on a web channel (business Phase 2): always a card, never sent alone.
+  twin_send_web: "gated",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -182,7 +204,10 @@ export const NEED_MAX = 2000;
 // A name the wire already uses (`Mark`, `Decision` on a card) is prefixed for twins.
 
 export type Place = "who" | "channels" | "voice" | "knowledge" | "chores" | "never" | "autonomy" | "memory" | "mission";
-export type ChannelKind = "gmail" | "notion";
+/** A connected account (ADR 0008). */
+export type ConnectorKind = "gmail" | "notion";
+/** Where a twin speaks: a connected account, or a web channel through her browser, never sent alone. */
+export type ChannelKind = "gmail" | "notion" | "mail_web" | "bio" | "comment";
 export type Autonomy = "review" | "assist" | "auto";
 export type TwinState = "setting_up" | "live" | "paused";
 export type ChannelStatus = "connected" | "needs_sign_in" | "disconnected";
@@ -190,7 +215,7 @@ export type ChannelStatus = "connected" | "needs_sign_in" | "disconnected";
 export type ChannelHealth = "active" | "quiet" | "stale";
 export type MissionState = "open" | "resolved" | "handed_back";
 export type SendDecision = "sent_alone" | "waits";
-export type WaitReason = "review" | "assist" | "first_message" | "below_bar" | "risk" | "paused";
+export type WaitReason = "review" | "assist" | "first_message" | "below_bar" | "risk" | "paused" | "web_channel";
 export type TwinMark = "me" | "edited" | "not_me";
 export type ChoreKind = "outcome" | "inbox" | "test" | "channel";
 export type DialSource = "learned" | "preset" | "you";
@@ -690,6 +715,7 @@ export interface AppEvent {
   turn_id?: string;
   look?: Look;
   wheel?: WheelNote;
+  routine?: Routine;
   site?: Site;
 }
 
@@ -994,7 +1020,7 @@ export interface TwinAsk {
   /** The working slip this question needs. */
   panel?: SetupPanel;
   /** With panel "connect". */
-  channel?: ChannelKind;
+  channel?: ConnectorKind;
 }
 
 /**
@@ -1072,7 +1098,7 @@ export interface GoalList {
 
 /** A connected account (ADR 0008). The credential itself never crosses the wire. */
 export interface Connection {
-  kind: ChannelKind;
+  kind: ConnectorKind;
   status: ChannelStatus;
   /** Whether it may send or write; off until a twin needs it. */
   writes: boolean;
@@ -1282,6 +1308,8 @@ export interface CreatorBody {
   channel_url: string;
   followed: boolean;
   bio_links?: string[];
+  /** Business addresses, for matching the inbox. */
+  emails?: string[];
   note?: string;
 }
 export interface TrackBody {
@@ -1425,6 +1453,57 @@ export interface PinsBody {
   pinned: string[];
 }
 
+// --- routines (business Phase 2) -----------------------------------------------------------------
+
+export interface RoutineRun {
+  /** `run_...` */
+  id: string;
+  routine_id: string;
+  started: string;
+  outcome: RunOutcome;
+  found: number;
+  kept: number;
+  cards: number;
+  ended?: string;
+  reason?: SkipReason;
+  note?: string;
+  /** How many were there to read, when known. */
+  of?: number;
+  /** est.; omitted when the engine gives no price. */
+  spent_usd?: number;
+}
+export interface Routine {
+  /** `rtn_...`; `twin:<twin_id>` routines are a twin's missions. */
+  id: string;
+  space_id: string;
+  kind: RoutineKind;
+  name: string;
+  cadence_s: number;
+  ceiling_usd: number;
+  state: RoutineState;
+  last_run?: RoutineRun;
+  /** Omitted while paused. */
+  next_at?: string;
+  /** The page it reads (an inbox, an analytics page); watch reads each creator's. */
+  url?: string;
+}
+export interface RoutineList {
+  routines: Routine[];
+}
+export interface RunList {
+  runs: RoutineRun[];
+}
+export interface RoutineBody {
+  state?: RoutineState;
+  cadence_s?: number;
+  url?: string;
+}
+/** A message the person wrote, pasted for the voice. */
+export interface PasteBody {
+  text: string;
+  channel: ChannelKind;
+}
+
 export const ROUTES = {
   health: "/health",
   engine: "/engine",
@@ -1498,4 +1577,9 @@ export const ROUTES = {
   space_report: "/spaces/{id}/report",
   space_report_compose: "/spaces/{id}/report/compose",
   space_report_pins: "/spaces/{id}/report/pins",
+  space_routines: "/spaces/{id}/routines",
+  routine: "/routines/{id}",
+  routine_run: "/routines/{id}/run",
+  routine_runs: "/routines/{id}/runs",
+  twin_paste: "/twins/{id}/paste",
 } as const;

@@ -45,6 +45,7 @@ const ACTION: Record<Card["action"], string> = {
   // A project's records (business Phase 1): a find is kept at once, anything else waits here.
   record_list: "Look through what the project keeps",
   record_put: "Keep this in the project",
+  twin_send_web: "Send this message",
 };
 
 /** A twin's draft (ADR 0009) carries its text, which the person may rewrite before signing. */

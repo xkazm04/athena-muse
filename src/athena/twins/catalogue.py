@@ -13,12 +13,12 @@ from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
-from athena.contracts import ChannelKind, ChoreKind, ChorePreset
+from athena.contracts import ChoreKind, ChorePreset, ConnectorKind
 
 PRESETS_DIR = Path(__file__).resolve().parent / "presets"
 INBOX = "task-inbox"  # the preset that reads a Notion page for new missions (`twins.inbox`)
 _KINDS = frozenset(typing.get_args(ChoreKind))
-_TOOLS = frozenset(typing.get_args(ChannelKind))
+_TOOLS = frozenset(typing.get_args(ConnectorKind))
 
 
 @dataclass(frozen=True)

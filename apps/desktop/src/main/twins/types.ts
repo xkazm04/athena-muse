@@ -4,7 +4,7 @@
 
 import type {
   Autonomy,
-  ChannelKind,
+  ConnectorKind,
   MissionState,
   MissionTurn,
   TwinAsk,
@@ -72,7 +72,7 @@ export interface SetupState {
   replyAsked: boolean;
   /** A quiet note under the question (the example follows one path). */
   note: string;
-  connect: Record<ChannelKind, ConnectView>;
+  connect: Record<ConnectorKind, ConnectView>;
   /** When the current connect began to wait (ms). */
   connectSince: number;
   /** What the daemon said about the last connect that did not finish, plain words; "" when none. */

@@ -12,7 +12,7 @@ from typing import Any, cast
 
 from athena.app import Daemon
 from athena.contracts import (
-    ChannelKind,
+    ConnectorKind,
     MemoryFact,
     Mission,
     MissionTurn,
@@ -34,7 +34,7 @@ from athena.twins.store import Twins
 ACTIVE_HOURS = 24  # a channel that spoke within this long is active
 QUIET_DAYS = 14  # within this long quiet, else stale
 WEEK_DAYS = 7
-TWIN_ACTIONS = ("twin_send", "twin_note")  # the signature cards a twin's drafts wait on
+TWIN_ACTIONS = ("twin_send", "twin_note", "twin_send_web")  # the signature cards a twin's drafts wait on
 
 
 def _now() -> datetime:
@@ -63,7 +63,7 @@ def channels(daemon: Daemon, twin_id: str) -> list[TwinChannel]:
     out: list[TwinChannel] = []
     now = _now()
     for row in daemon.twins.rows("channels", twin_id):
-        kind = cast("ChannelKind", row["id"])
+        kind = cast("ConnectorKind", row["id"])  # WP2.3: web channels have no connection
         conn = daemon.connectors.connection(kind)
         channel: TwinChannel = {
             "kind": kind,

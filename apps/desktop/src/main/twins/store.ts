@@ -9,7 +9,7 @@ import {
   BAR_MAX,
   BAR_MIN,
   CORE,
-  type ChannelKind,
+  type ConnectorKind,
   type ConnectFlow,
   type DialsBody,
   type Mission,
@@ -396,7 +396,7 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
     /** Follows a connect until Google or Notion answers, or the wait runs out. A Notion key is checked
      * inside its connect, so its first answer is already the end; Google's sign-in waits in the browser. */
     const connectFlow = async (
-      kind: ChannelKind,
+      kind: ConnectorKind,
       first: ConnectFlow,
       from: number,
       onWait?: (f: ConnectFlow) => void,
@@ -413,7 +413,7 @@ export function createTwinsStore(io0: TwinsIo = liveIo, { pollMs = 1000, clock =
       }
     };
 
-    const connect = async (kind: ChannelKind, body: { client_id?: string; client_secret?: string; key?: string }) => {
+    const connect = async (kind: ConnectorKind, body: { client_id?: string; client_secret?: string; key?: string }) => {
       const s = get().setup;
       const waiting: ConnectView = kind === "gmail" ? "waiting" : "checking";
       cancelled = false;

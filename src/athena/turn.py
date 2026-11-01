@@ -200,6 +200,9 @@ def _refuse_or_label(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str
     return f"Forget: {_short(row['line'], 100)}", {"id": mem_id}
 
 
+NOT_OFFERED = "That action is not offered here."
+
+
 def dispatch(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
     """One catalog call, from a turn's round or from the MCP server (ADR 0015): an AUTO action runs
     and answers, a GATED one files a card. Her browser's actions decide with per-origin trust too."""
@@ -289,6 +292,8 @@ def _rounds(
     reply_parts: list[str] = []
     cards: list[Card] = []
     cost_total: float | None = None
+    # A round runs only what it was offered: a model naming any other catalog action is refused.
+    offered = {t.get("function", {}).get("name") for t in tools}
     for _ in range(TOOL_ROUNDS_MAX):
         started = time.monotonic()
         round_text: list[str] = []
@@ -342,6 +347,9 @@ def _rounds(
                 if filed_card is not None:
                     cards.append(filed_card)
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": answer})
+                continue
+            if name not in offered:
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": NOT_OFFERED})
                 continue
             done = dispatch(daemon, space_id, call)
             yield from done.events
@@ -592,6 +600,11 @@ def execute(daemon: Daemon, card: Card) -> str:
         from athena.peer import setup  # a machine-changing step of the setup conversation (ADR 0017)
 
         return setup.sign(daemon, card)
+    if card["action"] == "twin_send_web":
+        # A twin's message on a web channel, sent through her browser (business Phase 2).
+        from athena.twins import web
+
+        return web.sign(daemon, card)
     if card["action"] in ("twin_send", "twin_note"):
         # One Gmail message in-thread, or one Notion note (ADR 0009). Imported here: the twins
         # package runs its setup turn through this module.

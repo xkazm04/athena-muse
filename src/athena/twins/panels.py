@@ -36,7 +36,7 @@ from athena.contracts import (
     SAMPLES_MAX,
     Autonomy,
     AutonomySplit,
-    ChannelKind,
+    ConnectorKind,
     SetupPanel,
 )
 from athena.drafts.author import call_model, first_object
@@ -432,7 +432,7 @@ def set_autonomy(daemon: Daemon, twin_id: str, body: dict[str, Any]) -> None:
     kind, level, bar, split = body.get("channel"), body.get("autonomy"), body.get("bar"), body.get("split")
     if kind not in LABELS:
         raise ApiError("bad_request", "the channel is gmail or notion")
-    channel = cast("ChannelKind", kind)
+    channel = cast("ConnectorKind", kind)  # WP2.3: the web channels have their own autonomy rule
     row = daemon.twins.one("channels", twin_id, channel)
     if row is None:
         raise ApiError("bad_request", f"connect {LABELS[channel]} for this twin first")

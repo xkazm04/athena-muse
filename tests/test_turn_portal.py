@@ -133,7 +133,16 @@ def test_without_a_portal_its_tools_are_not_offered_or_run(daemon: Daemon, libra
     events = run(daemon, engine, None)
     assert not any(e["type"] == "card" for e in events)
     assert not any(t["function"]["name"].startswith("desk__") for t in engine.seen[0][1])
-    assert engine.seen[1][0][-1]["content"] == "There is no such action."
+    assert engine.seen[1][0][-1]["content"] == turn.NOT_OFFERED
+
+
+def test_a_catalog_action_not_offered_is_refused_and_files_no_card(daemon: Daemon, library: Path) -> None:
+    """Business Phase 2: a round runs only what it was offered, even a real catalog action."""
+    engine = ScriptEngine([[ToolCall("c1", "page_click", {"tab": 1, "ref": "r1"})]])
+    events = run(daemon, engine, None)
+    assert not any(e["type"] == "card" for e in events)
+    assert daemon.gate.list("waiting") == []
+    assert engine.seen[1][0][-1]["content"] == turn.NOT_OFFERED
 
 
 def test_the_next_turn_is_told_which_portal_cards_already_wait(daemon: Daemon, library: Path) -> None:

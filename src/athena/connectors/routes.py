@@ -19,13 +19,13 @@ from starlette.routing import BaseRoute, Route
 
 from athena.app import Daemon
 from athena.connectors.part import KINDS
-from athena.contracts import ROUTES, ChannelKind, ConnectBody
+from athena.contracts import ROUTES, ConnectBody, ConnectorKind
 from athena.errors import ApiError
 
 BODY_KEYS = ("client_id", "client_secret", "key")
 
 
-def _kind(request: Request) -> ChannelKind:
+def _kind(request: Request) -> ConnectorKind:
     kind = request.path_params["kind"]
     for known in KINDS:
         if kind == known:

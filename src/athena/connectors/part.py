@@ -29,17 +29,17 @@ from athena.connectors.vault import (
     VaultError,
 )
 from athena.contracts import (
-    ChannelKind,
     ChannelStatus,
     ConnectBody,
     ConnectFlow,
     Connection,
     ConnectionList,
+    ConnectorKind,
     ConnectState,
 )
 from athena.errors import ApiError
 
-KINDS: tuple[ChannelKind, ...] = typing.get_args(ChannelKind)
+KINDS: tuple[ConnectorKind, ...] = typing.get_args(ConnectorKind)
 SECRET_MAX = 512  # a pasted key, a client id or a client secret
 
 PHASES: dict[str, ConnectState] = {
@@ -74,7 +74,7 @@ class Connectors:
             return cls(Vault(None, transport=_offline, open_browser=_no_browser))
         return cls(Vault(data_dir / "connectors"))
 
-    def service(self, kind: ChannelKind) -> Service:
+    def service(self, kind: ConnectorKind) -> Service:
         return self.services[kind]
 
     def close(self) -> None:
@@ -85,7 +85,7 @@ class Connectors:
     def connections(self) -> ConnectionList:
         return {"connections": [self.connection(kind) for kind in KINDS]}
 
-    def connection(self, kind: ChannelKind) -> Connection:
+    def connection(self, kind: ConnectorKind) -> Connection:
         rec = self.vault.record(kind)
         out: Connection = {"kind": kind, "status": _status(rec), "writes": rec.writes_enabled}
         if rec.status != "disconnected":
@@ -102,7 +102,7 @@ class Connectors:
             out["guide"] = guide
         return out
 
-    def _problem(self, kind: ChannelKind, rec: ConnectionRecord) -> str:
+    def _problem(self, kind: ConnectorKind, rec: ConnectionRecord) -> str:
         label = self.vault.spec(kind).label
         if self.vault.records_notice:
             return self.vault.records_notice
@@ -129,7 +129,7 @@ class Connectors:
 
     # -- connecting ---------------------------------------------------------------------------------
 
-    def connect(self, kind: ChannelKind, body: ConnectBody) -> ConnectFlow:
+    def connect(self, kind: ConnectorKind, body: ConnectBody) -> ConnectFlow:
         """Gmail starts Google's sign-in in the browser and answers `waiting`; Notion checks the key
         at once and answers `done` or `failed`. A body that cannot be used is a 400."""
         pasted = (body.get("client_id", ""), body.get("client_secret", ""), body.get("key", ""))
@@ -173,7 +173,7 @@ class Connectors:
             raise ApiError("bad_request", NO_CLIENT) from None
         return self._flow_view(flow)
 
-    def flow(self, kind: ChannelKind) -> ConnectFlow:
+    def flow(self, kind: ConnectorKind) -> ConnectFlow:
         """Where Google's sign-in stands. A Notion key is checked inside its connect, so it is idle."""
         flow = self.vault.flows.for_connector(kind)
         return self._flow_view(flow) if flow is not None else {"state": "idle"}
@@ -194,7 +194,7 @@ class Connectors:
 
     # -- the acts on a connection -------------------------------------------------------------------
 
-    def disconnect(self, kind: ChannelKind) -> Connection:
+    def disconnect(self, kind: ConnectorKind) -> Connection:
         """Tells the service to forget the permission when it can, destroys every sealed value and
         forgets the sign-in in progress. The writes switch is the person's and is kept."""
         self.vault.flows.forget(kind, "disconnected")
@@ -204,14 +204,14 @@ class Connectors:
             raise ApiError("bad_request", f"It could not be disconnected: {exc}.") from None
         return self.connection(kind)
 
-    def probe(self, kind: ChannelKind) -> Connection:
+    def probe(self, kind: ConnectorKind) -> Connection:
         try:
             self.vault.probe(kind)
         except VaultError:
             raise ApiError("bad_request", "The saved sign-in could not be read on this computer.") from None
         return self.connection(kind)
 
-    def set_writes(self, kind: ChannelKind, on: bool) -> Connection:
+    def set_writes(self, kind: ConnectorKind, on: bool) -> Connection:
         """The writes switch. Off on every new connection; the twins package turns it on when a twin
         needs to send or write (ADR 0008)."""
         self.vault.set_writes(kind, on)

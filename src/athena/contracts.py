@@ -31,6 +31,10 @@ REPORT_TITLE_MAX = 80
 CALLOUT_MAX = 280
 RECOMPOSE_MIN_S = 3600  # a shape change recomposes at most this often
 VOCAB = 1  # the report's block vocabulary version
+CADENCE_MIN_S = 900  # a routine runs at most every 15 minutes
+ROUTINE_CEILING_CENTS = 25  # a run's default spend ceiling, in US cents (est.)
+RUNS_KEPT = 50  # runs kept per routine
+PASTE_MAX = 4000  # one pasted message of the person's, for the voice
 SPACES_MAX = 100
 HUE_MAX = 359
 TEXT_MAX = 8000  # one person message
@@ -49,7 +53,7 @@ Role = Literal["person", "athena"]
 ActionClass = Literal["auto", "gated"]
 CardState = Literal["waiting", "approved", "declined"]
 Verdict = Literal["approve", "decline"]
-Surface = Literal["turn", "probe", "design", "rehearsal", "twin", "report"]
+Surface = Literal["turn", "probe", "design", "rehearsal", "twin", "report", "routine"]
 ActionName = Literal[
     "recall",
     "remember",
@@ -80,6 +84,7 @@ ActionName = Literal[
     "setup_act",
     "record_list",
     "record_put",
+    "twin_send_web",
 ]
 AppEventType = Literal[
     "card_filed",
@@ -92,6 +97,7 @@ AppEventType = Literal[
     "wheel",
     "site",
     "report",
+    "routine",
 ]
 #: Her browser's answer when a hand did not run (ADR 0013).
 HandReason = Literal["no_browser", "no_tab", "moved", "refused", "timeout", "failed", "unknown_ref"]
@@ -116,6 +122,16 @@ ThreadChannel = Literal["mail_web", "bio", "comment"]
 RenderState = Literal["staged", "running", "rendered", "refused", "failed"]
 BlockKind = Literal["stat", "trend", "queue", "pipeline", "list", "thread", "cards", "callout"]
 BindingAgg = Literal["count", "sum", "last", "series"]
+
+# Routines (business Phase 2): the daemon's only background host.
+RoutineKind = Literal["watch", "inbox", "stats", "outreach", "twin"]
+RoutineState = Literal["on", "paused"]
+#: ran = did its work; partial = stopped at its ceiling or a missing page, with what it covered;
+#: skipped = not admitted (see SkipReason); failed = an error, said in plain words.
+RunOutcome = Literal["ran", "partial", "skipped", "failed"]
+SkipReason = Literal[
+    "running", "live_turn", "paused", "no_browser", "signed_out", "no_engine", "no_twin", "nothing_to_do"
+]
 
 # Settings (ADR 0012): the look both windows paint, and how the engine is chosen.
 ThemeChoice = Literal["auto", "dark", "light"]  # auto follows the system
@@ -167,6 +183,9 @@ CATALOG: dict[ActionName, ActionClass] = {
     # a find (creator, track) runs at once, a put of any other kind files a card.
     "record_list": "auto",
     "record_put": "auto",
+    # A twin's message on a web channel (business Phase 2): Proton mail, a bio link or a comment, sent
+    # through her browser. Always a card; never sent alone.
+    "twin_send_web": "gated",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -202,14 +221,18 @@ NEED_MAX = 2000
 # A name the wire already uses (`Mark`, `Decision` on a card) is prefixed for twins.
 
 Place = Literal["who", "channels", "voice", "knowledge", "chores", "never", "autonomy", "memory", "mission"]
-ChannelKind = Literal["gmail", "notion"]
+#: A connected account (ADR 0008).
+ConnectorKind = Literal["gmail", "notion"]
+#: Where a twin speaks: a connected account, or a web channel through her browser (business Phase 2),
+#: which is never sent alone.
+ChannelKind = Literal["gmail", "notion", "mail_web", "bio", "comment"]
 Autonomy = Literal["review", "assist", "auto"]
 TwinState = Literal["setting_up", "live", "paused"]
 ChannelStatus = Literal["connected", "needs_sign_in", "disconnected"]
 ChannelHealth = Literal["active", "quiet", "stale"]  # omitted on a channel that has never spoken
 MissionState = Literal["open", "resolved", "handed_back"]
 SendDecision = Literal["sent_alone", "waits"]
-WaitReason = Literal["review", "assist", "first_message", "below_bar", "risk", "paused"]
+WaitReason = Literal["review", "assist", "first_message", "below_bar", "risk", "paused", "web_channel"]
 TwinMark = Literal["me", "edited", "not_me"]
 ChoreKind = Literal["outcome", "inbox", "test", "channel"]
 DialSource = Literal["learned", "preset", "you"]
@@ -822,7 +845,8 @@ class AppEvent(TypedDict):
     card_filed / card_resolved: `card`; space_changed: `space_id` (and `erased: true` on erase);
     active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`; settings: `look`;
     wheel: `wheel`; site: `space_id`, `site` (a look at one of the project's sites changed what it found);
-    report: `space_id` (Athena arranged that project's report again).
+    report: `space_id` (Athena arranged that project's report again);
+    routine: `space_id`, `routine` (a routine ran, skipped or changed).
     """
 
     type: AppEventType
@@ -833,6 +857,7 @@ class AppEvent(TypedDict):
     turn_id: NotRequired[str]
     look: NotRequired[Look]
     wheel: NotRequired[WheelNote]
+    routine: NotRequired[Routine]
     site: NotRequired[Site]
 
 
@@ -1074,7 +1099,7 @@ class TwinAsk(TypedDict):
     suggestions: list[str]
     follow_up: int
     panel: NotRequired[SetupPanel]  # the working slip this question needs
-    channel: NotRequired[ChannelKind]  # with panel "connect"
+    channel: NotRequired[ConnectorKind]  # with panel "connect"
 
 
 class TwinPreview(TypedDict):
@@ -1149,7 +1174,7 @@ class GoalList(TypedDict):
 class Connection(TypedDict):
     """A connected account (ADR 0008). The credential itself never crosses the wire."""
 
-    kind: ChannelKind
+    kind: ConnectorKind
     status: ChannelStatus
     writes: bool  # whether it may send or write; off until a twin needs it
     account: NotRequired[str]
@@ -1403,6 +1428,7 @@ class CreatorBody(TypedDict):
     channel_url: str  # the record's key
     followed: bool
     bio_links: NotRequired[list[str]]
+    emails: NotRequired[list[str]]  # business addresses, for matching the inbox (business Phase 2)
     note: NotRequired[str]
 
 
@@ -1555,6 +1581,58 @@ class PinsBody(TypedDict):
     pinned: list[str]
 
 
+# --- routines (business Phase 2) -----------------------------------------------------------------
+
+
+class RoutineRun(TypedDict):
+    id: str  # `run_...`
+    routine_id: str
+    started: str
+    outcome: RunOutcome
+    found: int  # items the run read (tracks, threads, readings), of `of` available when known
+    kept: int  # records it kept
+    cards: int  # cards it filed
+    ended: NotRequired[str]
+    reason: NotRequired[SkipReason]  # a skip's named reason
+    note: NotRequired[str]  # plain words: what it covered, why it stopped
+    of: NotRequired[int]  # how many were there to read (the denominator), when known
+    spent_usd: NotRequired[float]  # est.; omitted when the engine gives no price
+
+
+class Routine(TypedDict):
+    id: str  # `rtn_...`; `twin:<twin_id>` routines are a twin's missions
+    space_id: str
+    kind: RoutineKind
+    name: str  # plain words: "Watch followed creators"
+    cadence_s: int
+    ceiling_usd: float
+    state: RoutineState
+    last_run: NotRequired[RoutineRun]
+    next_at: NotRequired[str]  # omitted while paused
+    url: NotRequired[str]  # the page it reads (an inbox, an analytics page); watch reads each creator's
+
+
+class RoutineList(TypedDict):
+    routines: list[Routine]
+
+
+class RunList(TypedDict):
+    runs: list[RoutineRun]
+
+
+class RoutineBody(TypedDict):
+    state: NotRequired[RoutineState]
+    cadence_s: NotRequired[int]
+    url: NotRequired[str]
+
+
+class PasteBody(TypedDict):
+    """A message the person wrote, pasted for the voice (a new mailbox has no sent mail)."""
+
+    text: str
+    channel: ChannelKind
+
+
 # --- routes ---------------------------------------------------------------------------------------
 
 ROUTES = {
@@ -1630,4 +1708,9 @@ ROUTES = {
     "space_report": "/spaces/{id}/report",
     "space_report_compose": "/spaces/{id}/report/compose",
     "space_report_pins": "/spaces/{id}/report/pins",
+    "space_routines": "/spaces/{id}/routines",
+    "routine": "/routines/{id}",
+    "routine_run": "/routines/{id}/run",
+    "routine_runs": "/routines/{id}/runs",
+    "twin_paste": "/twins/{id}/paste",
 }

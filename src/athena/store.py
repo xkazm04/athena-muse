@@ -65,6 +65,15 @@ CREATE TABLE IF NOT EXISTS reports (
   by TEXT NOT NULL, PRIMARY KEY (space_id, version));
 CREATE TABLE IF NOT EXISTS report_pins (
   space_id TEXT NOT NULL, block_id TEXT NOT NULL, pinned_at TEXT NOT NULL, PRIMARY KEY (space_id, block_id));
+CREATE TABLE IF NOT EXISTS routines (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL,
+  cadence_s INTEGER NOT NULL, ceiling_usd REAL NOT NULL, state TEXT NOT NULL, url TEXT,
+  created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS routines_space ON routines (space_id);
+CREATE TABLE IF NOT EXISTS routine_runs (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, routine_id TEXT NOT NULL, started TEXT NOT NULL, ended TEXT,
+  outcome TEXT NOT NULL, body TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS routine_runs_routine ON routine_runs (routine_id, started DESC);
 """ + "".join(
     # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON;
     # a preview's id is the hash of the voice it was written for.
@@ -88,7 +97,7 @@ CREATE INDEX IF NOT EXISTS {t}_space ON {t} (space_id);
 )
 
 #: A project's records and its report (business Phase 1), each with `space_id`: erased with the space.
-RECORD_TABLES = ("records", "reports", "report_pins")
+RECORD_TABLES = ("records", "reports", "report_pins", "routines", "routine_runs")
 
 #: Every table a twin keeps, each with `space_id`: erasing a space empties them (spaces.erase).
 TWIN_TABLES = (

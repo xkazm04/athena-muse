@@ -27,7 +27,7 @@ from athena.contracts import (
     NAME_MAX,
     NEED_MAX,
     TEXT_MAX,
-    ChannelKind,
+    ConnectorKind,
     PieceOp,
     SetupPanel,
     Sketch,
@@ -45,8 +45,9 @@ from athena.turn import run_turn
 from athena.twins import style
 from athena.twins.rubric import KINDS, PLACES, TWIN_RUBRIC, coverage, piece, readiness, ready
 
-CHANNEL_KINDS: tuple[ChannelKind, ...] = ("gmail", "notion")
-LABELS: dict[ChannelKind, str] = {"gmail": "Gmail", "notion": "Notion"}
+# The connected-account channels a setup conversation inks (WP2.3 adds the web channels).
+CHANNEL_KINDS: tuple[ConnectorKind, ...] = ("gmail", "notion")
+LABELS: dict[ConnectorKind, str] = {"gmail": "Gmail", "notion": "Notion"}
 #: Places that fill from a working slip; her pieces there would claim what the person did not do.
 SLIP_PLACES = frozenset({"knowledge", "chores", "autonomy", "memory"})
 #: What a Notion channel may touch, in plain words.
@@ -128,13 +129,14 @@ def _arg(call: ToolCall, key: str) -> str:
     return "" if value is None else str(value).strip()
 
 
-def connected(daemon: Daemon, kind: ChannelKind) -> bool:
+def connected(daemon: Daemon, kind: ConnectorKind) -> bool:
     return daemon.connectors.connection(kind)["status"] == "connected"
 
 
-def channel_kinds(nodes: list[SketchNode]) -> list[ChannelKind]:
+def channel_kinds(nodes: list[SketchNode]) -> list[ConnectorKind]:
+    """The connected-account channels on the sketch (WP2.3 adds the web channels beside them)."""
     return [
-        cast("ChannelKind", n["kind"])
+        cast("ConnectorKind", n["kind"])
         for n in nodes
         if str(n["slot"]) == "channels" and str(n["kind"]) in LABELS
     ]
@@ -142,7 +144,7 @@ def channel_kinds(nodes: list[SketchNode]) -> list[ChannelKind]:
 
 def panel(
     daemon: Daemon, twin_id: str, place: str, nodes: list[SketchNode]
-) -> tuple[SetupPanel, ChannelKind | None] | None:
+) -> tuple[SetupPanel, ConnectorKind | None] | None:
     """The working slip a question about `place` needs, worked out from where the twin stands."""
     if place == "channels":
         for kind in channel_kinds(nodes) or ["gmail"]:
@@ -170,7 +172,7 @@ def sync(daemon: Daemon, twin_id: str) -> list[PieceOp]:
     for node in sketch["nodes"]:
         if str(node["slot"]) != "channels" or str(node["kind"]) not in LABELS:
             continue
-        kind = cast("ChannelKind", node["kind"])
+        kind = cast("ConnectorKind", node["kind"])  # WP2.3: web channels have no connection
         conn = daemon.connectors.connection(kind)
         if conn["status"] != "connected":
             continue

@@ -21,7 +21,7 @@ from urllib.parse import quote
 from athena.connectors.part import Connectors
 from athena.connectors.providers import gmail, notion
 from athena.connectors.vault import NeedsReauth, VaultError
-from athena.contracts import SAMPLES_MAX, ChannelKind
+from athena.contracts import SAMPLES_MAX, ConnectorKind
 
 EXCERPT_MAX = 200  # the most of a mail's text the twin keeps: what the samples slip shows
 PAGES_MAX = 20
@@ -56,7 +56,7 @@ class Page:
     personal: bool
 
 
-def _request(connectors: Connectors, kind: ChannelKind, method: str, url: str, body: Any = None) -> Any:
+def _request(connectors: Connectors, kind: ConnectorKind, method: str, url: str, body: Any = None) -> Any:
     """One read through the vault; anything but an answer is `Unreachable`, in plain words."""
     label = "Gmail" if kind == "gmail" else "Notion"
     if connectors.connection(kind)["status"] != "connected":

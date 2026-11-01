@@ -28,7 +28,7 @@ Executor = Callable[[Card], str]
 
 #: The actions whose text the person may edit when signing, and how long that text may be: one
 #: Gmail message, one Notion note (as the practice page's lines are cut).
-EDITABLE: dict[str, int] = {"twin_send": TEXT_MAX, "twin_note": 4000}
+EDITABLE: dict[str, int] = {"twin_send": TEXT_MAX, "twin_note": 4000, "twin_send_web": TEXT_MAX}
 
 
 def _card(r: sqlite3.Row) -> Card:

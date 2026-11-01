@@ -143,6 +143,10 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         )
         if card["state"] == "declined" and card["action"] in missions.TWIN_ACTIONS:
             await run_in_threadpool(missions.declined, daemon, card)
+        if card["state"] == "declined" and card["action"] == "twin_send_web":
+            from athena.twins import web
+
+            await run_in_threadpool(web.declined, daemon, card)
         return JSONResponse(card)
 
     async def ledger(request: Request) -> Response:

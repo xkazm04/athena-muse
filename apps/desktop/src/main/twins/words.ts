@@ -42,7 +42,22 @@ export const SECTION_EMPTY: Record<Place, string> = {
   mission: "A goal on one conversation",
 };
 
-export const CHANNEL_LABEL: Record<ChannelKind, string> = { gmail: "Gmail", notion: "Notion" };
+export const CHANNEL_LABEL: Record<ChannelKind, string> = {
+  gmail: "Gmail",
+  notion: "Notion",
+  mail_web: "Mail in her browser",
+  bio: "Bio link",
+  comment: "Comment",
+};
+
+/** The mark drawn beside a channel. */
+export const CHANNEL_ICON: Record<ChannelKind, "gmail" | "notion" | "mail" | "arrow" | "chat"> = {
+  gmail: "gmail",
+  notion: "notion",
+  mail_web: "mail",
+  bio: "arrow",
+  comment: "chat",
+};
 
 export const LEVEL: Record<Autonomy, { label: string; says: string }> = {
   review: { label: "Review", says: "You write. It only suggests." },
@@ -74,6 +89,7 @@ export const WAIT: Record<WaitReason, string> = {
   below_bar: "Not sure enough",
   risk: "Held by its risk list",
   paused: "Paused: it sends nothing",
+  web_channel: "Sent through her browser: always yours to sign",
 };
 
 export const RULE =
