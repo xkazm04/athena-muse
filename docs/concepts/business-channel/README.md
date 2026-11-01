@@ -547,7 +547,10 @@ Phase 1's live check: a report composed on seeded music-channel records, where e
 - **Verified.**
   - Gates: 865+ Python tests and 575 desktop tests.
   - Screenshots at 1024x700 and 1440x900, light and dark, on the daemon-generated simulated channel.
-  - The live check on the built app waits for the seam run (below).
+  - The live seam (`uv run python scripts/report_seam.py claude_code <out>`, 2026-11-01, n=1) passed 7 of 7 checks: a real daemon over the simulated channel, one composition on Claude Code, and a verdict.
+    - The composition took 17.9 s and cost $0.036 (est., from the ledger).
+    - She kept every default part's id and added a subscribers trend and a callout with no figure in it: "No video has been rendered or released yet, so the next steps are judging the waiting tracks and signing the agreements."
+    - The verdict appended revision 2, and the queue shrank by one.
 - **Known gaps:**
   - The drop reasons of a composition are not stored, so a later read shows only the drops found at render time.
   - The simulated engine cannot compose; the default layout stands in.
