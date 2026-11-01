@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from athena.contracts import KindsBody, MayRender, RecordBy, RecordItem, RecordKind, TrackVerdictBody
@@ -11,6 +12,9 @@ from athena.store import Store
 class Records:
     def __init__(self, store: Store) -> None:
         self._store = store
+        #: Called after a put changes how many keys a kind has: (space_id, kind, before, after). The
+        #: report's shape trigger hangs here (set by athena.report.routes); a verdict never changes a count.
+        self.on_change: Callable[[str, RecordKind, int, int], None] | None = None
 
     def put(self, space_id: str, kind: RecordKind, body: dict[str, Any], by: RecordBy) -> RecordItem:
         """Validate, then append a revision (rev+1 of its key, or 1). An unchanged body appends nothing

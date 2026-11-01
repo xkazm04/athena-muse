@@ -56,6 +56,15 @@ CREATE TABLE IF NOT EXISTS sites (
   space_id TEXT NOT NULL, origin TEXT NOT NULL, label TEXT NOT NULL, probe_url TEXT NOT NULL,
   access TEXT NOT NULL, blocks TEXT NOT NULL, checked_at TEXT, reason TEXT, created TEXT NOT NULL,
   PRIMARY KEY (space_id, origin));
+CREATE TABLE IF NOT EXISTS records (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL, rev INTEGER NOT NULL,
+  body TEXT NOT NULL, by TEXT NOT NULL, created TEXT NOT NULL, UNIQUE (space_id, kind, key, rev));
+CREATE INDEX IF NOT EXISTS records_latest ON records (space_id, kind, key, rev DESC);
+CREATE TABLE IF NOT EXISTS reports (
+  space_id TEXT NOT NULL, version INTEGER NOT NULL, spec TEXT NOT NULL, composed_at TEXT NOT NULL,
+  by TEXT NOT NULL, PRIMARY KEY (space_id, version));
+CREATE TABLE IF NOT EXISTS report_pins (
+  space_id TEXT NOT NULL, block_id TEXT NOT NULL, pinned_at TEXT NOT NULL, PRIMARY KEY (space_id, block_id));
 """ + "".join(
     # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON;
     # a preview's id is the hash of the voice it was written for.
@@ -77,6 +86,9 @@ CREATE INDEX IF NOT EXISTS {t}_space ON {t} (space_id);
         "twin_previews",
     )
 )
+
+#: A project's records and its report (business Phase 1), each with `space_id`: erased with the space.
+RECORD_TABLES = ("records", "reports", "report_pins")
 
 #: Every table a twin keeps, each with `space_id`: erasing a space empties them (spaces.erase).
 TWIN_TABLES = (
@@ -102,6 +114,7 @@ _ADDED = (
     ("drafts", "practice", "TEXT"),
     ("drafts", "sites", "TEXT"),
     ("cards", "outcome", "TEXT"),
+    ("spaces", "kinds", "TEXT"),  # business Phase 1: the record kinds a project keeps, JSON list
 )
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.

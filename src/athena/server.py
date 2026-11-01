@@ -42,6 +42,8 @@ from athena.keys import KeyStore
 from athena.peer import devices as peer_devices
 from athena.peer import wiring as peer_wiring
 from athena.peer.listener import DEFAULT_PEER_PORT as PEER_PORT
+from athena.records import routes as routes_records
+from athena.report import routes as routes_report
 from athena.twins import poller
 from athena.twins import routes as routes_twins
 
@@ -66,6 +68,8 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_connectors.routes(daemon),
         *routes_browser.routes(daemon),
         *routes_mcp.routes(daemon),
+        *routes_records.routes(daemon),
+        *routes_report.routes(daemon),
         *peer_wiring.install(daemon),
     ]
 
