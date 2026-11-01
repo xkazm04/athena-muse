@@ -1,6 +1,6 @@
 # A business run through Athena - the AI-music channel, and the gaps it finds
 
-Status: **Phase 0 built** (2026-10-31): her browser (tabs, hands, per-origin trust, upload, download, hand the wheel), Athena's MCP server, and Claude Code with tools on. Its acceptance holds on local simulated pages ([Phase 0](#phase-0---hands-and-the-engine-built-2026-10-31)); the run on a real YouTube test channel waits for the owner. Phases 1-4 are designed, not built, and run in order.
+Status: **Phase 0 built** (2026-10-31): her browser (tabs, hands, per-origin trust, upload, download, hand the wheel), Athena's MCP server, and Claude Code with tools on. Its acceptance holds on local simulated pages ([Phase 0](#phase-0---hands-and-the-engine-built-2026-10-31)); the run on a real YouTube test channel waits for the owner. Phases 1-4 are planned with work packages in the [plan of record (2026-11-01)](#plan-of-record-2026-11-01---phases-1-4), which supersedes the design brief below where they differ. A live end-to-end run with the owner signing in follows Phase 4.
 
 Purpose: one real business is walked through Athena step by step, and every step she cannot take today becomes a named feature. The business is a YouTube channel that publishes music videos for good Suno tracks by creators nobody has heard of. It is a real need, and it exercises everything a long-running Project has to do: delegated correspondence, recurring web checks, the owner's judgement, files moving both ways, a peer app doing heavy work, a gated publish, and a report of where things stand.
 
@@ -420,6 +420,150 @@ Not run: it needs the owner's YouTube test channel and is the open half of the s
 - **A new, clean business profile.** The music channel runs on new accounts made for the business, not the owner's personal channel and mailbox.
 - **Built 2026-10-31 ([ADR 0014](../../adr/0014-a-chores-onboarding-signs-in-to-its-real-sites-and-only-onboarding-grants-trust.md)):** a chore's onboarding signs in to its real sites (step `access`, after keep), only onboarding grants her browser trust (project `sites`, apart from `apps`), and a lapsed sign-in blocks on the project overview with "Sign in again". Simulated seam (`scripts/access_seam.py`) 11/11 on the built shell; the real-account run is not done.
 - **Still open: Studio's frame.** If the real upload dialog sits in a cross-origin frame, hands cannot reach it by design (inject `hands.js` into every frame, or return to the browser decision). Measured in the Phase 0 real-account run before it is decided.
+
+## Plan of record (2026-11-01) - Phases 1-4
+
+The plan below takes the 2026-10-28 design and adjusts it to what has been built since: Twins (ADRs 0008-0010), devices (ADR 0017) and Phase 0 (ADRs 0013-0015). Where this section and the design brief above differ, this section wins. Each phase is built as its own `/spark`. That spark commits its contract and stubs first, opens the ADR named for it, and confirms the packages below at its own design gate.
+
+### What the code holds today (scouted 2026-11-01)
+
+- **Nothing in Phases 1-4 is built:**
+  - no `records` or `routines` table;
+  - no report, compose or queue code;
+  - no `may_render`;
+  - no MCP client (`peer/client.py` is the device-to-device caller, not MCP);
+  - no `record_*` actions;
+  - no `routine` or `report` surface.
+- **Reused as is:**
+  - the `files` table and `fil_` ids (`browser/files.py`). The `file` record points at a `files` row and never copies it.
+  - the project's `sites` and the overview's blocker (`main/projects/Sites.tsx`).
+  - `StatStrip` and `Ledger` (`apps/desktop/src/ui/`).
+  - the MCP server and the action catalog.
+  - the Twin's voice compiler (`twins/voice.py` `compile_voice`) and its rule that only the owner's edits become examples (`missions.sign`).
+- **In tension with the design:**
+  - **Twins read and send mail through the Gmail API**, and `sent_alone` sends without a card (`twins/missions.py`).
+  - **The voice is learned from sent mail** (`voice.py`), and it is per twin, not per channel.
+  - **The Twins poller** (`twins/poller.py`, started in `server.py`'s lifespan, every 300 s) is a second background loop. It has no spend ceiling and no tool list, and it runs beside live turns.
+  - **The ledger has no space filter.** `Ledger.page(limit)` cannot filter by space, and Twins compute their weekly cost in their own SQL (`twins/view.py`).
+- **Gravitone** (gravitone-gcloud):
+  - Its MCP has no music-video operation.
+  - `pipeline/music-video.mts` already has `run --detach` and `collect`.
+  - Every attempt is an ordinary kernel job (`job:run:mv.<id>.<ts>`, lease `box.render#1`), so `gt_job status | cancel` should already reach it. This is not yet confirmed end to end.
+  - Leonardo stills cost credits. Gravitone's own law is that an agent never spends, and `--still` skips Leonardo.
+  - A family tool's description is capped at 240 characters, and `gt_read` and `gt_launch` are near that cap.
+- **athena-portable's MCP client** (`connectors/mcp/`, 778 lines):
+  - The config is `{servers: [{id, url, token_env}]}`.
+  - Transport is a Streamable HTTP POST with a 20 s timeout, so a render has to detach.
+  - The class comes from annotations: read-only, or not destructive and not open-world, is AUTO; anything else is GATED.
+
+### Decisions (owner, 2026-11-01)
+
+- **The business mail goes through her browser, on Proton Mail (web).**
+  - The inbox routine reads `mail.proton.me` as page text, and every send is a gated page act.
+  - The Twin's voice compiler and its edits-as-examples rule are the drafting engine, with a tone profile per channel: email, bio message, comment.
+  - Twins' own Gmail missions stay as they are.
+  - Rejected: reusing Twins' Gmail connector for the business; giving the Twin a second (browser) transport.
+- **The Twins poller is folded into the routine host.**
+  - Every open Twin mission runs as a routine, with a cadence, a ceiling, an allowed tool set and no overlap with a live turn in its space.
+  - Rejected: a second host beside the poller.
+- **For a render, the policy replaces the card.**
+  - The render routine may call Gravitone's launch operation. `may_render` and the per-render ceiling are the gate.
+  - The owner signs the agreement and the upload, not the render.
+  - Rejected: a card per render.
+- **Renders use a still image, with no Leonardo spend.**
+  - Athena passes `--still`: the creator's cover art when it came with the file, otherwise the channel's default image.
+  - Gravitone's "an agent never spends" law holds untouched. Leonardo looks are a later option.
+  - Rejected: a spend request approved in Gravitone; a standing budget for Athena's token.
+- **Phases 1-4 are planned now, Phase 4 included.** The stage's business branch is the onboarding that the live end-to-end run exercises.
+
+### Director decisions (convention or judgement; overridable)
+
+- **The business Project's voice is a Twin.**
+  - It is set up through Twins' existing setup, which Phase 4's `voices` slot opens.
+  - `TwinChannelKind` grows `mail_web | bio | comment`, and examples carry their channel.
+  - `compile_voice(daemon, twin_id, channel=None)` keeps the twin's dials and adds only that channel's examples.
+  - A new mailbox has no sent mail, so its samples are the owner's own written offer and messages, pasted in.
+- **Business sends are always cards.** `sent_alone` stays a Twins (Gmail) feature and is never offered on a `mail_web | bio | comment` channel. The rule is in `twins/decide.py` with a test.
+- **The folded poller keeps Twins' behaviour otherwise.**
+  - It keeps the 300 s default and `ATHENA_TWIN_POLL`.
+  - Its ceiling is $0.25 per run, the same as the read routines.
+  - One routine per live Twin, named `twin:<twin_id>`, replaces the global loop.
+- **The live-turn rule is enforced by `busy.py`.** A routine waits while a turn is open in its space; it is never refused, and it runs on the next tick. Today `busy.turn` only counts turns. It gains `busy.idle(space_id)`.
+- **Gravitone gets one new family, `gt_mv`,** rather than five operations squeezed into the two families already near the 240-character cap.
+  - `import {folder}`: WRITES. It reads the folder's audio and returns the plan.
+  - `launch {folder, still, versions, budget_usd: 0}`: LAUNCHES. It is detached, refuses any spend, and returns `{job_ids}`.
+  - `collect {folder}`: READS. It returns the MP4 and `youtube.txt` paths with their fields.
+  - Status and cancel stay on `gt_job`.
+  - This is gravitone-gcloud's own change, under its MCP rules and registry test.
+- **The folder hand-off.**
+  - Athena stages each render in `<data_dir>/spaces/<space_id>/renders/<render_id>/` (the audio under the track's title, plus the still).
+  - Gravitone writes its outputs beside them, and the render routine collects them into `files`.
+  - The model never sees a path. It names a `track` record, and the daemon fills in the folder.
+- **Athena's MCP client is ported from athena-portable** into `src/athena/peers_mcp/`. The name `peer/` is taken by devices.
+  - Peer tools appear as `<id>__<tool>`.
+  - The class comes from annotations, except where a routine's allowed tools name a tool and a policy function guards it. `gt_mv.launch` is guarded by `may_render`.
+- **Stats are read from Studio's analytics page by the stats routine.** There is no YouTube Data API.
+
+### Phase 1 - records, files and the report
+
+ADR: *Projects keep records, and her report is composed from a closed kit.* Gaps: G3, G7, G8, G13, G15, G23.
+
+| WP | What | Files | Acceptance |
+|---|---|---|---|
+| 1.0 | The contract and stubs | `contracts.py`, `contract.ts` | `RecordKind`, every record body, `Record`, `ReportSpec`, `Block`, `BlockKind`, `Binding`, `ReportView {spec, rendered_at, dropped, reasons}`, `VerdictBody`, every route's envelope; the parity test passes; `record_list` (auto) and `record_put` (auto, finds only) in the catalog; `Surface` gains `report` |
+| 1.1 | Records | `records.py`, `store.py`, `routes_records.py` | The table is append-only (a change is `rev+1`). The latest revision per `(space_id, kind, key)` comes from one query. The body is validated per kind, and an unknown kind is refused. Records are erased with their space. A `file` record refers to a `files` row by id. `may_render(track)` returns `{ok, reasons[]}`, and every missing condition (kept, agreed with a thread, file present, plan tier) is tested |
+| 1.2 | The per-space ledger and the compose engine | `ledger.py`, `report/compose.py`, `report/validate.py` | `Ledger.page(limit, space_id=None)`, and Twins' own SQL moves onto it. `validate(spec)` keeps the known blocks and counts the dropped ones with reasons. Every number is computed from a binding by `report/compute.py`, never from the model's text. Compose runs one turn that streams `TurnEvent` and writes a ledger row with surface `report`. Pins survive a recompose, and versions are kept |
+| 1.3 | The front page and the kit | `main/report/*`, `projects/Level.tsx` | The report sits above the name, brief and sites in `Level.tsx`. It uses a 12-column grid and the blocks `stat`, `trend` (Sparkline), `queue`, `pipeline` (Funnel), `list`, `thread`, `cards` and `callout`. Every block shows loading, empty, stale and error states. The queue block has an embedded player with Keep / Pass / Later, a genre and a note, and a verdict causes no reflow. "1 block could not be shown". No page scroll at 1024x700, the 12 px floor, the dataviz rules |
+
+Phase 1's live check: a report composed on seeded music-channel records, where every number traces to a records query, followed by a verdict that appends a revision.
+
+### Phase 2 - routines, the folded poller and the Twin's channels
+
+ADR: *Routines are the daemon's only background host.* Gaps: G5, G6, G9, G11, G12, G22.
+
+| WP | What | Files | Acceptance |
+|---|---|---|---|
+| 2.0 | The contract and stubs | `contracts.py`, `contract.ts` | `Routine`, `RoutineEvent = started\|record\|card\|spent\|done\|error` with the stream's protocol written out (event order, how a run ends, and what a run that finds a live turn does), `TwinChannelKind` grows, `Surface` gains `routine` |
+| 2.1 | The routine host | `routines/host.py`, `routines/store.py`, `busy.py`, `server.py` | A cadence with one catch-up run on start and no back-fill. A routine never overlaps itself or a live turn in its space (`busy.idle`). A run that reaches its ceiling stops, with the reason recorded. Outside its allowed tools, a call files a card. Every run writes a ledger row. Each rule has a test |
+| 2.2 | Fold the poller | `twins/poller.py` (removed), `twins/missions.py`, `routines/twin.py` | Twins' existing tests pass unchanged except where a mission now waits for a live turn, and that case gets its own test. `ATHENA_TWIN_POLL` is honoured. The Twins overview shows the same counts |
+| 2.3 | The business routines and channels | `routines/watch.py`, `inbox_web.py`, `stats.py`, `twins/voice.py`, `twins/decide.py` | **Watch:** reads each followed creator's videos page every 6 h and puts `track` records, deduplicated by URL. **Inbox:** reads Proton's thread list every 30 min, matches a sender to a `creator`, appends a `thread`, and drafts a reply card in that channel's voice. **Stats:** reads Studio analytics once a day into append-only `stat` records. A business send is always a card, with a test. An unedited signed draft never becomes an example and an edited one does, with a test. Every routine runs against a simulated fixture page (`browser/fixture.py` gains a creator videos page, a Proton inbox and a Studio analytics page) |
+
+Phase 2's live check: on the built shell, the watch routine finds a new upload on the fixture's creator page during a live turn and runs only once the turn ends. The inbox routine files exactly one draft card per new reply.
+
+### Phase 3 - Gravitone and the release
+
+ADR: *Peer apps over MCP, with a policy as the gate.* Plus gravitone-gcloud's own change. Gaps: G16, G17, G18, G21.
+
+| WP | What | Files | Acceptance |
+|---|---|---|---|
+| 3.0 | Gravitone's `gt_mv` family (in gravitone-gcloud) | `app/_server/mcp/mv.ts`, its registry entry, `docs/mcp.md` | `import`, `launch` (detached, `budget_usd: 0`, a still is required, otherwise refused) and `collect`. The registry test and the 240-character test pass. `gt_job status` is confirmed end to end on a `job:run:mv.*` job |
+| 3.1 | The contract and the MCP client | `contracts.py`, `contract.ts`, `peers_mcp/*`, `mcp.json` handling | The client is ported. Peer tools are listed as `<id>__<tool>`, and the class comes from annotations. A key in `mcp.json` other than `{id, url, token_env}` is refused. The 20 s timeout is tested |
+| 3.2 | The render routine | `routines/render.py`, `renders.py` | It stages the folder. It calls `gt_mv.launch` only after `may_render` passes and within the ceiling, keeps a `render` record, and reads `gt_job status` on a later cycle; the turn never waits. Once the job is done it collects the outputs into `files` and moves the render to `rendered`. A refusal writes its reasons to the `render` record |
+| 3.3 | The release and the upload card | `releases.py`, `browser/actions.py`, `CardView` | A `release` record (title, original track URL, creator channel URL, genre, credits line) renders the description. The upload card shows the attribution and the agreement thread as evidence. The draft is private, synthetic media is declared, and a Public control is refused |
+
+Phase 3's live check: a kept, agreed fixture track with a file renders on the real Gravitone with no card. A track missing any one condition is refused with its reason. The upload reaches the fixture studio as a private draft.
+
+### Phase 4 - the business branch on the stage
+
+ADR: amends 0007 (and 0010, for a third rubric). Gap: G1.
+
+| WP | What | Files | Acceptance |
+|---|---|---|---|
+| 4.0 | The contract | `contracts.py`, `contract.ts` | `BUSINESS_RUBRIC` slots: the seven chore slots plus `routines`, `records`, `voices` and `report`. The sketch node kinds for each |
+| 4.1 | The rubric and writing the Project | `drafts/rubric.py`, `drafts/save.py` | Coverage for the new slots is computed from the sketch. At the keep, the agreed sketch writes the Project's routines (paused until access ends), its record kinds, a Twin with the `mail_web`, `bio` and `comment` channels, and a first report spec |
+| 4.2 | The stage's views | `main/stage/*` | Both views (Drawing, Orbit) draw the four new slots. The `voices` slot opens Twins' setup for the business Twin and comes back. The access step covers YouTube, Studio and Proton. The hand-off card lands on the first report |
+| 4.3 | The staged need and the seam | `scripts/stage_seam.py`, `stage_fixture.py` | The music channel is the second staged need. The seam walks it from describe to keep and the first report on Claude Code, with no page scroll, no console error and no banned word, and records the cost from the ledger (est.) |
+
+### After Phase 4: the live end-to-end run
+
+The parked spark `youtube-live-e2e` resumes. A guided runner on the built shell walks the business from describe to a private draft in Studio, using the new business YouTube channel and Proton mailbox. It stops at the gates only the owner can pass: signing in to each site, solving a captcha, signing a card. It also scores the UX at every step.
+
+### Risks this plan adds
+
+- **Proton's web page is a single-page app over encrypted mail.** Reading needs the decrypted page text after sign-in. The inbox routine is built on a fixture first, and the real page is the end-to-end run's first unknown.
+- **Folding the poller changes Twins' timing.** A mission can now wait behind a long live turn. The Twins overview's counts are compared before and after.
+- **`gt_job` on music-video jobs is unconfirmed.** 3.0 confirms it first. If it fails, `gt_mv` gains a `status` operation.
+- **A still image is plainer than Leonardo's looks.** The channel's visual quality is judged at the end-to-end run, and a spend path stays a later decision.
 
 ## Open for the owner
 
