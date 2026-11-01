@@ -146,7 +146,9 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         return JSONResponse(card)
 
     async def ledger(request: Request) -> Response:
-        return JSONResponse(daemon.ledger.page(_limit(request, LEDGER_LIMIT_DEFAULT, LEDGER_LIMIT_MAX)))
+        limit = _limit(request, LEDGER_LIMIT_DEFAULT, LEDGER_LIMIT_MAX)
+        space = request.query_params.get("space")  # one project's rows and totals; absent = every row
+        return JSONResponse(daemon.ledger.page(limit, None if space is None else _space_arg(space)))
 
     async def stream(_: Request) -> Response:
         async def frames() -> AsyncIterator[str]:

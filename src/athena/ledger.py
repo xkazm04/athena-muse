@@ -73,14 +73,17 @@ class Ledger:
             row = db.execute("SELECT * FROM ledger WHERE id = ?", (cur.lastrowid,)).fetchone()
         return _row(row)
 
-    def page(self, limit: int) -> LedgerPage:
-        """Newest first; totals over every row, `cost_estimated` true if any priced row is."""
-        rows = self._store.query("SELECT * FROM ledger ORDER BY id DESC LIMIT ?", (limit,))
+    def page(self, limit: int, space_id: str | None = None) -> LedgerPage:
+        """Newest first; totals over every row (one project's, when `space_id` is given),
+        `cost_estimated` true if any priced row is."""
+        params: tuple[str, ...] = () if space_id is None else (space_id,)
+        where = "" if space_id is None else " WHERE space_id = ?"
+        rows = self._store.query(f"SELECT * FROM ledger{where} ORDER BY id DESC LIMIT ?", (*params, limit))
         t = self._store.query(
             "SELECT COUNT(*) AS calls, COALESCE(SUM(cost_usd), 0.0) AS cost,"
             " COALESCE(MAX(CASE WHEN cost_usd IS NOT NULL AND cost_estimated = 1 THEN 1 ELSE 0 END), 0)"
-            " AS est"
-            " FROM ledger"
+            f" AS est FROM ledger{where}",
+            params,
         )[0]
         return {
             "rows": [_row(r) for r in rows],
