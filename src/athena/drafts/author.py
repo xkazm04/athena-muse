@@ -34,6 +34,7 @@ from athena.chores.spec import (
 from athena.contracts import REPAIRS_MAX, Draft, PracticeApp, Surface
 from athena.drafts.rubric import CHORE_RUBRIC
 from athena.engine import Engine, EngineError, TextDelta, Usage
+from athena.engine.cli import check_stopped
 from athena.engine.prices import estimate
 from athena.engine.scripted import ScriptedEngine
 from athena.errors import ApiError
@@ -98,6 +99,7 @@ def call_model(
 ) -> str:
     """One model call with no tools, ledgered on `surface` (a draft's steps: `design`); answers the
     text. Raises EngineError (after ledgering it) when the call fails."""
+    check_stopped()  # a Stop pressed between calls (a repair round) starts no new one
     started = time.monotonic()
     parts: list[str] = []
     usage: Usage | None = None
@@ -136,12 +138,22 @@ def call_model(
         cost_usd=cost,
         cost_estimated=engine.cost_estimated,
     )
+    # An engine that cannot be killed mid-call (the Muse API over HTTP) finishes its call after a Stop;
+    # its answer is not used, so the step ends as stopped all the same.
+    check_stopped()
     return "".join(parts)
 
 
-def json_values(text: str) -> list[Any]:
+def _holds(values: list[Any], key: str) -> bool:
+    return any(isinstance(v, dict) and key in v for v in values)
+
+
+def json_values(text: str, key: str | None = None) -> list[Any]:
     """The JSON values in a model's answer: the whole answer, else each fenced block, else each value
-    found by scanning from every `{` or `[`. An answer with none answers []."""
+    found by scanning from every `{` or `[`. An answer with none answers [].
+
+    With `key`: fenced blocks none of which holds `key` do not hide the rest of the answer; the whole
+    text is scanned too, after them (measured: a fenced snippet hid the real answer outside the fence)."""
     text = text.strip()
     try:
         return [json.loads(text)]
@@ -153,7 +165,7 @@ def json_values(text: str) -> list[Any]:
             out.append(json.loads(block))
         except ValueError:
             continue
-    if out:
+    if out and (key is None or _holds(out, key)):
         return out
     decoder = json.JSONDecoder()
     i = 0
@@ -173,7 +185,7 @@ def json_values(text: str) -> list[Any]:
 
 def first_object(text: str, key: str) -> dict[str, Any] | list[Any] | None:
     """The first object in the answer that has `key`, else the first bare list; None when neither."""
-    values = json_values(text)
+    values = json_values(text, key)
     for v in values:
         if isinstance(v, dict) and key in v:
             return cast("dict[str, Any]", v)
@@ -557,9 +569,34 @@ def _repair_message(problems: list[str]) -> str:
 
 
 def _clear(folder: Path) -> None:
+    """Empties the draft's folder of any written chore; her kept failed answers stay."""
     if folder.is_dir():
-        shutil.rmtree(folder)
+        for child in folder.iterdir():
+            if child.is_dir():
+                shutil.rmtree(child)
+            elif not _FAILED.fullmatch(child.name):
+                child.unlink()
     folder.mkdir(parents=True, exist_ok=True)
+
+
+#: An unusable answer is kept as `failed-<n>.txt` in the draft's folder, the newest FAILED_KEPT of them,
+#: so an answer that could not be read is never lost (measured: twice in the parity runs).
+FAILED_KEPT = 3
+_FAILED = re.compile(r"failed-(\d+)\.txt")
+
+
+def keep_failed(folder: Path, answer: str) -> Path:
+    """Writes the raw answer to the next `failed-<n>.txt`; drops all but the newest FAILED_KEPT."""
+    folder.mkdir(parents=True, exist_ok=True)
+    kept = sorted(
+        (int(m.group(1)), p) for p in folder.iterdir() if (m := _FAILED.fullmatch(p.name)) is not None
+    )
+    n = kept[-1][0] + 1 if kept else 1
+    path = folder / f"failed-{n}.txt"
+    path.write_text(answer, encoding="utf-8")
+    for _, old in kept[: max(0, len(kept) + 1 - FAILED_KEPT)]:
+        old.unlink(missing_ok=True)
+    return path
 
 
 def _attempt(
@@ -629,6 +666,8 @@ def _write(daemon: Daemon, engine: Engine, draft_id: str, folder: Path) -> Itera
                 yield {"type": "error", "error": "engine_unavailable", "reason": e.reason}
                 return
             problems, chore_id = _attempt(answer, folder, chore_id, draft, taken)
+            if problems:
+                keep_failed(folder, answer)
             if not problems and chore_id is not None:
                 done = cast("dict[str, Any]", dict(daemon.drafts.get(draft_id)))
                 apps = practice(load_chore(folder / chore_id, origin="yours"))

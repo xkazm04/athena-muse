@@ -1,12 +1,14 @@
 """Routes over drafts (ADR 0007): shaping, authoring, the preview, the key, the test run and the
-verdict. The two streams (`write`, `rehearse`) and the calls that wait on a model run off the event
-loop, so a long call never stalls the daemon."""
+verdict. Writing, the preview and the test run are background jobs (ADR 0020): their POST starts the
+job and follows it, `GET .../job` follows it again from any window, `POST .../job/stop` stops it. The
+shaping stream and the calls that wait on a model run off the event loop, so a long call never stalls
+the daemon."""
 
 from __future__ import annotations
 
 import json
 import typing
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any, cast, get_args
 
 from starlette.concurrency import run_in_threadpool
@@ -17,9 +19,9 @@ from starlette.routing import BaseRoute, Route
 from athena import engine as engine_mod
 from athena import routes_turn
 from athena.app import Daemon
-from athena.contracts import AccessAct, KeyBody, StageView
-from athena.drafts import access, author, key, preview, rehearse, save, shape
-from athena.engine import Engine, EngineError
+from athena.contracts import AccessAct, Draft, DraftNotes, KeyBody, StageView
+from athena.drafts import access, author, jobs, key, preview, rehearse, save, shape
+from athena.engine import Engine, EngineError, cli
 from athena.errors import ApiError
 from athena.keys import KeyStore
 
@@ -58,6 +60,57 @@ async def _stream(events: Iterator[dict[str, Any]]) -> Response:
             yield _line(event)
 
     return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+NDJSON = "application/x-ndjson"
+
+
+def _follow(job: jobs.Job, after: int) -> Response:
+    """A job's follow stream (protocol: contracts.py, above RehearsalPhase). Each wait runs off the
+    loop and is short, so a client that leaves is let go within FOLLOW_WAIT_S; the job runs on."""
+
+    async def lines() -> AsyncIterator[bytes]:
+        yield _line({"type": "job", "job": job.snapshot()})
+        i = max(0, after)
+        while True:
+            events, ended = await run_in_threadpool(job.wait, i, jobs.FOLLOW_WAIT_S)
+            for event in events:
+                yield _line(event)
+            i += len(events)
+            if ended and not events:
+                return
+
+    return StreamingResponse(lines(), media_type=NDJSON)
+
+
+#: The person's notes while she works: lines per list, as the key's missing and never lines are.
+NOTES_STEPS: frozenset[str] = frozenset({"describe", "shape", "author", "preview", "rehearse"})
+
+
+def _note_lines(raw: Any, what: str) -> list[str]:
+    if not isinstance(raw, list) or not all(isinstance(x, str) for x in raw):
+        raise ApiError("bad_request", f"send {what} as a list of lines")
+    out = [line for line in (" ".join(x.split()) for x in raw) if line]
+    if len(out) > key.LINES_MAX:
+        raise ApiError("bad_request", f"at most {key.LINES_MAX} {what} lines")
+    if any(len(line) > key.LINE_MAX for line in out):
+        raise ApiError("bad_request", f"each {what} line is at most {key.LINE_MAX} characters")
+    return out
+
+
+def put_notes(daemon: Daemon, draft_id: str, body: dict[str, Any]) -> Draft:
+    """Replaces `Draft.notes`: trimmed non-empty lines, each at most LINE_MAX, at most LINES_MAX per
+    list; allowed at any step before the verdict."""
+    draft = daemon.drafts.get(draft_id)
+    if draft["step"] not in NOTES_STEPS:
+        raise ApiError("bad_request", "notes are for while she works; the test run is already scored")
+    notes: DraftNotes = {
+        "expect": _note_lines(body.get("expect"), "expect"),
+        "never": _note_lines(body.get("never"), "never"),
+    }
+    stored = cast("dict[str, Any]", dict(daemon.drafts.get(draft_id)))
+    stored["notes"] = notes
+    return daemon.drafts.put(cast("Draft", stored))
 
 
 def routes(daemon: Daemon) -> list[BaseRoute]:
@@ -114,13 +167,16 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
             return None  # the key step needs one only for missing and never lines; it says so then
 
     async def write(request: Request) -> Response:
-        daemon.drafts.get(request.path_params["id"])
-        return await _stream(author.write(daemon, engine(), request.path_params["id"]))
+        draft_id = request.path_params["id"]
+        daemon.drafts.get(draft_id)
+        work = author.write(daemon, engine(), draft_id)  # validates; nothing runs until the job does
+        return _follow(daemon.jobs.start(daemon, draft_id, "write", work, timeout_s=None), 0)
 
     async def preview_cards(request: Request) -> Response:
-        daemon.drafts.get(request.path_params["id"])
-        cards = await run_in_threadpool(preview.preview, daemon, engine(), request.path_params["id"])
-        return JSONResponse({"expected": cards})
+        draft_id = request.path_params["id"]
+        chore = preview.check(daemon, draft_id)
+        work = preview.work(daemon, engine(), draft_id, chore)
+        return _follow(daemon.jobs.start(daemon, draft_id, "preview", work, timeout_s=cli.CLI_TIMEOUT_S), 0)
 
     async def put_key(request: Request) -> Response:
         body = await _body(request)
@@ -131,8 +187,34 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         return JSONResponse(draft)
 
     async def run(request: Request) -> Response:
-        daemon.drafts.get(request.path_params["id"])
-        return await _stream(rehearse.rehearse(daemon, engine(), request.path_params["id"]))
+        draft_id = request.path_params["id"]
+        chore = rehearse.check(daemon, draft_id)
+        work = rehearse.work(daemon, engine(), draft_id, chore)
+        return _follow(daemon.jobs.start(daemon, draft_id, "rehearse", work, timeout_s=cli.CLI_TIMEOUT_S), 0)
+
+    async def job(request: Request) -> Response:
+        draft_id = request.path_params["id"]
+        draft = daemon.drafts.get(draft_id)
+        raw = request.query_params.get("after", "0")
+        if not raw.isdigit():
+            raise ApiError("bad_request", "after is a whole number of events")
+        running = daemon.jobs.get(draft_id)
+        if running is not None:
+            return _follow(running, int(raw))
+        if "job" not in draft:
+            raise ApiError("unknown_ref", "she has not started any work on this draft")
+        # After a restart only what was kept: the snapshot, with the stored state.
+        return StreamingResponse(iter([_line({"type": "job", "job": draft["job"]})]), media_type=NDJSON)
+
+    async def job_stop(request: Request) -> Response:
+        draft_id = request.path_params["id"]
+        daemon.drafts.get(draft_id)
+        await run_in_threadpool(daemon.jobs.stop, daemon, draft_id)
+        return JSONResponse(daemon.drafts.get(draft_id))
+
+    async def notes(request: Request) -> Response:
+        body = await _body(request)
+        return JSONResponse(await run_in_threadpool(put_notes, daemon, request.path_params["id"], body))
 
     async def verdict(request: Request) -> Response:
         body = await _body(request)
@@ -164,5 +246,8 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route("/drafts/{id}/key", put_key, methods=["PUT"]),
         Route("/drafts/{id}/rehearse", run, methods=["POST"]),
         Route("/drafts/{id}/verdict", verdict, methods=["POST"]),
+        Route("/drafts/{id}/job", job, methods=["GET"]),
+        Route("/drafts/{id}/job/stop", job_stop, methods=["POST"]),
+        Route("/drafts/{id}/notes", notes, methods=["PUT"]),
         Route("/drafts/{id}/access", access_act, methods=["POST"]),
     ]

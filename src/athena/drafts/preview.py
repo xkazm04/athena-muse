@@ -8,9 +8,11 @@ as `expected`. The person's marks on them become the answer key (see `key`).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any, cast
 
 from athena.app import Daemon
+from athena.chores.spec import Chore
 from athena.contracts import DETAIL_MAX, LABEL_MAX, Draft, ExpectedCard
 from athena.drafts.author import (
     act_tools,
@@ -102,26 +104,50 @@ def _messages(draft: Draft, world: str, keys: list[str]) -> list[dict[str, Any]]
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def preview(daemon: Daemon, engine: Engine, draft_id: str) -> list[ExpectedCard]:
-    """Every card names a real act tool of the written chore; one that does not is dropped."""
+def check(daemon: Daemon, draft_id: str) -> Chore:
+    """Validates a preview before it starts (the step, the written chore, a free Project); its chore."""
     draft = daemon.drafts.get(draft_id)
     if draft["step"] != "preview":
         raise ApiError("bad_request", "she previews the cards once the chore is written and before the key")
     chore = load_written(daemon, draft)
     not_busy(daemon, draft)
+    return chore
+
+
+def preview(daemon: Daemon, engine: Engine, draft_id: str) -> list[ExpectedCard]:
+    """Every card names a real act tool of the written chore; one that does not is dropped."""
+    chore = check(daemon, draft_id)
+    with daemon.busy.turn(daemon.drafts.get(draft_id)["space_id"]):
+        return listed(daemon, engine, draft_id, chore)
+
+
+def listed(daemon: Daemon, engine: Engine, draft_id: str, chore: Chore) -> list[ExpectedCard]:
+    """The preview's call, once checked, with the Project's slot already held (the job holds it). A
+    failure is an ApiError and leaves the draft at `preview`."""
+    draft = daemon.drafts.get(draft_id)
     acts = act_tools(chore)
     keys = [f"- {a}.{t}: {key_param(chore, a, t)}" for a, t in acts]
-    with daemon.busy.turn(draft["space_id"]):
-        try:
-            answer = call_model(daemon, engine, draft["space_id"], _messages(draft, world_text(chore), keys))
-        except EngineError as e:
-            raise ApiError("engine_unavailable", e.reason) from e
-        listed = cards(first_object(answer, "expected"), set(acts))
-        if not listed:
-            raise ApiError(
-                "engine_unavailable", "She could not name a card on her practice apps; try the preview again."
-            )
-        stored = cast("dict[str, Any]", dict(daemon.drafts.get(draft_id)))
-        stored["expected"] = listed
-        daemon.drafts.put(cast("Draft", stored))
-    return listed
+    try:
+        answer = call_model(daemon, engine, draft["space_id"], _messages(draft, world_text(chore), keys))
+    except EngineError as e:
+        raise ApiError("engine_unavailable", e.reason) from e
+    found = cards(first_object(answer, "expected"), set(acts))
+    if not found:
+        raise ApiError(
+            "engine_unavailable", "She could not name a card on her practice apps; try the preview again."
+        )
+    stored = cast("dict[str, Any]", dict(daemon.drafts.get(draft_id)))
+    stored["expected"] = found
+    daemon.drafts.put(cast("Draft", stored))
+    return found
+
+
+def work(daemon: Daemon, engine: Engine, draft_id: str, chore: Chore) -> Iterator[dict[str, Any]]:
+    """The preview as a job's events: `previewing`, then `previewed {expected}` or `error`."""
+    yield {"type": "previewing"}
+    try:
+        expected = listed(daemon, engine, draft_id, chore)
+    except ApiError as e:
+        yield {"type": "error", "error": e.error, "reason": e.reason}
+        return
+    yield {"type": "previewed", "expected": expected}

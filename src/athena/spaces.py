@@ -20,6 +20,7 @@ from athena.contracts import (
     NAME_MAX,
     SPACE_PREFIX,
     SPACES_MAX,
+    DraftBadge,
     SpaceCounts,
     SpaceErased,
     SpaceSummary,
@@ -128,6 +129,17 @@ class Spaces:
         kinds = json.loads(r["kinds"] or "[]")
         if kinds:  # business Phase 1: omitted when the project keeps no records
             summary["kinds"] = kinds
+        draft = self._store.query(
+            "SELECT id, step, job FROM drafts WHERE space_id = ? AND step != 'saved'"
+            " ORDER BY updated DESC, rowid DESC LIMIT 1",
+            (r["id"],),
+        )
+        if draft:  # its open draft, for a badge (ADR 0020); omitted when none
+            badge: DraftBadge = {"id": draft[0]["id"], "step": draft[0]["step"]}
+            job = json.loads(draft[0]["job"]) if draft[0]["job"] else None
+            if isinstance(job, dict) and isinstance(job.get("state"), str):
+                badge["job"] = job["state"]
+            summary["draft"] = badge
         return summary
 
     def list(self) -> list[SpaceSummary]:

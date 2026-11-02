@@ -104,7 +104,9 @@ def test_an_answer_that_never_loads_ends_author_failed_back_at_shape(daemon: Dae
     stored = daemon.drafts.get(draft["id"])
     assert stored["step"] == "shape" and "chore_id" not in stored
     folder = daemon.drafts.folder(draft["id"])
-    assert folder is not None and list(folder.iterdir()) == []
+    assert folder is not None  # no chore is left; only her unusable answers, the newest kept (ADR 0020)
+    kept = sorted(p.name for p in folder.iterdir())
+    assert kept == [f"failed-{n}.txt" for n in range(REPAIRS_MAX + 2 - author.FAILED_KEPT, REPAIRS_MAX + 2)]
 
 
 def test_an_unreadable_answer_is_a_problem_like_any_other(daemon: Daemon) -> None:
@@ -223,7 +225,7 @@ def test_the_write_route_streams_ndjson(tmp_path: Path, monkeypatch: pytest.Monk
     draft = agreed_draft(daemon)
     r = client.post(f"/drafts/{draft['id']}/write", headers=H)
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/x-ndjson")
-    assert [json.loads(line)["type"] for line in r.text.splitlines()] == ["writing", "written"]
+    assert [json.loads(line)["type"] for line in r.text.splitlines()] == ["job", "writing", "written"]
     daemon.store.close()
 
 

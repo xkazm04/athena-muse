@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from athena.browser.files import Files
@@ -11,6 +11,7 @@ from athena.browser.sites import Sites
 from athena.busy import Busy
 from athena.connectors.part import Connectors
 from athena.conversation import Conversation
+from athena.drafts.jobs import Jobs, recover
 from athena.drafts.store import Drafts
 from athena.events import Events
 from athena.gate import Gate
@@ -49,6 +50,7 @@ class Daemon:
     mcp: Leases  # who may call the MCP server, and for which project (ADR 0015)
     peers: PeerHost | None = None  # other devices (ADR 0017); None = off (tests, --no-peer, no data dir)
     mcp_url: str | None = None  # set once the server knows its port; None = no MCP (tests, unless set)
+    jobs: Jobs = field(default_factory=Jobs)  # each draft's last background job (ADR 0020)
 
     @classmethod
     def open(cls, data_dir: Path | None, *, peers: bool = False, peer_port: int | None = None) -> Daemon:
@@ -57,7 +59,7 @@ class Daemon:
         store = Store(data_dir / "athena.db" if data_dir is not None else ":memory:")
         busy = Busy()
         events = Events()
-        return cls(
+        daemon = cls(
             data_dir=data_dir,
             store=store,
             busy=busy,
@@ -79,6 +81,8 @@ class Daemon:
             mcp=Leases(),
             peers=_peer_host(data_dir, peer_port) if peers and data_dir is not None else None,
         )
+        recover(daemon)  # a job still `running` on disk was cut off by the app closing
+        return daemon
 
     def active_space(self) -> str:
         """The active project, failing closed to core when its space is gone."""

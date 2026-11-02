@@ -46,15 +46,18 @@ def client(daemon: Daemon) -> TestClient:
 def lines(r: httpx.Response) -> list[dict[str, Any]]:
     assert r.status_code == 200, r.text
     assert r.headers["content-type"].startswith("application/x-ndjson")
-    return [json.loads(line) for line in r.text.splitlines() if line]
+    events = [json.loads(line) for line in r.text.splitlines() if line]
+    assert events[0]["type"] == "job"  # a job stream opens with its snapshot (ADR 0020)
+    return events[1:]
 
 
 def to_rehearse(client: TestClient, daemon: Daemon) -> dict[str, Any]:
     """An agreed draft written, previewed and keyed (yes, yes, no) over the routes."""
     draft = agreed_draft(daemon)
     assert lines(client.post(f"/drafts/{draft['id']}/write", headers=H))[-1]["type"] == "written"
-    r = client.post(f"/drafts/{draft['id']}/preview", headers=H)
-    assert r.status_code == 200 and [c["id"] for c in r.json()["expected"]] == ["e1", "e2", "e3"]
+    previewed = lines(client.post(f"/drafts/{draft['id']}/preview", headers=H))
+    assert [e["type"] for e in previewed] == ["previewing", "previewed"]
+    assert [c["id"] for c in previewed[-1]["expected"]] == ["e1", "e2", "e3"]
     marks = [{"expected_id": "e1", "mark": "yes"}, {"expected_id": "e2", "mark": "yes"}]
     marks.append({"expected_id": "e3", "mark": "no"})
     r = client.put(f"/drafts/{draft['id']}/key", json={"marks": marks, "missing": [], "never": []}, headers=H)

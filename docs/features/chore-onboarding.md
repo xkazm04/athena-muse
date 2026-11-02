@@ -25,9 +25,9 @@ is a Project and every stage reply is an ordinary turn in it.
 |---|---|---|
 | describe | The person types the need; Athena proposes a project name. | The first stage turn returns. |
 | shape | Frames: her line + sketch ops + at most one `ask`; one line per frame (only the first model round with words is shown and kept, and the turn ends once her question is asked). | Coverage gate, or "That's enough, write it". |
-| author | Athena writes `playbook.json` and `world.json` from the sketch, using the nearest library chore as an example; `load_chore` validates, up to 2 repairs. | The validator. |
-| preview | One call lists the cards she would file (`ExpectedCard`); the person marks each yes/no and may add "she must never" lines. | Every card marked. |
-| rehearse | `truth.json` is written from the marks; the bench runner plays the phases on a throwaway daemon and scores against the key. | The run ends. |
+| author | A background job ([ADR 0020](../adr/0020-a-drafts-long-steps-are-background-jobs.md)): Athena writes `playbook.json` and `world.json` from the sketch, using the nearest library chore as an example; `load_chore` validates, up to 2 repairs. No time limit on writing; every unusable answer is kept as `failed-<n>.txt` in the draft's folder (the newest 3). The person may close the window, follow it again from any window, or Stop it (back to `shape`). | The validator. |
+| preview | A background job: one call lists the cards she would file (`ExpectedCard`), under the default 300 s limit; a failure or a Stop stays at `preview`. The person marks each yes/no and may add "she must never" lines. | Every card marked. |
+| rehearse | `truth.json` is written from the marks; a background job: the bench runner plays the phases on a throwaway daemon and scores against the key (default limits per call; a failure or a Stop stays at `rehearse`). | The run ends. |
 | verdict | Score in plain words, her cards beside the marks. "This is it" or "Not quite". | The person. |
 | access | At the keep the chore is copied to `<data_dir>/chores/<id>/` and the Project's brief is set; each real site the person confirmed on the sketch becomes one of the Project's sites (the only way her browser comes to trust one). Per site: "Sign in" opens it in her browser and hands the person the wheel; when the page moves on, and every 4 s while the person signs in (or on "I have signed in"), she looks; a look that ends on another site that is not a sign-in offers "Use X instead"; "Skip for now" keeps it as signed out, a blocker on the overview. Skipped when the chore needs no real site. | Every site signed in or skipped, and every signed-in site still signed in on one last look. |
 | saved | The hand-off card: the Project with the chore in it. | - |
@@ -35,7 +35,7 @@ is a Project and every stage reply is an ordinary turn in it.
 **Rubric** (seven slots: `need`, `apps`, `inputs`, `steps`, `hand`, `output`, `never`). Coverage per
 slot is 0 / 0.5 / 1, computed from the sketch, never claimed by the model: 1 holds a node the person
 confirmed, 0.5 only Athena's proposals. Agreed when `need`, `apps`, `hand`, `output` are 1 and the rest
-0.5 or skipped with a stated default. At most 2 follow-ups per slot; the exit is visible from frame one. Her new guesses (pieces not in the person's words) are capped at 2 per reply; a third is refused in plain words and she asks instead (`PROPOSALS_MAX`, the chore's design only; a twin's is not capped).
+0.5 or skipped with a stated default. At most 2 follow-ups per slot; the exit is visible from frame one. She never proposes again a guess the person rubbed out (the draft keeps the labels, `Draft.rubbed`; listed in her frame, refused if proposed). On the first frame, after her question, one silent round draws the rest of what a long need already said. Her new guesses (pieces not in the person's words) are capped at 2 per reply; a third is refused in plain words and she asks instead (`PROPOSALS_MAX`, the chore's design only; a twin's is not capped).
 Since [ADR 0010](../adr/0010-one-shaping-conversation-two-rubrics.md) this is `CHORE_RUBRIC`, one of two rubrics on the same drafts machinery.
 
 **Real sites** ([ADR 0014](../adr/0014-a-chores-onboarding-signs-in-to-its-real-sites-and-only-onboarding-grants-trust.md)). An `app` node may carry a real website (`site`): Athena proposes it in pencil with the `sketch` tool, even on the person's own node; inking the node inks the site, rubbing out an agreed node's site removes only the site. Her practice apps stay invented and never reach access. The look that says "signed in" opens the site's address in a hidden tab and reads where it ended and whether a password field shows; the step never asks for or keeps a password. After onboarding, the Project's overview shows a lapsed site as a blocker with "Sign in again".
@@ -47,6 +47,8 @@ card's why, replaced on every re-put, so the test run and the kept chore know wh
 The sketch is an abstraction for the person's understanding, not the chore's source; the preview runs
 on the written files, so what the person confirms is the real chore.
 
+**While she works** (ADR 0020). Writing, the preview and the test run are daemon jobs: the stage follows them, re-attaches when the draft is reopened, and offers Stop and Leave for now; a Project with an open draft carries a badge, her window gets a line when a job ends, and a system notification shows when the app is not in focus. Meanwhile she asks what the person expects her to find and what she must never do (`Draft.notes`); the check starts from those answers. Writing has no time limit.
+
 **Two views behind one switch.** The contest verdict (2026-10-28) kept both winners: **Drawing**
 (lanes, a never-fence, the question pinned as a note) and **Orbit** (the question card at the centre,
 six zones, coverage arcs). One store and one set of shared parts under `apps/desktop/src/main/stage/`,
@@ -56,10 +58,14 @@ proves better. Pencil (dashed violet) is her guess, ink is agreed, a pink edge i
 
 **Wire** (`src/athena/contracts.py` / `apps/desktop/src/lib/contract.ts`): `POST /drafts {need}`,
 `GET /drafts/{id}`, `POST /drafts/{id}/say` (NDJSON `TurnEvent` + `sketch` / `ask` / `coverage`),
-`/confirm`, `/drop`, `/write` (`AuthorEvent`), `/preview`, `PUT /drafts/{id}/key`, `/rehearse`
-(`RehearsalEvent`), `/verdict`, `/access` (`AccessBody`: `sign_in`, `check`, `skip`), `DELETE /drafts/{id}`; a
+`/confirm`, `/drop`, `/write` (`AuthorEvent`), `/preview` (`previewing`, then `previewed` or `error`),
+`PUT /drafts/{id}/key`, `/rehearse` (`RehearsalEvent`): each of the three starts a job and answers its
+follow stream (NDJSON: a `job` snapshot, then the job's events from `after`, ending after the terminal
+event, which may be `stopped`); `GET /drafts/{id}/job?after=n` follows the running or last job,
+`POST /drafts/{id}/job/stop` stops it, a POST while one runs is 409 `space_busy`, and the `draft_job`
+app event marks each start and end; `PUT /drafts/{id}/notes` (`NotesBody`, before the verdict), `/verdict`, `/access` (`AccessBody`: `sign_in`, `check`, `skip`), `DELETE /drafts/{id}`; a
 Project's sites at `GET /spaces/{id}/sites`, `POST /spaces/{id}/sites/check` and `/sites/sign_in`, with
-the `site` app event. Table `drafts`, erased with its space. `Surface`
+the `site` app event; `SpaceSummary.draft` badges a Project's open draft. Table `drafts`, erased with its space. `Surface`
 gains `design` and `rehearsal`; `ActionName` gains `sketch` and `ask` (auto). User chores carry
 `origin: "yours"` and never reach `playbooks/`.
 
@@ -117,7 +123,6 @@ python scripts/parity/run.py --engines claude_code,muse_code --cases 1-10 --mode
 
 ## Known gaps (none blocks use)
 
-- She proposes again what the person rubbed out (both engines, parity run 2): the frame shows the sketch but not what was rubbed out.
 - A reply may ask in words without the question card (seen once), so the person has nothing to pick.
 - The verdict reads "She found everything you expected" on a 0 of 0 run, when the person said no to every card.
 - "Ink them all" skips a pencil website on an inked piece, and "Rub out" on that website does nothing (`drop` accepts pencil pieces only); inking the piece in its card works.
@@ -126,7 +131,7 @@ python scripts/parity/run.py --engines claude_code,muse_code --cases 1-10 --mode
 - The undo toast is drawn by the shell, so neither view can skin it.
 - Two `data-role="note"` meanings (Drawing's pinned question, the check card's why-not field): rename the latter to `mark-note`.
 - The preview harness's `.pv h2` style leaks into stage headings there (harness only).
-- Not ported from the winners: the typewriter on her line, the echo flying to its piece, the fade of a rubbed-out piece, and "Stop" on a slow reply (the daemon has no cancel route).
+- Not ported from the winners: the typewriter on her line, the echo flying to its piece, the fade of a rubbed-out piece, and "Stop" on a slow shaping reply (draft jobs can be stopped since ADR 0020; a shaping turn still cannot).
 - `Draft.views` counts exist but no screen compares them across kept chores yet.
 - Not in v1: senses in authored chores, running against the person's real apps, voice.
 
