@@ -73,6 +73,17 @@ def port_free(port: int) -> bool:
     return True
 
 
+def wait_free(port: int, wait_s: float = 30.0) -> bool:
+    """The port, once the last case's daemon has let go of it: Windows frees a killed process's socket
+    a moment after taskkill returns (measured: six cases of one lane lost to a 1 s gap, run 4)."""
+    end = time.monotonic() + wait_s
+    while not port_free(port):
+        if time.monotonic() > end:
+            return False
+        time.sleep(0.5)
+    return True
+
+
 def kill_tree(proc: subprocess.Popen[bytes] | None) -> None:
     """`uv run` and `pnpm exec` start children: end the whole tree, or they outlive the run."""
     if proc is not None and proc.poll() is None:
@@ -112,7 +123,7 @@ class Lane:
 
 class Daemon:
     def __init__(self, lane: Lane, data: Path, log: Path) -> None:
-        if not port_free(lane.daemon_port):
+        if not wait_free(lane.daemon_port):
             raise RuntimeError(f"port {lane.daemon_port} is taken; a stale daemon or another program")
         env = {
             **os.environ,
