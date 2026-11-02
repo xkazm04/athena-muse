@@ -82,16 +82,44 @@ listed as `yours`. Fidelity against both winners' captured contracts: 0 deviatio
 Orbit 9). On the scripted engine the stage walks to agreed and then says plainly that a simulated
 Athena cannot write a chore.
 
+**Engine parity, 2026-11-02** (`scripts/parity/`, Drawing view, a Claude Haiku persona answering,
+10 use cases per engine: staged need, a new domain, a vague need, an over-specified need, own words,
+early exit, a correction, "Not quite", "no" marks and a never line, a real site plus an injected
+engine failure). Claude Code on Sonnet against Muse Code on muse-spark-1.3, one run each. Grades
+are the Director's, given blind (engine names removed from the transcripts), the mean of five 1-5
+scores: question logic, no repeats, clarity, progress, fidelity to the persona's truth.
+
+| run | engine | mean grade | end state reached | cases on the bar | call p50 / slowest |
+|---|---|---|---|---|---|
+| baseline | Sonnet | 3.64 | 9 of 10 (writing failed 3 times, case 6) | 7 | ~6.7 s / 68 s |
+| baseline | Muse 1.3 | 3.34 | 9 of 10 (second preview named no card, case 8) | 5 | ~4.7 s / 18 s |
+| after the guess cap and the "no" marks | Sonnet | 3.20 | 10 of 10 | 7 | ~6.0 s / 86 s |
+| after the guess cap and the "no" marks | Muse 1.3 | 3.24 | 10 of 10 | 7 | ~5.4 s / 20 s |
+
+The second run's persona is stricter (it reviews each pencil mark and answers an open question
+before leaving), so its grades are not directly comparable with the baseline's; the end states,
+the case-level scores (case 2 on Muse 0 of 1 -> 8 of 8, case 5 short -> exceeds on both) and the
+bar are. Muse reaches parity with Sonnet on this suite and is faster; Muse Code sends about 5x the
+input tokens (its own instructions). The bar: the expected end state with no blocker, grade within 1
+of Sonnet's, turns to agreed within Sonnet + 2, test run at least 4 of 5, no call over 60 s
+(Sonnet's slow writing calls fail it in three cases).
+
 ## Run it
 
 ```bash
 ATHENA_ENGINE=claude_code pnpm -C apps/desktop app   # then "Describe a need"
 SEAM_PORT=8767 python scripts/stage_seam.py drawing claude_code runs/seam-drawing   # the live seam; or orbit / scripted
 uv run python scripts/access_seam.py   # the access step and the overview's blocker on the built shell, simulated sites
+python scripts/parity/run.py --engines claude_code,muse_code --cases 1-10 --model muse_code=muse-spark-1.3 --out runs/parity/<stamp>   # then grade blind, then scripts/parity/report.py
 ```
 
 ## Known gaps (none blocks use)
 
+- Her line repeats itself (both engines; the largest loss in the parity grades, no-repeats ~1.8 of 5): a shaping turn shows the words of every model round joined (`turn.py`, `_rounds`), and the `ask` result "wait for their answer" invites "I'm waiting for your answer on screen". Fix: one line per frame (stop the turn once her question is accepted; show one round's words).
+- She proposes again what the person rubbed out (both engines, parity run 2): the frame shows the sketch but not what was rubbed out.
+- A reply may ask in words without the question card (seen once), so the person has nothing to pick.
+- The verdict reads "She found everything you expected" on a 0 of 0 run, when the person said no to every card.
+- "Ink them all" skips a pencil website on an inked piece, and "Rub out" on that website does nothing (`drop` accepts pencil pieces only); inking the piece in its card works.
 - Orbit at 1024x700: a long "she must never" line wraps into a narrow column beside its badge.
 - The verdict's reason line repeats the bench's wording ("found 1 of 5 items, expected 80%") beside a green dot that reads as success.
 - The undo toast is drawn by the shell, so neither view can skin it.
