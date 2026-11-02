@@ -4,6 +4,7 @@ import { Seal } from "../../theme";
 import { hueColor } from "../../ui";
 import { reasonOf, useMain } from "../store";
 import { DescribeDoor } from "../stage/door";
+import { DraftBadge } from "./DraftBadge";
 import { layoutOrbits } from "./orbits";
 
 const FALLBACK = { width: 960, height: 520 };
@@ -164,6 +165,11 @@ export function Field() {
               <h2 className="m-marquee__name" style={{ color: hueColor(marquee.hue) }}>
                 {marquee.name}
               </h2>
+              {marquee.draft && (
+                <p className="m-marquee__draft">
+                  <DraftBadge draft={marquee.draft} />
+                </p>
+              )}
               <p className="m-marquee__brief">{firstLine(marquee.brief) || "No brief yet."}</p>
               <button type="button" className="btn btn-primary" onClick={() => enter(marquee)}>
                 Enter
@@ -213,15 +219,18 @@ export function Field() {
                     onMouseLeave={() => setFocused((f) => (f === s.id ? null : f))}
                   >
                     <td>
-                      <a
-                        className="m-rowname"
-                        href={`#projects/${encodeURIComponent(s.id)}`}
-                        style={{ ["--tone" as string]: hueColor(s.hue) }}
-                        onClick={(e) => (e.preventDefault(), enter(s))}
-                      >
-                        <i className="m-dot" aria-hidden="true" />
-                        <span>{s.name}</span>
-                      </a>
+                      <div className="m-rowline">
+                        <a
+                          className="m-rowname"
+                          href={`#projects/${encodeURIComponent(s.id)}`}
+                          style={{ ["--tone" as string]: hueColor(s.hue) }}
+                          onClick={(e) => (e.preventDefault(), enter(s))}
+                        >
+                          <i className="m-dot" aria-hidden="true" />
+                          <span>{s.name}</span>
+                        </a>
+                        <DraftBadge draft={s.draft} />
+                      </div>
                     </td>
                     <td className="m-num">{s.apps.length}</td>
                     <td className="m-num">{s.counts.episodes}</td>

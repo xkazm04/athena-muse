@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Both Athena windows: window controls for her window and the global shortcut.",
+  "description": "Both Athena windows: window controls for her window, the global shortcut, and the one system notification when a draft's job ends while the app is away.",
   "windows": ["main", "athena"],
   "permissions": [
     "core:default",
@@ -14,6 +14,9 @@
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-is-registered",
     "opener:allow-open-url",
+    "notification:allow-is-permission-granted",
+    "notification:allow-request-permission",
+    "notification:allow-notify",
     "allow-daemon-info",
     "allow-toggle-athena"
   ]

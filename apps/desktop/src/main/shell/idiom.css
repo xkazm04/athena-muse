@@ -395,3 +395,49 @@ a.m-rowname {
     transition: none;
   }
 }
+
+/* ---- a Project's open draft (onboarding-jobs): the badge beside its name, a live dot while she works ---- */
+.m-rowline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.m-rowline > .m-rowname {
+  min-width: 0;
+}
+.m-draft-badge {
+  flex: none;
+  background: none;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.m-draft-badge:hover {
+  border-color: currentColor;
+}
+.m-draft-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.m-draft-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: m-draft-live 1.6s ease-in-out infinite;
+}
+@keyframes m-draft-live {
+  50% {
+    opacity: 0.3;
+  }
+}
+.m-marquee__draft,
+.m-level__draft {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}

@@ -32,6 +32,7 @@ and the stored choice is shown again.
   falls through, and Settings names both engines. The Meta key section lives on the Engine level only. `engine.options(keys)` says, without calling anything, whether each engine
   can run: a key on file, a program on PATH. The engine is built per request, so a choice reaches
   the next turn with no restart; choosing announces the `engine` event so both windows' lamps follow. The bar's lamp names the engine (Claude Code, Muse Code, Muse) with the model in its title, or says Simulated.
+- **Draft jobs (ADR 0020).** When a draft's background job (writing, the preview, the test run) ends while the app is not in focus, Athena shows one system notification (the Tauri notification plugin; permission is asked at the first such moment, never at start). In the app, a Project with an open draft carries a badge - Writing / Preparing cards / Testing, Ready to check, or Needs you - that opens the stage.
 - **Look.** `ui/look.ts` paints `data-theme` (through the theme's `applyTheme`), `data-type-scale`
   and `data-motion` on the document; `ui/look.css` holds the large-text sizes and the calm rule. The
   backdrop's current treats calm as reduced motion. Each window reads `/settings` at boot; a write

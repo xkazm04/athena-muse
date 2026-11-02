@@ -5,6 +5,7 @@ import { hueColor } from "../../ui";
 import { Report } from "../report/Report";
 import { Routines } from "../report/Routines";
 import { reasonOf, useMain } from "../store";
+import { DraftBadge } from "./DraftBadge";
 import { SiteBlockers, SitesSection, useSites } from "./Sites";
 
 const memoriesLine = (episodes: number, facts: number) =>
@@ -90,6 +91,11 @@ function LevelBody({ space }: { space: SpaceSummary }) {
       <button type="button" className="m-crumb" onClick={() => navigate({ view: "projects" })}>
         All projects
       </button>
+      {space.draft && (
+        <p className="m-level__draft">
+          A draft is open here <DraftBadge draft={space.draft} />
+        </p>
+      )}
       <SiteBlockers spaceId={space.id} sites={sites.sites} />
       {keeps && <Report space={space} />}
       <Routines space={space} />

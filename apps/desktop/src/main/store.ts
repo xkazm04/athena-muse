@@ -22,6 +22,7 @@ import {
   type TrackVerdictBody,
 } from "../lib/contract";
 import { DaemonError } from "../lib/daemon";
+import { notifyDraftJob } from "../lib/notify";
 import { applyLook } from "../ui/look";
 import { parseHash, routeSpace, toHash, type Route } from "./route";
 
@@ -322,6 +323,11 @@ export const useMain = create<MainState>()((set, get) => ({
           const view = get().settings;
           if (view) set({ settings: { ...view, look: e.look } });
         } else void s.loadSettings();
+        break;
+      case "draft_job":
+        // A draft's job began or ended: the Project's badge follows; an end unseen gets one toast.
+        void s.loadSpaces();
+        void notifyDraftJob(e);
         break;
       case "turn_done":
         void s.loadSpaces();
