@@ -135,6 +135,11 @@ def test_an_unreadable_answer_is_told_where_its_json_breaks(daemon: Daemon) -> N
     ]  # the person's words stay plain
 
 
+def test_the_repair_message_quotes_the_text_around_the_break() -> None:
+    why = author.json_error('{"playbook": {"a": 1}}, "world": {"b": 2}}')
+    assert why is not None and '"world"' in why and ">>" in why
+
+
 def test_closed_balances_only_what_is_left_open() -> None:
     assert author.closed('{"a": "x}", "b": [1, {"c": 2}') == '{"a": "x}", "b": [1, {"c": 2}]}'
     assert author.closed('{"a": 1}') is None  # nothing open

@@ -222,8 +222,13 @@ def json_error(text: str) -> str | None:
         return "there is no JSON object in the answer"
     try:
         json.loads(body[start:])
+    except json.JSONDecodeError as e:
+        # The text around the break, so the model sees where (measured: one engine closed a bracket too
+        # early mid-answer, three times, when told only to count its brackets).
+        near = body[start:][max(0, e.pos - 80) : e.pos + 40]
+        return f"the JSON breaks at character {e.pos}: {e.msg}, just before >>{near}<<"
     except ValueError as e:
-        return f"the JSON breaks at character {getattr(e, 'pos', '?')}: {e}"
+        return f"the JSON breaks: {e}"
     return None
 
 
