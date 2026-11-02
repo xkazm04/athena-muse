@@ -46,6 +46,9 @@ BUSY = ", ".join(
     + ['[data-role="describe"][data-sending="true"]']
 )
 FAILED = '[data-role="notice"][data-phase="failed"]'
+# A failed write, preview or test run: the strip's (or a failed notice's) Try again.
+STEP_RETRY = f'[data-role="strip"] [data-role="retry"], {FAILED} [data-role="retry"]'
+STEP_WHY = f'[data-role="strip"] .dr-strip__sub, {FAILED} .sp-notice__text'
 LINE = '[data-role="note"] .dr-note__line, .ob-line'
 
 # Copied from scripts/twin_fixture.py:79 (SCHEMA.md "Words": never on screen); applied to her lines.
@@ -155,6 +158,23 @@ class Daemon:
         self._log.close()
 
 
+def is_pencil(node: dict[str, Any]) -> bool:
+    """Her guess not yet agreed (the app's isPencil)."""
+    return node.get("origin") == "athena" and not node.get("confirmed")
+
+
+def site_pencil(node: dict[str, Any]) -> bool:
+    """A real website on the piece that is still her guess (ADR 0014)."""
+    site = node.get("site")
+    return bool(site) and not site.get("confirmed")
+
+
+def needs_ink(node: dict[str, Any]) -> bool:
+    """A piece the person can ink: her pencil, or an agreed piece whose site is still her guess (the
+    app's needsInk). "Ink them all" covers only the first kind."""
+    return is_pencil(node) or site_pencil(node)
+
+
 def _norm(text: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9 ]", " ", text.lower()).split())
 
@@ -204,6 +224,7 @@ class CaseRun:
         self.fault_armed = False
         self.fault_fired = False
         self.revised = False
+        self.step_retried: set[str] = set()  # author / preview / rehearse: Try again clicked once
         self.persona = PersonaModel(case.persona, enabled=lane.persona and case.answer != "first")
         self.names = tuple(x for x in (lane.engine, lane.model) if x)
         self.rec: dict[str, Any] = {
@@ -238,7 +259,16 @@ class CaseRun:
                 "marks": None,
                 "never": None,
                 "sites": None,
+                "access_step": None,
                 "site_on_app": None,
+                "site_pencil_left": None,
+                "inked": 0,
+                "dropped": 0,
+                "review_unknown": 0,
+                "review_left": 0,
+                "drop_noop": [],
+                "reviews": [],
+                "answered_after_agreed": False,
                 "fault_fired": False,
                 "http_errors": [],
                 "steps": [],
@@ -332,6 +362,25 @@ class CaseRun:
         self.click('[data-role="retry"]')
         self.rec["ui"]["retries"] += 1
         self.pg.wait_for_timeout(1500)
+        return True
+
+    def retry_step(self, where: str) -> bool:
+        """A failed write, preview or test run on screen: the person clicks Try again once (counted in
+        ui.failures and ui.retries); the same step failing again is the blocker. False when none."""
+        button = self.pg.locator(STEP_RETRY)
+        if not button.count():
+            return False
+        why_loc = self.pg.locator(STEP_WHY)
+        why = " ".join(why_loc.first.inner_text().split())[:200] if why_loc.count() else ""
+        self.rec["ui"]["failures"] += 1
+        self.shot(f"failed-{where}")
+        if where in self.step_retried:
+            raise Blocked(f"{where} failed again after Try again: {why}")
+        self.say(f"- ({where}) It failed: {self.product(why)!r}; Try again.")
+        button.first.click()
+        self.step_retried.add(where)
+        self.rec["ui"]["retries"] += 1
+        self.pg.wait_for_timeout(2000)
         return True
 
     # --- the fault ---------------------------------------------------------------------------------
@@ -467,12 +516,15 @@ class CaseRun:
         parts = []
         for n in d["sketch"]["nodes"]:
             state = "ink" if n.get("confirmed") else "pencil"
-            site = f" <{n['site']['origin']}>" if n.get("site") else ""
+            site = ""
+            if n.get("site"):
+                site = f" <{n['site']['origin']}{'' if n['site'].get('confirmed') else ', pencil'}>"
             parts.append(f"[{n['slot']}/{state}] {self.product(n['label'])}{site}")
         return "; ".join(parts) or "(empty)"
 
     def pencil(self, d: dict[str, Any]) -> list[dict[str, Any]]:
-        return [n for n in d["sketch"]["nodes"] if not n.get("confirmed")]
+        """What "Ink them all" covers: her pencil pieces (not a pencil site on an agreed piece)."""
+        return [n for n in d["sketch"]["nodes"] if is_pencil(n)]
 
     def agreed_now(self) -> bool:
         d = self.draft()
@@ -484,6 +536,7 @@ class CaseRun:
         c = self.case
         failures_in_row = 0
         start = self.turn
+        after_agreed = False  # the one extra answer to a question still open at agreed was given
         for _ in range(MAX_TURNS + 4):
             self.idle(TURN_S)
             self.drain()
@@ -498,19 +551,32 @@ class CaseRun:
             if c.exit == "first_frame":
                 self.say("- **Person:** (clicks the exit at once)")
                 break
-            if c.drop_after_turn == self.turn:
-                self.drop_wrong(d)
-            if c.ink_all and self.pencil(self.draft()):
-                ink = self.pg.locator('[data-role="ink-all"]')
-                if ink.count() and ink.first.is_enabled():
-                    ink.first.click()
-                    self.say("- **Person:** inks all her pencil marks")
-                    self.pg.wait_for_timeout(1200)
-                    self.idle(TURN_S)
+            if c.ink_all:
+                if self.pencil(self.draft()):
+                    ink = self.pg.locator('[data-role="ink-all"]')
+                    if ink.count() and ink.first.is_enabled():
+                        ink.first.click()
+                        self.say("- **Person:** inks all her pencil marks")
+                        self.pg.wait_for_timeout(1200)
+                        self.idle(TURN_S)
+            else:
+                self.review()
+            if after_agreed:
+                self.say("- (leaves after answering the open question)")
+                break
             if self.agreed_now():
                 self.say("- (agreed)")
                 if c.exit == "agreed":
-                    break
+                    d = self.draft()
+                    if not (d.get("ask") and self.pg.locator('[data-role="question"]').count()):
+                        break
+                    # R2: a question still on screen is answered once, as any turn, before leaving
+                    self.say("- (a question is still open: the person answers it before leaving)")
+                    after_agreed = True
+                    self.rec["extra"]["answered_after_agreed"] = True
+                    self.answer(d)
+                    self.pg.wait_for_timeout(1500)
+                    continue
             if self.turn - start >= MAX_TURNS:
                 self.say("- (turn cap reached)")
                 break
@@ -559,29 +625,100 @@ class CaseRun:
             self.pg.fill('[data-role="composer"] input', words)
             self.pg.press('[data-role="composer"] input', "Enter")
 
-    def drop_wrong(self, d: dict[str, Any]) -> None:
-        pencil = self.pencil(d)
-        r = self.persona.review([n["label"] for n in pencil])
-        self.rec["extra"]["persona_fallback"] = self.persona.fallbacks
-        if not r.drop:
-            self.say("- **Person** reviews her pencil marks: all right.")
+    def review(self) -> None:
+        """R1: the persona reviews each pencil mark (a pencil piece, or a pencil site on an agreed
+        piece) against its truth; each is inked or rubbed out through its own card."""
+        d = self.draft()
+        marks = [n for n in d["sketch"]["nodes"] if needs_ink(n)]
+        if not marks:
             return
+        items = [
+            {"label": n["label"], "slot": n["slot"], "site": n["site"]["origin"] if site_pencil(n) else None}
+            for n in marks
+        ]
+        r = self.persona.review(items)
+        x = self.rec["extra"]
+        x["persona_fallback"] = self.persona.fallbacks
+        x["review_unknown"] += r.unknown
+        inked: list[str] = []
+        dropped: list[str] = []
+        noop: list[str] = []
+        for label in r.ink:
+            for n in (m for m in marks if m["label"] == label):
+                if self.act(n, "ink"):
+                    inked.append(label + (f" <{n['site']['origin']}>" if site_pencil(n) else ""))
+        dropping: list[str] = []
         for label in r.drop:
-            node = next((n for n in pencil if n["label"] == label), None)
-            if node is None:
-                continue
-            nid = node["id"]
-            try:
-                self.click(f'[data-role="piece"][data-node-id="{nid}"] .dr-piece__hit', 5000)
-                self.click(f'[data-role="piece-card"][data-node-id="{nid}"] [data-role="drop"]', 5000)
-            except PWTimeout:
-                self.say(f"- (could not open the card of {self.product(label)!r} to drop it)")
-                continue
-            self.say(f"- **Person** rubs out: {self.product(label)}")
+            for n in (m for m in marks if m["label"] == label):
+                if not is_pencil(n):  # an agreed piece with her pencil site: the card's rub-out does nothing
+                    noop.append(f"{label} <{n['site']['origin']}>")
+                elif self.act(n, "drop"):
+                    dropping.append(n["id"])
+                    dropped.append(label)
+        end = time.time() + 20  # a rub-out waits out its five-second undo, then goes to the daemon
+        while dropping and time.time() < end:
+            ids = {n["id"] for n in self.draft()["sketch"]["nodes"]}
+            if not ids & set(dropping):
+                break
+            self.pg.wait_for_timeout(1000)
+        else:
+            if dropping:
+                self.say("- (a rub-out did not reach the sketch within 20 s)")
+        left = [
+            lb for lb in dict.fromkeys(it["label"] for it in items) if lb not in r.ink and lb not in r.drop
+        ]
+        x["inked"] += len(inked)
+        x["dropped"] += len(dropped)
+        x["review_left"] += len(left)
+        x["drop_noop"] += noop
+        x["reviews"].append(
+            {
+                "turn": self.turn,
+                "marks": len(items),
+                "inked": len(inked),
+                "dropped": len(dropped),
+                "left": len(left),
+                "unknown": r.unknown,
+                "fallback": r.fallback,
+            }
+        )
+        line = "- **Person** reviews her pencil marks: inks: " + (
+            ", ".join(self.product(t) for t in inked) or "none"
+        )
+        line += "; rubs out: " + (", ".join(self.product(t) for t in dropped) or "none")
+        if left:
+            line += "; leaves in pencil: " + ", ".join(self.product(t) for t in left)
+        if noop:
+            line += "; could not rub out (a site on an agreed piece): " + ", ".join(
+                self.product(t) for t in noop
+            )
+        if r.unknown:
+            line += f"; {r.unknown} label(s) not among her pencil marks ignored"
+        self.say(line + (" (fallback)" if r.fallback else ""))
+        if dropped or inked:
+            self.pg.wait_for_timeout(500)
+
+    def act(self, node: dict[str, Any], role: str) -> bool:
+        """Opens the piece's card and clicks its ink or rub-out; an ink waits until the daemon has it."""
+        nid = node["id"]
+        card = f'[data-role="piece-card"][data-node-id="{nid}"]'
+        try:
+            if not self.pg.locator(card).count():
+                self.click(f'[data-node-id="{nid}"]:is([data-role="piece"], [data-role="chip"]) button', 5000)
+            self.click(f'{card} [data-role="{role}"]', 5000)
+        except PWTimeout:
+            self.say(f"- (could not open the card of {self.product(node['label'])!r} to {role} it)")
+            return False
+        if role == "ink":
             end = time.time() + 15
-            while time.time() < end and any(n["id"] == nid for n in self.draft()["sketch"]["nodes"]):
-                self.pg.wait_for_timeout(1000)
-        self.shot(f"dropped-{self.turn}")
+            while time.time() < end:
+                now = next((n for n in self.draft()["sketch"]["nodes"] if n["id"] == nid), None)
+                if now is None or not needs_ink(now):
+                    break
+                self.pg.wait_for_timeout(500)
+        else:
+            self.pg.wait_for_timeout(300)
+        return True
 
     def write(self) -> None:
         self.step("author")
@@ -592,15 +729,15 @@ class CaseRun:
         while time.time() < end:
             if self.draft()["step"] != "author" and not self.pg.locator(BUSY).count():
                 break
+            if not self.pg.locator(BUSY).count() and self.retry_step("author"):
+                # the failed attempt's repairs count; its failure is judged by the retry's outcome
+                self.rec["repairs"] += sum(1 for e in self.write_events() if e.get("type") == "repair")
+                continue
             self.pg.wait_for_timeout(2000)
         else:
             raise Blocked("authoring did not end within 600 s")
         self.pg.wait_for_timeout(1500)
-        events: list[dict[str, Any]] = []
-        while self.write_responses:
-            resp = self.write_responses.pop(0)
-            with contextlib.suppress(Exception):
-                events += [json.loads(x) for x in resp.text().splitlines() if x.strip().startswith("{")]
+        events = self.write_events()
         self.rec["repairs"] += sum(1 for e in events if e.get("type") == "repair")
         failed = [e for e in events if e.get("type") in ("author_failed", "error")]
         self.shot("written-or-not")
@@ -618,16 +755,24 @@ class CaseRun:
             + ", ".join(self.product(a["name"]) for a in d.get("practice", []))
         )
 
+    def write_events(self) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
+        while self.write_responses:
+            resp = self.write_responses.pop(0)
+            with contextlib.suppress(Exception):
+                events += [json.loads(x) for x in resp.text().splitlines() if x.strip().startswith("{")]
+        return events
+
     def preview(self) -> None:
         self.step("preview")
         show = self.pg.locator('button:has-text("Show me what she will file")')
         if show.count():
             show.first.click()
         end = time.time() + PREVIEW_S
-        retried = False
         while time.time() < end and not self.draft().get("expected"):
-            if not retried and self.retry_failed("preview"):
-                retried = True
+            if self.retry_step("preview"):
+                end = time.time() + PREVIEW_S  # the retry gets its own time
+                continue
             self.pg.wait_for_timeout(2000)
         cards = self.draft().get("expected") or []
         if not cards:
@@ -667,14 +812,9 @@ class CaseRun:
             d = self.draft()
             if d["step"] == "verdict":
                 break
-            if self.pg.locator(FAILED).count():
-                raise Blocked("the test run failed: " + self.pg.locator(FAILED).first.inner_text()[:200])
-            strip = self.pg.locator('[data-role="strip"][data-step="rehearse"]')
-            if strip.count() and strip.locator('[data-role="retry"]').count():
-                sub = strip.locator(".dr-strip__sub")
-                raise Blocked(
-                    "the test run stopped: " + (sub.first.inner_text()[:200] if sub.count() else "")
-                )
+            if self.retry_step("rehearse"):
+                end = time.time() + REHEARSE_S
+                continue
             self.pg.wait_for_timeout(5000)
         else:
             raise Blocked("the test run did not end within 900 s")
@@ -725,8 +865,12 @@ class CaseRun:
         d = self.draft()
         sites = d.get("sites") or []
         self.rec["extra"]["sites"] = [{"origin": s.get("origin"), "state": s.get("state")} for s in sites]
+        self.rec["extra"]["access_step"] = d["step"] == "access"
         if d["step"] == "access":
             self.step("access")
+            self.say(
+                "- **Sign in to:** " + (", ".join(self.product(s.get("origin", "")) for s in sites) or "none")
+            )
             self.shot("access")
             for _ in range(len(sites) + 2):
                 skip = self.pg.locator(
@@ -761,6 +905,7 @@ class CaseRun:
                 rec["end"]["step"] = d["step"]
                 apps = [n for n in d["sketch"]["nodes"] if n.get("kind") == "app"]
                 rec["extra"]["site_on_app"] = any(n.get("site") for n in apps)
+                rec["extra"]["site_pencil_left"] = sum(1 for n in apps if site_pencil(n))
                 rows = self.d.get("/ledger?limit=500")["rows"]
                 rec["calls"] = calls_of(rows)
         except Exception as e:

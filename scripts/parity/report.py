@@ -1,6 +1,11 @@
 """Folds a parity run's run.json files, grades.json and blind.json into report.md.
 
     python scripts/parity/report.py runs/parity/<stamp> [--reference claude_code] [--allow-ungraded]
+    python scripts/parity/report.py runs/parity/<stamp> --against runs/parity/<earlier>
+
+--against compares two runs of the same engine set case by case instead (it writes
+against-<earlier>.md next to report.md): blind ids differ between runs, so each run's blind.json maps
+its folders to (case, engine).
 
 The blind ids are revealed only here, so the report is written after grading: it refuses while any
 grade is missing unless --allow-ungraded (then the grade clause reads "ungraded", never a pass).
@@ -139,13 +144,89 @@ def cell(v: Any) -> str:
     return "-" if v is None else str(v)
 
 
+def load_runs(root: Path) -> dict[tuple[int, str], dict[str, Any]]:
+    """(case, engine) -> run.json of one run folder, through its blind.json."""
+    blind = json.loads((root / "blind.json").read_text(encoding="utf-8"))
+    out: dict[tuple[int, str], dict[str, Any]] = {}
+    for bid, meta in blind.items():
+        path = root / f"{int(meta['case']):02d}-{bid}" / "run.json"
+        if path.exists():
+            out[(int(meta["case"]), str(meta["engine"]))] = json.loads(path.read_text(encoding="utf-8"))
+    return out
+
+
+def _metrics(r: dict[str, Any] | None, grades: dict[str, Any]) -> dict[str, Any]:
+    if r is None:
+        return dict.fromkeys(("grade", "turns", "test", "p50", "max", "blocker"))
+    t = r.get("test")
+    return {
+        "grade": overall(grades.get(r["blind_id"])),
+        "turns": r["turns"]["to_agreed"],
+        "test": (t.get("found") or 0) / t["of"] if t and t.get("of") else None,
+        "p50": r["calls"]["latency_ms_p50"],
+        "max": r["calls"]["latency_ms_max"],
+        "blocker": r["blocker"],
+    }
+
+
+def _delta(a: Any, b: Any, digits: int = 1) -> str:
+    """'a (b, +d)': this run's value, the other's, the change; '-' where either is missing."""
+    if a is None and b is None:
+        return "-"
+    if a is None or b is None:
+        return f"{cell(_round(a, digits))} ({cell(_round(b, digits))})"
+    d = a - b
+    return f"{_round(a, digits)} ({_round(b, digits)}, {'+' if d >= 0 else ''}{_round(d, digits)})"
+
+
+def _round(v: Any, digits: int) -> Any:
+    if isinstance(v, float):
+        return round(v, digits) if digits else round(v)
+    return v
+
+
+def against(root: Path, other: Path) -> str:
+    """The per-case delta table between two runs: this run's value (the other's, the change)."""
+    mine, theirs = load_runs(root), load_runs(other)
+    gm, gt = (
+        json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        for p in (root / "grades.json", other / "grades.json")
+    )
+    lines = [
+        f"# Onboarding parity - {root.name} against {other.name}\n",
+        "Each cell: this run (the other run, the change). Grade: the mean of the five; test: found / of.\n",
+        "| case | engine | grade | turns to agreed | test | calls p50 ms | calls max ms | blocker |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for case, engine in sorted(set(mine) | set(theirs)):
+        a, b = _metrics(mine.get((case, engine)), gm), _metrics(theirs.get((case, engine)), gt)
+        if a["blocker"] == b["blocker"]:
+            blocker = "same" if a["blocker"] else "-"
+        else:
+            blocker = f"{cell(a['blocker'])} (was {cell(b['blocker'])})"
+        lines.append(
+            f"| {case} | {engine} | {_delta(a['grade'], b['grade'])} | {_delta(a['turns'], b['turns'])} | "
+            f"{_delta(a['test'], b['test'], 2)} | {_delta(a['p50'], b['p50'], 0)} | "
+            f"{_delta(a['max'], b['max'], 0)} | {blocker} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("out", type=Path)
     ap.add_argument("--reference", default="claude_code", help="the engine the others are measured against")
     ap.add_argument("--allow-ungraded", action="store_true")
+    ap.add_argument("--against", type=Path, help="another run's out dir: a per-case delta table instead")
     args = ap.parse_args()
     root: Path = args.out
+    if args.against:
+        text = against(root, args.against)
+        path = root / f"against-{args.against.resolve().name}.md"
+        path.write_text(text, encoding="utf-8")
+        print(text)
+        print(f"wrote {path}")
+        return
     blind = json.loads((root / "blind.json").read_text(encoding="utf-8"))
     grades_path = root / "grades.json"
     grades = json.loads(grades_path.read_text(encoding="utf-8")) if grades_path.exists() else {}

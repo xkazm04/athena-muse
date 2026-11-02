@@ -26,10 +26,13 @@ python scripts/parity/run.py --engines scripted --cases 1 --out runs/parity/dry
 python scripts/parity/blind.py --self-test        # the blind check fails a transcript naming an engine
 python scripts/parity/blind.py runs/parity/<stamp> # every transcript is blind
 python scripts/parity/report.py runs/parity/<stamp> [--reference claude_code] [--allow-ungraded]
+python scripts/parity/report.py runs/parity/<stamp> --against runs/parity/<earlier>  # per-case deltas
+python scripts/parity/persona.py --self-test      # the persona's review JSON parse, no network
+python scripts/parity/persona.py --live           # one review and one answer from the live persona
 ```
 
 Options: `--view drawing|orbit` (default drawing), `--persona off` (first suggestion, yes to every
-card: no persona calls), `--no-build` (serve the app already in `apps/desktop/dist`; otherwise it is
+card, ink every pencil mark: no persona calls), `--no-build` (serve the app already in `apps/desktop/dist`; otherwise it is
 built once), `--lanes-serial` (one lane after the other; parallel is the default).
 
 Every case gets a fresh daemon and data folder (`uv run athena-daemon --data <run>/data --port P
@@ -51,18 +54,40 @@ A taken port stops the run before anything starts. The daemon only answers the a
 
 ## The cases
 
-| # | name | what it does differently (default: the persona answers, a suggestion when one matches its truth, else own words; ink all after each turn; exit when agreed or after 9 turns; marks from its truth; keep; skip every site) |
+| # | name | what it does differently (default: the persona answers, a suggestion when one matches its truth, else own words; reviews each pencil mark after each turn; when agreed, answers a question still open once, then exits, or after 9 turns; marks from its truth; keep; skip every site) |
 |---|---|---|
-| 1 | baseline | the staged need; always her first suggestion; yes to every card |
+| 1 | baseline | the staged need; always her first suggestion; "Ink them all" after each turn; yes to every card |
 | 2 | new-domain | a landlord's repair requests from email and a portal |
 | 3 | vague-need | "Help me with my emails."; the persona reveals its truth only when asked |
 | 4 | over-specified | everything said up front; counts asks about slots already given |
 | 5 | own-words | never a suggestion |
 | 6 | early-exit | exit right after the first frame |
-| 7 | correction | after turn 2 the persona rubs out wrong pencil pieces; on turn 3 it takes back an earlier answer |
+| 7 | correction | the persona rubs out wrong pencil pieces (as every case's review); on turn 3 it takes back an earlier answer |
 | 8 | not-quite | "Not quite" at the first verdict with the persona's note naming one gap, then write, check, test, keep |
 | 9 | marks | yes/no per card from the truth, and one "she must never" line |
-| 10 | real-site-failure | the persona names a real website; one injected engine failure on the 2nd reply, recovered with Try again; every site skipped |
+| 10 | real-site-failure | the persona names a real website and inks her pencil site when it is the right one, so the access step lists it; one injected engine failure on the 2nd reply, recovered with Try again; every site skipped |
+
+**The pencil review (every case but 1).** After each turn the runner reads every piece the person
+can ink from `GET /drafts/{id}` (the app's `needsInk`: her pencil piece, or an agreed app piece whose
+website is still her guess) and gives them to the persona with its truth, as `- <label> [<slot>] -
+website: <site>`. The persona answers `{"ink": [labels], "drop": [labels]}`; a label not among the
+pencil marks it was shown is ignored and counted (`extra.review_unknown`), a label in both lists is rubbed out, a label
+in neither stays in pencil (`extra.review_left`). Each is acted on through its own card: the piece
+opens its card, then `[data-role=ink]` (waited until the daemon has it) or `[data-role=drop]` (waited
+out its five-second undo until the piece is gone). The transcript says per turn `Person reviews her
+pencil marks: inks: ...; rubs out: ...`; `extra.inked` / `extra.dropped` count them, `extra.reviews`
+has one row per turn. Case 1 keeps "Ink them all", the reference walk: that button covers only her
+pencil pieces, never a pencil site on an agreed piece. A pencil site on an agreed piece cannot be
+rubbed out from its card (the app's drop takes only pencil pieces, though the daemon would remove the
+site): such a rub-out is recorded in `extra.drop_noop` and the site stays pencil.
+
+**Leaving.** When `GET /drafts/{id}` says agreed and a question is still on screen, the persona answers
+it once (the same policy as any turn, `extra.answered_after_agreed`), the runner reviews the next
+frame and then exits; at most one extra turn.
+
+**Try again once.** A failed write, preview or test run (the strip's `[data-role=retry]`, or a failed
+notice's) is clicked once and counted in `ui.failures` and `ui.retries`; only the same step failing a
+second time is the run's blocker (`<step> failed again after Try again: ...`).
 
 The fault in case 10 is Playwright's `page.route("**/drafts/*/say")` serving one
 `{"type":"error","error":"engine_unavailable",...}` reply, then unrouting: no product test hook.
@@ -78,14 +103,20 @@ The fault in case 10 is Playwright's `page.route("**/drafts/*/say")` serving one
 <out>/<case>-<blind_id>/NN-<name>.png   a screenshot per step, and `blocked` where it stopped
 <out>/<case>-<blind_id>/daemon.log, data/
 <out>/report.md                   written by report.py, after grading
+<out>/against-<earlier>.md        written by report.py --against: per (case, engine), this run's grade
+                                  mean, turns to agreed, test, calls p50 / max and blocker against the
+                                  earlier run's (blind ids differ; each run's blind.json maps them)
 ```
 
 `run.json`: `case, blind_id, engine, model, end{step, expected, ok}, blocker, turns{to_agreed, total},
 asks[{slot, text, suggestions}], repeated_asks, repairs, author_failed, test{found, of, verdict}|null,
 calls{n, latency_ms_p50, latency_ms_max, over_60s, tokens_in, tokens_out, cost_usd|null, failed},
 ui{slow_notices, failures, retries, scroll_problems, console_errors, banned_words}, wall_s`, plus
-`extra` (draft id, persona fallbacks, redactions, marks, never line, sites and whether an app piece
-carried one, whether the fault fired, HTTP errors, steps with times). Not reached or not applicable
+`extra` (draft id, persona fallbacks, redactions, marks, never line, `sites` the access step listed
+with how each ended, `access_step` whether there was one, `site_on_app` whether an app piece carried a
+site and `site_pencil_left` how many were still her guess at the end, the review counts `inked`,
+`dropped`, `review_left`, `review_unknown`, `drop_noop`, `reviews`, `answered_after_agreed`, whether
+the fault fired, HTTP errors, steps with times). Not reached or not applicable
 is `null`, never 0. `report.check_run` is the schema check; the runner applies it to every record.
 
 - `turns.total`: /say replies that came back without an error (the describe's first frame counts).

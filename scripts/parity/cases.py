@@ -1,7 +1,9 @@
 """The 10 onboarding use cases. Each holds the need typed at describe, the persona card (who, the
 persona's truth that grading compares the sketch against, how they talk) and the case's overrides of
-the default policy: the persona answers (a suggestion when one matches its truth, else its own words),
-ink all after each turn, exit when agreed or after MAX_TURNS, mark the cards from its truth, keep.
+the default policy: the persona answers (a suggestion when one matches its truth, else its own
+words), reviews each pencil mark after each turn (ink or rub out, from its truth), answers a
+question still open when the shape is agreed, then exits (or after MAX_TURNS), marks the cards from
+its truth, keeps.
 """
 
 from __future__ import annotations
@@ -38,8 +40,7 @@ class Case:
     answer: Answer = "persona"
     exit: Exit = "agreed"
     marks: Marks = "persona"
-    ink_all: bool = True
-    drop_after_turn: int | None = None  # case 7: review pencil labels and drop the wrong ones
+    ink_all: bool = False  # case 1 only: "Ink them all" instead of the persona's per-mark review
     contradict_on_turn: int | None = None  # case 7: once take back an earlier answer, in own words
     revise_once: bool = False  # case 8: "Not quite" at the first verdict, with a note
     never_line: bool = False  # case 9: one "she must never" line at the check
@@ -71,6 +72,7 @@ CASES: dict[int, Case] = {
         persona=PARENT,
         answer="first",
         marks="yes",
+        ink_all=True,
         focus="The staged need, her first suggestion every time: the reference walk.",
     ),
     2: Case(
@@ -193,7 +195,6 @@ CASES: dict[int, Case] = {
             ),
             style="Warm, sometimes changes her mind, corrects wrong guesses plainly.",
         ),
-        drop_after_turn=2,
         contradict_on_turn=3,
         focus="She drops wrong pencil pieces and takes back an earlier answer: does Athena follow?",
     ),

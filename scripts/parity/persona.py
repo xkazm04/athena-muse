@@ -2,10 +2,14 @@
 
 One `claude -p` call per decision (no tools, no session kept, run from a temp folder so no project
 instructions load). It answers with one JSON object:
-    {"pick": 1-4|null, "words": str|null, "drop": [labels], "marks": {expected_id: "yes"|"no"},
-     "never": str|null, "note": str|null}
+    {"pick": 1-4|null, "words": str|null, "ink": [labels], "drop": [labels],
+     "marks": {expected_id: "yes"|"no"}, "never": str|null, "note": str|null}
 and fills only what the step asks for. An unreadable reply is asked once more; then the runner falls
-back (the first suggestion, or "yes" to every card) and records `persona_fallback`.
+back (the first suggestion, ink every pencil mark, or "yes" to every card) and records
+`persona_fallback`.
+
+    python scripts/parity/persona.py --self-test   # the JSON parsing, no network
+    python scripts/parity/persona.py --live        # one review and one answer from the live persona
 """
 
 from __future__ import annotations
@@ -38,7 +42,9 @@ SYSTEM = (
 class Reply:
     pick: int | None = None
     words: str | None = None
+    ink: list[str] = field(default_factory=list)
     drop: list[str] = field(default_factory=list)
+    unknown: int = 0  # labels in a review that are not on the sketch (ignored, counted)
     marks: dict[str, str] = field(default_factory=dict)
     never: str | None = None
     note: str | None = None
@@ -63,6 +69,47 @@ def _json_in(text: str) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         return None
     return value if isinstance(value, dict) else None
+
+
+def _review_line(item: dict[str, Any]) -> str:
+    site = item.get("site")
+    tail = f" - website: {re.sub(r'^https?://', '', str(site))}" if site else ""
+    return f"- {item['label']} [{item.get('slot', '')}]{tail}"
+
+
+def _match(text: str, labels: list[str]) -> str | None:
+    """The sketch label a persona's text names: exact, then ignoring case and spacing and any
+    bracket or website tail it copied along."""
+    if text in labels:
+        return text
+    key = " ".join(re.split(r"\s*\[| - website:", text)[0].lower().split())
+    for label in labels:
+        if " ".join(label.lower().split()) == key:
+            return label
+    return None
+
+
+def parse_review(value: dict[str, Any], labels: list[str]) -> tuple[list[str], list[str], int]:
+    """(ink, drop, unknown) from the persona's review JSON: each a label on the sketch, once. A label
+    in both lists is rubbed out (the person said it is wrong); a label not on the sketch is ignored
+    and counted; a list that is not a list reads as empty."""
+    unknown = 0
+
+    def pick(key: str) -> list[str]:
+        nonlocal unknown
+        raw = value.get(key)
+        out: list[str] = []
+        for x in raw if isinstance(raw, list) else []:
+            label = _match(str(x).strip(), labels)
+            if label is None:
+                unknown += 1
+            elif label not in out:
+                out.append(label)
+        return out
+
+    drop = pick("drop")
+    ink = [label for label in pick("ink") if label not in drop]
+    return ink, drop, unknown
 
 
 def _call(prompt: str) -> str:
@@ -175,21 +222,33 @@ class PersonaModel:
             return Reply(pick=1, fallback=True)
         return Reply(words="Yes, that is right.", fallback=True)
 
-    def review(self, labels: list[str]) -> Reply:
-        """Which of her pencil pieces are wrong for the persona's truth."""
-        if not self.enabled or not labels:
-            return Reply(drop=[], fallback=not self.enabled)
-        listing = "\n".join(f"- {label}" for label in labels)
+    def review(self, items: list[dict[str, Any]]) -> Reply:
+        """Ink or rub out each of her pencil marks, from the persona's truth. `items` are
+        {label, slot, site}: a pencil piece, or an agreed app piece whose website is her guess
+        (`site` the address; inking the piece inks the site). Off or unreadable: ink them all."""
+        labels = list(dict.fromkeys(str(it["label"]) for it in items))
+        if not items:
+            return Reply()
+        if not self.enabled:
+            return Reply(ink=labels, fallback=True)
+        listing = "\n".join(_review_line(it) for it in items)
         prompt = (
-            f"{_card(self.persona)}Athena drew these guesses in pencil on your sketch:\n{listing}\n\n"
-            "Which of them are wrong for your truth? Copy their text exactly. "
-            '{"drop": ["<label>", ...]} (an empty list if all are right).'
+            f"{_card(self.persona)}{self._history()}Athena drew these guesses in pencil on your sketch "
+            f"(the part of the chore each is about in brackets):\n{listing}\n\n"
+            "For each one: ink it if it is right for your truth (a website must be the right one), rub "
+            "it out if it is wrong or not part of your chore. Copy the text before the bracket exactly. "
+            '{"ink": ["<label>", ...], "drop": ["<label>", ...]}; every label in one of the two.'
         )
-        value, raw = _ask(prompt, lambda v: isinstance(v.get("drop"), list))
+
+        def valid(v: dict[str, Any]) -> bool:
+            return isinstance(v.get("ink"), list) or isinstance(v.get("drop"), list)
+
+        value, raw = _ask(prompt, valid)
         if value is None:
             self.fallbacks += 1
-            return Reply(fallback=True, raw=raw)
-        return Reply(drop=[str(x) for x in value["drop"] if str(x) in labels], raw=raw)
+            return Reply(ink=labels, fallback=True, raw=raw)
+        ink, drop, unknown = parse_review(value, labels)
+        return Reply(ink=ink, drop=drop, unknown=unknown, raw=raw)
 
     def mark(self, cards: list[dict[str, Any]], never: bool) -> Reply:
         """Yes or no for each card she expects to file, from the truth; and a never line if asked."""
@@ -243,15 +302,72 @@ class PersonaModel:
         return Reply(note=str(value["note"]).strip(), raw=raw)
 
 
-if __name__ == "__main__":  # a quick parse check against the live persona (a few cents)
+def self_test() -> None:
+    """The review JSON parse, offline: what the runner inks and rubs out from a reply."""
+    labels = ["Gmail inbox", "TenantCloud portal", "Check row before saving", "Weekly list"]
+    cases: list[tuple[str, tuple[list[str], list[str], int]]] = [
+        ('{"ink": ["Gmail inbox"], "drop": ["Weekly list"]}', (["Gmail inbox"], ["Weekly list"], 0)),
+        (
+            '```json\n{"ink": ["gmail  INBOX", "TenantCloud portal [apps]"], "drop": []}\n```',
+            (["Gmail inbox", "TenantCloud portal"], [], 0),
+        ),
+        (
+            'Sure: {"ink": ["TenantCloud portal - website: tenantcloud.com", "Stripe"], "drop": ["Nope"]}',
+            (["TenantCloud portal"], [], 2),
+        ),
+        ('{"ink": ["Weekly list"], "drop": ["Weekly list"]}', ([], ["Weekly list"], 0)),
+        ('{"ink": ["Gmail inbox", "Gmail inbox"]}', (["Gmail inbox"], [], 0)),
+        ('{"drop": "Weekly list"}', ([], [], 0)),
+    ]
+    for raw, want in cases:
+        value = _json_in(raw)
+        if value is None:
+            raise SystemExit(f"FAIL: no JSON read from {raw!r}")
+        got = parse_review(value, labels)
+        if got != want:
+            raise SystemExit(f"FAIL: {raw!r} parsed to {got}, not {want}")
+    if _json_in("no json here") is not None or _json_in('{"a": [1,}') is not None:
+        raise SystemExit("FAIL: an unreadable reply parsed")
+    off = PersonaModel(Persona("w", "t", "s"), enabled=False).review(
+        [
+            {"label": "A", "slot": "apps", "site": None},
+            {"label": "B", "slot": "apps", "site": "https://b.example"},
+            {"label": "A", "slot": "hand", "site": None},
+        ]
+    )
+    if off.ink != ["A", "B"] or not off.fallback:
+        raise SystemExit(f"FAIL: with the persona off every pencil mark is inked, got {off}")
+    line = _review_line({"label": "Supplier site", "slot": "apps", "site": "https://octopus.energy"})
+    if line != "- Supplier site [apps] - website: octopus.energy":
+        raise SystemExit(f"FAIL: review line {line!r}")
+    print(f"ok: {len(cases)} review replies parse as expected; persona off inks all; the review line")
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--self-test" in sys.argv:
+        self_test()
+        raise SystemExit(0)
+    if "--live" not in sys.argv:
+        raise SystemExit("usage: persona.py --self-test | --live")
     from cases import CASES
 
-    pm = PersonaModel(CASES[2].persona)
-    r = pm.answer(
-        "Two places requests come from - got it.",
-        "Which app is the rental portal?",
-        ["Buildium", "AppFolio", "TenantCloud", "A portal I built myself"],
-        ["Repair requests by email", "Weekly list for the handyman"],
+    pm = PersonaModel(CASES[10].persona)  # a quick check against the live persona (a few cents)
+    print(
+        pm.review(
+            [
+                {"label": "Supplier site", "slot": "apps", "site": "https://octopus.energy"},
+                {"label": "Bill email", "slot": "inputs", "site": None},
+                {"label": "Spreadsheet", "slot": "apps", "site": None},
+            ]
+        )
     )
-    print(r)
-    print(pm.mark([{"id": "e1", "label": "Leaking tap in flat 3", "why": "request by email"}], never=True))
+    print(
+        pm.answer(
+            "Got the supplier site down.",
+            "Which budget app do you log it in?",
+            ["Google Sheet", "Excel", "A budgeting app"],
+            ["Supplier site", "Spreadsheet"],
+        )
+    )
