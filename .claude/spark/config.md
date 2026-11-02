@@ -20,6 +20,8 @@ Read AGENTS.md first. Built core: ADRs 0002-0007; built features: docs/features/
 
 A stream route's contract names its protocol, not just its event types: event order, where the stream ends, and what a follow-up call (a mark, a retry) does to it. A parallel UI built against types alone guessed it wrong (twin-module WP5: rehearsal assumed to pause per draft).
 
+A live run that holds ports and writes for hours checks first: its ports free (a foreign process held 8791; a crashed daemon held 8795 after the disk filled) and free disk (a full disk surfaced in the app as "Her answer stopped before the end"). Seen 2026-10-29 and 2026-11-02.
+
 Status lines in a shared design doc belong to the Director: builders put theirs in the final report, and the Director writes the line at commit. Three parallel packages writing "done" lines into one README conflicted at every rebase (twin-module).
 
 ## Wave defaults
@@ -49,3 +51,8 @@ default
 - 2026-11-01 (youtube-live-e2e -> business-phases-plan): a live-run spark was asked harness questions before checking which steps of the business case are built; the owner stopped it to plan the unbuilt half. For a live/e2e spark, list built vs unbuilt per step of the case before wave 1.
 - 2026-11-01 (business-phase-1): a daemon string that reaches the screen (drop reasons) is UI copy; WP1.2's brief did not say so and the banned-word rule caught it only in WP1.3. Name such strings in the producing package's brief. Also: grep a new wire name against both contract files before choosing it (VerdictBody and TS Record collided).
 - 2026-11-01 (business-phase-2): a stand-in shell fed text with link addresses let every unit test pass while the real page_read returns none; the built-shell seam found it (3/9 -> 9/9). Feed stand-ins what the real hand returns, and run the built-artifact seam before merge on any routine or recipe that reads pages.
+- 2026-11-02 (onboarding-engine-parity): a measuring harness's own policies (ink all, exit when agreed) hid one engine's over-proposal and skipped the persona's never answer; found only by reading the baseline transcripts. The persona's review policy is a wave-1 question, not a builder default.
+- 2026-11-02: a fix in a shared base (SketchDesign) broke 41 twin tests the first cut never ran; the scout had named `twins/setup.py` as a consumer. Scope a behaviour change in a shared base with a class-level switch, and run the consumer's tests before the commit.
+- 2026-11-02: when the operator names a model version and the repo's default differs (1.2 vs 1.3), ask which in plain words; recommending the operator's stale version was corrected via Other.
+- 2026-11-02: blind grading (engine names stripped, key in a separate file) reversed the Director's prior (Muse expected to degrade; it was faster and level) and caught a Sonnet blocker that would have been pinned on Muse.
+
