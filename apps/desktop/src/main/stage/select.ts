@@ -10,6 +10,8 @@ import {
   type Coverage,
   type CoverageValue,
   type Draft,
+  type DraftJobKind,
+  type DraftNotes,
   type DraftStep,
   type ExpectedCard,
   type KeyBody,
@@ -21,7 +23,7 @@ import {
   type Slot,
 } from "../../lib/contract";
 import type { SealState } from "../../theme";
-import type { ReplyPhase, StageFrame, StageState, StageWork } from "./types";
+import type { MeanwhileQuestion, ReplyPhase, StageFrame, StageState, StageWork } from "./types";
 
 /**
  * A rubric as the screen reads it (ADR 0010, drafts/rubric.py): its places in order and the coverage
@@ -423,4 +425,80 @@ export function keyOf(state: StageState): KeyBody {
     return [m.note ? { expected_id: c.id, mark: m.mark, note: m.note } : { expected_id: c.id, mark: m.mark }];
   });
   return { marks, missing: [...state.missing], never: [...state.never] };
+}
+
+// --- the background job and "meanwhile" -------------------------------------------------------
+
+/** The acts that run as the draft's background job: the stage follows them, never waits on them. */
+export const JOB_WORK: ReadonlySet<StageWork> = new Set<StageWork>(["write", "preview", "rehearse"]);
+
+export const isJobWork = (work: StageWork | null): work is DraftJobKind => !!work && JOB_WORK.has(work);
+
+/** The job the stage follows now, if any: the kind of work in flight. */
+export function runningJob(state: StageState): DraftJobKind | null {
+  return isJobWork(state.work) ? state.work : null;
+}
+
+/** What the person has said while she worked: their edits here, else the draft's, else nothing. */
+export function notesOf(state: StageState): DraftNotes {
+  return state.notes ?? state.draft?.notes ?? { expect: [], never: [] };
+}
+
+/** The sketch's own "never" pieces: what the never question starts from. */
+export function neverOfSketch(draft: Draft | null): string[] {
+  return (draft?.sketch.nodes ?? []).filter((n) => n.slot === "never").map((n) => n.label);
+}
+
+/**
+ * The never question's lines: what the person said, or (before they said or changed anything) the
+ * sketch's never pieces, for them to keep, change or add to.
+ */
+export function neverLinesOf(state: StageState): string[] {
+  const said = notesOf(state).never;
+  if (said.length || state.meanwhile.touched.includes("never") || state.meanwhile.done.includes("never")) return said;
+  return neverOfSketch(state.draft);
+}
+
+const MEANWHILE: readonly MeanwhileQuestion[] = ["expect", "never"];
+
+/** The "meanwhile" questions still to ask, in order: none answered on the draft, done or skipped here. */
+export function meanwhileLeft(state: StageState): MeanwhileQuestion[] {
+  const saved = state.draft?.notes;
+  return MEANWHILE.filter((q) => !state.meanwhile.done.includes(q) && !(saved && saved[q].length));
+}
+
+const lineKey = (s: string) => s.split(/\s+/).filter(Boolean).join(" ").toLowerCase();
+
+/**
+ * An expected line a card covers: kept simple on purpose, a case-insensitive match where either the
+ * line or the card's label holds the other. Anything subtler is the person's call at the check.
+ */
+export function covers(card: ExpectedCard, line: string): boolean {
+  const a = lineKey(card.label);
+  const b = lineKey(line);
+  return !!b && (a.includes(b) || b.includes(a));
+}
+
+/** Lines cleaned, de-duplicated (ignoring case), within the daemon's caps. */
+function capLines(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const raw of lines) {
+    const t = raw.split(/\s+/).filter(Boolean).join(" ");
+    if (!t || t.length > LINE_MAX || out.some((x) => x.toLowerCase() === t.toLowerCase())) continue;
+    out.push(t);
+    if (out.length >= LINES_MAX) break;
+  }
+  return out;
+}
+
+/**
+ * The check's lines from the notes: every expected line no card covers becomes a "she missed one"
+ * line, and the never lines carry over. The person can still change both before Run the test.
+ */
+export function checkLinesOf(notes: DraftNotes | undefined, expected: readonly ExpectedCard[]): { missing: string[]; never: string[] } {
+  if (!notes) return { missing: [], never: [] };
+  return {
+    missing: capLines(notes.expect.filter((line) => !expected.some((c) => covers(c, line)))),
+    never: capLines(notes.never),
+  };
 }

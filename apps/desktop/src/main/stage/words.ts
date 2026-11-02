@@ -107,7 +107,7 @@ export const STAGE_WORDS = {
   repairing: "Fixing what her own check found",
   written: "Written",
   unwritten: "She could not write it",
-  writingHint: "She also makes up practice apps to try it on. About a minute.",
+  writingHint: "She also makes up practice apps to try it on.",
   problems: "The problems, in plain words",
   nothingLost: "Nothing you drew is lost.",
   practiceTile: "A practice app, made up for the test",
@@ -116,6 +116,33 @@ export const STAGE_WORDS = {
   onlyLooks: "nothing: she can only look here",
   showCards: "Show me what she will file",
   rows: "invented rows",
+
+  // her background work: writing, the cards, the test run (onboarding-jobs). No promise of a time.
+  jobHint: {
+    write: "This can take a few minutes. You can leave; I'll tell you when it is written.",
+    preview: "This can take a minute or two. You can leave; I'll tell you when the cards are ready.",
+    rehearse: "This can take a few minutes. You can leave; I'll tell you when the test is done.",
+  },
+  soFar: "so far",
+  stop: "Stop",
+  stopping: "Stopping",
+  leaveForNow: "Leave for now",
+  youStopped: "You stopped her.",
+  sheStopped: "She stopped before the end.",
+  writeAgain: "Write again",
+  nothingLostStop: "Nothing you drew is lost.",
+
+  // meanwhile: two questions while she works, never in the way
+  meanwhile: "While she works",
+  expectQ: "What do you expect her to find when she runs it?",
+  expectHint: "One thing per line. At the check, any she did not list is added for you.",
+  expectAdd: "Something you expect her to find",
+  neverQ: "Is there anything she must never do?",
+  neverFromSketch: "From your sketch. Keep them, change them or add to them.",
+  neverAdd: "Something she must never do",
+  thatsAll: "That's all",
+  keepThese: "Keep these",
+  skip: "Skip",
 
   // the check step
   checkTitle: "What she expects to file",

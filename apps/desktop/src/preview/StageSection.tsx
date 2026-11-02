@@ -25,6 +25,8 @@ const LOCAL: ReadonlySet<StageAction["type"]> = new Set([
   "undo_drop",
   "open_card",
   "close_card",
+  "notes",
+  "meanwhile_done",
 ]);
 const SIZES = ["1280x800", "1024x700"] as const;
 const PACES = [1, 8, 32] as const;

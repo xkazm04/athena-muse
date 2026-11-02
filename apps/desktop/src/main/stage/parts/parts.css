@@ -403,6 +403,93 @@
   color: var(--muted-foreground);
 }
 
+/* ---- her background job: a clock with no promise, Stop, Leave for now; or stopped ---- */
+.sp-progress[data-open="true"] .sp-progress__clock {
+  font-variant-numeric: tabular-nums;
+}
+.sp-job {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.sp-job__hint,
+.sp-job__said {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+.sp-job__said b {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--foreground);
+}
+.sp-job__why {
+  display: block;
+}
+.sp-job__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+
+/* ---- meanwhile: one question while she works ---- */
+.sp-meanwhile {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+  align-content: start;
+}
+.sp-meanwhile__q {
+  font-size: var(--fs-md);
+}
+.sp-meanwhile__hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+.sp-meanwhile__hint:empty {
+  display: none;
+}
+.sp-meanwhile__lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 96px;
+  overflow-y: auto;
+}
+.sp-meanwhile__line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  max-width: 100%;
+  padding: 2px 2px 2px var(--sp-2);
+  font-size: var(--fs-sm);
+  border: 1px solid var(--border-emphasis);
+  border-radius: var(--r-md);
+  background: var(--card-raised);
+}
+.sp-meanwhile__line span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp-meanwhile__line .btn {
+  min-height: 0;
+  padding: 2px var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.sp-meanwhile__acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
 /* ---- the test run ---- */
 .sp-phases__list {
   display: flex;

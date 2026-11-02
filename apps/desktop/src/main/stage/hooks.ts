@@ -3,10 +3,12 @@
 // changes the model.
 
 import { useEffect, useRef, useState } from "react";
-import type { Draft, SpaceSummary } from "../../lib/contract";
+import type { Draft, DraftJobKind, SpaceSummary } from "../../lib/contract";
 import { useMain } from "../store";
-import { SLOW_MS, shownPhase } from "./select";
-import type { ReplyPhase, StageAction, StageFrame, StageWork } from "./types";
+import type { JobStatusProps, MeanwhileProps } from "./parts/Job";
+import { SLOW_MS, meanwhileLeft, neverLinesOf, notesOf, shownPhase } from "./select";
+import type { ReplyPhase, StageAction, StageFrame, StageState, StageWork } from "./types";
+import type { StageWords } from "./words";
 
 /** The reply's phase as shown: "slow" once a reply has been silent for 8 s. */
 export function useShownPhase(frame: StageFrame, work: StageWork | null, heardAt: number): ReplyPhase {
@@ -84,4 +86,60 @@ export function useDraftProject(draft: Draft | null): { project: SpaceSummary | 
   const project = useMain((s) => s.spaces.find((x) => x.id === draft?.space_id));
   const navigate = useMain((s) => s.navigate);
   return { project, openProject: () => draft && navigate({ view: "project", id: draft.space_id }) };
+}
+
+/** "Leave for now": the draft's Project opens, and the stage lets go of the job's stream (the job runs on). */
+export function useLeave(draft: Draft | null, dispatch: (action: StageAction) => void): () => void {
+  const navigate = useMain((s) => s.navigate);
+  return () => {
+    if (draft) navigate({ view: "project", id: draft.space_id });
+    dispatch({ type: "leave" });
+  };
+}
+
+/**
+ * One job's status line and the meanwhile questions, wired to the store's acts, for either view: the
+ * status while it runs (or once the person stopped it, until anything moves on), the questions while
+ * it runs. Both are null when the stage is not on this job.
+ */
+export function useJob(
+  state: StageState,
+  dispatch: (action: StageAction) => void,
+  kind: DraftJobKind,
+  words: StageWords,
+  aboutS?: number,
+): { status: JobStatusProps | null; meanwhile: MeanwhileProps | null } {
+  const running = state.work === kind;
+  const elapsed = useClock(state.startedAt, running);
+  const onLeave = useLeave(state.draft, dispatch);
+  const halted = !state.work && state.halted === kind;
+  const again: StageAction = kind === "write" ? { type: "enough" } : kind === "preview" ? { type: "preview" } : { type: "rehearse" };
+  const notes = notesOf(state);
+  const status: JobStatusProps | null =
+    running || halted
+      ? {
+          kind,
+          state: running ? "running" : "stopped",
+          elapsedS: elapsed,
+          aboutS,
+          stopping: state.stopping,
+          byYou: state.stopping,
+          reason: state.draft?.job?.reason,
+          onStop: () => dispatch({ type: "stop" }),
+          onLeave,
+          onAgain: () => dispatch(again),
+          words,
+        }
+      : null;
+  const meanwhile: MeanwhileProps | null = running
+    ? {
+        left: meanwhileLeft(state),
+        expect: notes.expect,
+        never: neverLinesOf(state),
+        onLines: (question, lines) => dispatch({ type: "notes", question, notes: { ...notes, [question]: lines } }),
+        onDone: (question, skip) => dispatch({ type: "meanwhile_done", question, skip }),
+        words,
+      }
+    : null;
+  return { status, meanwhile };
 }

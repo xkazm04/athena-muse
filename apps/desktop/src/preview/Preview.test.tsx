@@ -90,4 +90,40 @@ describe("preview", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
+  it("shows her background work in both views: meanwhile while she writes, stopped, and opened again mid-write", () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    render(<Preview />);
+    const section = screen.getByRole("heading", { name: /Stage \(invented example/ }).closest("section")!;
+    const scene = within(section);
+    const pick = scene.getByRole("combobox", { name: "Go to a state" });
+    const has = (sel: string) => section.querySelectorAll(`.pv-stage ${sel}`).length;
+    const running = '[data-role="job"][data-kind="write"][data-state="running"]';
+    const beats: Record<string, string[]> = {
+      "author-meanwhile": [`${running} [data-role="job-stop"]`, `${running} [data-role="job-leave"]`, '[data-role="meanwhile"] [data-role="meanwhile-expect"]', '[data-role="meanwhile-skip"]'],
+      "author-meanwhile-lines": ['[data-role="meanwhile-expect"] ~ ul [data-role="meanwhile-line"]'],
+      "author-meanwhile-never": ['[data-role="meanwhile"] [data-role="meanwhile-never"]', '[data-role="meanwhile"] [data-role="meanwhile-line"]'],
+      "author-stopped": ['[data-role="job"][data-kind="write"][data-state="stopped"] [data-role="job-again"]'],
+      "author-reopened": [`${running} [data-role="job-stop"]`, '[data-role="problems"][data-tone="repair"]', '[data-role="meanwhile-expect"]'],
+    };
+    for (const view of ["Drawing", "Orbit"]) {
+      fireEvent.click(scene.getByRole("tab", { name: view }));
+      for (const [beat, sels] of Object.entries(beats)) {
+        fireEvent.change(pick, { target: { value: beat } });
+        expect(has(`[data-stage-view="${view.toLowerCase()}"]`), `${view} ${beat}`).toBe(1);
+        for (const sel of sels) expect(has(sel), `${view} ${beat}: ${sel}`).toBeGreaterThan(0);
+        // writing makes no promise of a time: the clock reads "so far"
+        if (beat !== "author-stopped") expect(section.querySelector(".pv-stage [data-role=\"progress\"]")?.textContent, `${view} ${beat}`).toMatch(/so far/);
+      }
+      // nothing in her background work says "of about" while she writes
+      fireEvent.change(pick, { target: { value: "author-meanwhile" } });
+      expect(section.querySelector(".pv-stage")!.textContent).not.toMatch(/of about/);
+      // Skip moves on to the next question without waiting on anything
+      fireEvent.click(within(section.querySelector<HTMLElement>(".pv-stage")!).getByRole("button", { name: "Skip" }));
+      expect(has('[data-role="meanwhile-never"]'), `${view}: skip`).toBe(1);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });

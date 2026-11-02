@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode } from "react";
 import type { Draft, Slot } from "../../../lib/contract";
-import { useClock, useDraftProject } from "../hooks";
+import { useDraftProject, useJob } from "../hooks";
 import {
   AccessList,
   CheckCard,
@@ -12,7 +12,9 @@ import {
   Echo,
   EnoughButton,
   FiledCards,
+  JobStatus,
   LineAdder,
+  Meanwhile,
   NeedSentence,
   PhaseList,
   PracticeTile,
@@ -20,7 +22,6 @@ import {
   Question,
   ReplyNotice,
   RevisitBanner,
-  RunProgress,
   RunTestButton,
   SavedCard,
   ScoreLine,
@@ -35,9 +36,11 @@ import type { StageAction, StageFrame, StageState } from "../types";
 import type { StageWords } from "../words";
 import { ORBIT_WORDS } from "./words";
 
-/** About how long writing and the test run take (measured, ADR 0007), for the clock's "of about". */
-const WRITE_ABOUT_S = 90;
-const RUN_ABOUT_S = 180;
+/**
+ * About how long the test run takes (1-4 min, measured), for the clock's "of about" until it is
+ * passed. Writing shows the clock alone: 15 s to 5 min, so no promise is made.
+ */
+const RUN_ABOUT_S = 240;
 
 export interface HubProps {
   draft: Draft;
@@ -104,6 +107,8 @@ function ShapeCard({ draft, frame, state, dispatch, words, marks, arriving, onPo
   const failed = frame.phase === "failed";
   const waiting = WAITING.has(frame.phase) || (failed && !differently);
   const pencil = draft.sketch.nodes.filter(isPencil).map((n) => n.id);
+  // a write the person stopped, when the daemon took the draft back to the sketch
+  const write = useJob(state, dispatch, "write", words);
   const say = (text: string) => {
     setDifferently(false);
     dispatch({ type: "say", text });
@@ -111,6 +116,7 @@ function ShapeCard({ draft, frame, state, dispatch, words, marks, arriving, onPo
   return (
     <div className="ob-view ob-view--shape">
       <div className="ob-top">
+        {draft.step === "shape" && write.status?.state === "stopped" && <JobStatus {...write.status} />}
         {revisit && (
           <RevisitBanner
             why={draft.verdict === "revise" ? "revise" : "unwritten"}
@@ -185,17 +191,21 @@ function ShapeCard({ draft, frame, state, dispatch, words, marks, arriving, onPo
 
 function AuthorCard({ frame, state, dispatch, words, seal }: CardProps) {
   const author = authorOf(state.author);
-  const elapsed = useClock(state.startedAt, state.work === "write");
+  const job = useJob(state, dispatch, "write", words);
+  const halted = job.status?.state === "stopped";
+  const title = halted
+    ? job.status?.byYou === false
+      ? words.sheStopped
+      : words.youStopped
+    : author.status === "repairing"
+      ? words.repairing
+      : words.writing;
   return (
-    <div className="ob-view ob-view--author">
-      <Head
-        seal={seal}
-        eyebrow={words.step.author}
-        title={author.status === "repairing" ? words.repairing : words.writing}
-        sub={words.writingHint}
-      />
-      <RunProgress label={words.writing} elapsedS={elapsed} aboutS={WRITE_ABOUT_S} words={words} />
+    <div className="ob-view ob-view--author" data-meanwhile={job.meanwhile?.left.length ? "true" : undefined}>
+      <Head seal={seal} eyebrow={words.step.author} title={title} sub={halted ? undefined : words.writingHint} />
+      {job.status && <JobStatus {...job.status} />}
       {author.status === "repairing" && <ProblemList title={words.problems} problems={author.problems} tone="repair" />}
+      {job.meanwhile && <Meanwhile {...job.meanwhile} />}
       {frame.phase === "failed" && (
         <ReplyNotice phase="failed" problem={frame.problem} onRetry={() => dispatch({ type: "retry" })} words={words} />
       )}
@@ -205,6 +215,7 @@ function AuthorCard({ frame, state, dispatch, words, seal }: CardProps) {
 
 function WrittenCard({ draft, frame, state, dispatch, words, seal }: CardProps) {
   const loading = state.work === "preview";
+  const job = useJob(state, dispatch, "preview", words);
   return (
     <div className="ob-view ob-view--written">
       <Head seal={seal} eyebrow={words.step.author} title={words.written} sub={ORBIT_WORDS.writtenHint} />
@@ -216,15 +227,21 @@ function WrittenCard({ draft, frame, state, dispatch, words, seal }: CardProps) 
       <div className="ob-go">
         {frame.phase === "failed" ? (
           <ReplyNotice phase="failed" problem={frame.problem} onRetry={() => dispatch({ type: "retry" })} words={words} />
-        ) : loading ? (
-          <p className="ob-loading" role="status">
-            <span className="sp-dots" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-            {words.checkLoading}
-          </p>
+        ) : loading || job.status ? (
+          <>
+            {loading && (
+              <p className="ob-loading" role="status">
+                <span className="sp-dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                {words.checkLoading}
+              </p>
+            )}
+            {job.status && <JobStatus {...job.status} />}
+            {job.meanwhile && <Meanwhile {...job.meanwhile} />}
+          </>
         ) : (
           <button type="button" className="btn btn-primary ob-go__btn" disabled={!!state.work} onClick={() => dispatch({ type: "preview" })}>
             {words.showCards}
@@ -372,19 +389,27 @@ function Deck({ draft, state, dispatch, words, seal, expected }: CardProps & { e
 
 function RunCard({ draft, frame, state, dispatch, words, seal }: CardProps) {
   const run = useMemo(() => runOf(state.rehearsal), [state.rehearsal]);
-  const elapsed = useClock(state.startedAt, state.work === "rehearse");
+  const job = useJob(state, dispatch, "rehearse", words, RUN_ABOUT_S);
   const appName = useMemo(() => appNameOf(draft), [draft]);
+  const halted = job.status?.state === "stopped";
+  const idle = !state.work && !state.rehearsal.length && !halted && frame.phase !== "failed";
   return (
     <div className="ob-view ob-view--run">
       <div className="ob-pane">
-        <Head seal={seal} eyebrow={words.step.rehearse} title={words.running} sub={words.runningHint} />
-        <RunProgress label={words.running} elapsedS={elapsed} aboutS={RUN_ABOUT_S} words={words} />
+        <Head seal={seal} eyebrow={words.step.rehearse} title={halted ? words.stopped : words.running} sub={halted ? undefined : words.runningHint} />
+        {job.status && <JobStatus {...job.status} />}
+        {idle && (
+          <button type="button" className="btn btn-primary ob-go__btn" onClick={() => dispatch({ type: "rehearse" })}>
+            {words.startTest}
+          </button>
+        )}
         <PhaseList phases={run.phases} done={!!run.bench} appName={appName} words={words} />
         {frame.phase === "failed" && (
           <ReplyNotice phase="failed" problem={run.stopped || frame.problem} onRetry={() => dispatch({ type: "retry" })} words={words} />
         )}
       </div>
       <div className="ob-pane ob-pane--side">
+        {job.meanwhile && <Meanwhile {...job.meanwhile} />}
         <FiledCards cards={run.cards} words={words} />
       </div>
     </div>

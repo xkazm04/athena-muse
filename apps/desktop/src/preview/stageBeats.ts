@@ -2,7 +2,7 @@
 // `reduce`, one beat per state a reviewer must see (data/states.md), each with the seconds it takes
 // in the staged timings. No daemon: every state is the fixture's streams replayed.
 
-import type { Draft, DraftStep, TurnEvent } from "../lib/contract";
+import type { Draft, DraftJob, DraftJobKind, DraftStep, TurnEvent } from "../lib/contract";
 import { STAGED } from "../main/stage/fixture/staged";
 import { withStress } from "../main/stage/drawing/stress";
 import { EMPTY_FRAME, applyLocal, initialStage, reduce } from "../main/stage/store";
@@ -30,6 +30,13 @@ const working = (state: StageState, work: StageWork, extra: Partial<StageState> 
   frame: { ...state.frame, phase: "sending", problem: "" },
   ...extra,
 });
+
+/** A job as its stream's snapshot says it (invented start time; the harness's clocks read 0). */
+const jobOf = (kind: DraftJobKind, events = 0): DraftJob => ({ kind, state: "running", started: "2026-10-30T09:00:00Z", events });
+/** A stage following a job: the harness shows its clock at 0:00 rather than read the wall clock. */
+const following = (state: StageState): StageState => ({ ...state, startedAt: 0 });
+/** What the person might say they expect while she writes (invented, matching the staged need). */
+const EXPECT = ["Mila billed on Tue 7 Oct", "A query for the swimming kit fee"];
 
 /** Every state, in the order the conversation reaches them. */
 export function stageBeats(): Beat[] {
@@ -89,6 +96,25 @@ export function stageBeats(): Beat[] {
     clock = t.at_s;
   }
   const written = s;
+
+  // her background work (onboarding-jobs): two questions meanwhile, Stop, and a window closed
+  // mid-write and opened again
+  let w = following(fold(working(agreed, "write", { author: [] }), [{ type: "job", job: jobOf("write") }, STAGED.author[0]!.event]));
+  add({ id: "author-meanwhile", group: "author", label: "Writing: a question meanwhile", state: w, wait: 1 });
+  w = applyLocal(w, { type: "notes", question: "expect", notes: { expect: EXPECT, never: [] } });
+  add({ id: "author-meanwhile-lines", group: "author", label: "Writing: what you expect, two lines", state: w, wait: 12 });
+  w = applyLocal(w, { type: "meanwhile_done", question: "expect" });
+  add({ id: "author-meanwhile-never", group: "author", label: "Writing: what she must never do", state: w, wait: 3 });
+  const halted = reduce({ ...w, stopping: true }, { type: "stopped", reason: "Stopped at your request." });
+  add({ id: "author-stopped", group: "author", label: "You stopped her", state: halted, wait: 2 });
+  const reopened = reduce(initialStage(), { type: "draft", draft: { ...agreed.draft!, step: "author", job: jobOf("write", 2) } });
+  const followed = fold(working(reopened, "write", { author: [] }), [
+    { type: "job", job: jobOf("write", 2) },
+    STAGED.author[0]!.event,
+    STAGED.author[1]!.event,
+  ]);
+  add({ id: "author-reopened", group: "author", label: "Opened again: she is still writing", state: following(followed), wait: 1 });
+
   let f = working(agreed, "write", { author: [] });
   f = fold(f, STAGED.authorFailed.map((t) => t.event));
   add({ id: "author-failed", group: "shape", label: "Could not be written", state: f, wait: 1 });

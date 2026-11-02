@@ -15,6 +15,7 @@
   --dr-pad-x: 32px;
   --dr-note-side: 176px;
   --dr-strip-lead: 250px;
+  --dr-meanwhile-w: 320px;
   --dr-fence-label: 168px;
   --dr-drawer-w: 468px;
   --dr-z-bg: 0;
@@ -1086,6 +1087,43 @@
   align-items: stretch;
   column-gap: var(--sp-4);
   min-height: 138px;
+}
+[data-stage-view="drawing"] .dr-strip[data-meanwhile="true"] {
+  grid-template-columns: var(--dr-strip-lead) minmax(0, 1fr) var(--dr-meanwhile-w);
+}
+[data-stage-view="drawing"] .dr-strip[data-meanwhile="true"] .dr-strip__act {
+  justify-content: flex-start;
+}
+[data-stage-view="drawing"] .dr-strip .sp-meanwhile {
+  gap: 6px;
+}
+[data-stage-view="drawing"] .dr-strip .sp-meanwhile .sp-question {
+  gap: 2px;
+}
+[data-stage-view="drawing"] .dr-strip .sp-meanwhile__q {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+[data-stage-view="drawing"] .dr-strip .sp-meanwhile__lines {
+  max-height: 58px;
+}
+[data-stage-view="drawing"] .dr-strip .sp-job__acts .btn,
+[data-stage-view="drawing"] .dr-strip .sp-meanwhile .btn {
+  min-height: 30px;
+  padding-block: 4px;
+}
+[data-stage-view="drawing"] .dr-drawer .sp-job,
+[data-stage-view="drawing"] .dr-drawer .sp-meanwhile {
+  padding: var(--sp-3);
+  border: 1px dashed var(--role-agent);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--role-agent) 6%, transparent);
+}
+[data-stage-view="drawing"] .dr-side .sp-job {
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 3px solid var(--status-warning);
+  border-radius: var(--r-sm);
+  background: var(--card-bg);
 }
 [data-stage-view="drawing"] .dr-strip__lead {
   min-width: 0;

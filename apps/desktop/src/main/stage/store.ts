@@ -5,10 +5,38 @@
 
 import { create } from "zustand";
 import * as api from "../../lib/api";
-import type { AuthorEvent, Coverage, Draft, PracticeApp, RehearsalEvent, SayBody, StageView } from "../../lib/contract";
+import type {
+  AuthorEvent,
+  Coverage,
+  Draft,
+  DraftJob,
+  DraftJobState,
+  DraftNotes,
+  JobEvent,
+  PracticeApp,
+  RehearsalEvent,
+  SayBody,
+  StageView,
+} from "../../lib/contract";
 import { DaemonError } from "../../lib/daemon";
 import { reasonOf } from "../store";
-import { DROP_MS, LINE_MAX, LINES_MAX, applyOps, allMarked, isAgreed, isPencil, keyOf, needsInk, openSlots } from "./select";
+import {
+  DROP_MS,
+  LINE_MAX,
+  LINES_MAX,
+  applyOps,
+  allMarked,
+  checkLinesOf,
+  isAgreed,
+  isJobWork,
+  isPencil,
+  keyOf,
+  needsInk,
+  neverLinesOf,
+  notesOf,
+  openSlots,
+  runningJob,
+} from "./select";
 import type { Place, StageAction, StageEvent, StageFrame, StageState, StageWork } from "./types";
 
 export const VIEW_KEY = "athena.stage.view";
@@ -54,6 +82,11 @@ export function initialStage(view: StageView = DEFAULT_VIEW): StageState {
     inked: [],
     replyAsked: false,
     card: null,
+    cursor: 0,
+    halted: null,
+    stopping: false,
+    notes: null,
+    meanwhile: { done: [], touched: [] },
   };
 }
 
@@ -102,6 +135,20 @@ function written(draft: Draft, chore_id: string, practice: PracticeApp[]): Draft
   return out;
 }
 
+/** The draft's job as its terminal event leaves it (the stream carries no second snapshot). */
+function ended(draft: Draft | null, state: DraftJobState, reason?: string): Draft | null {
+  if (!draft?.job || draft.job.state !== "running") return draft;
+  const job: DraftJob = { ...draft.job, state };
+  if (reason) job.reason = reason;
+  return { ...draft, job };
+}
+
+/** The check's lines, pre-filled from what the person said while she worked (nothing is sent yet). */
+function checkLines(state: StageState, draft: Draft): Pick<StageState, "marks" | "missing" | "never"> {
+  const notes = state.notes ?? draft.notes;
+  return { marks: {}, ...checkLinesOf(notes, draft.expected ?? []) };
+}
+
 /**
  * Folds one daemon event into the state. Pure. A turn's `start` begins a reply, `text` builds her
  * line, `sketch` applies ops in order, `ask` opens the question, `coverage` settles the frame (step
@@ -114,10 +161,17 @@ export function reduce(state: StageState, event: StageEvent): StageState {
   const frame = state.frame;
   switch (event.type) {
     case "draft": {
+      const fresh = event.draft;
+      let next = withDraft(state, fresh);
+      // A draft opened with a stopped job says so until anything moves on.
+      if (d?.id !== fresh.id && fresh.job?.state === "stopped") next = { ...next, halted: fresh.job.kind };
+      // The check's cards arrived while the person was away: its lines start from their notes.
+      if (fresh.step === "preview" && fresh.expected?.length && !d?.expected?.length && !state.missing.length && !state.never.length) {
+        next = { ...next, ...checkLines(next, fresh) };
+      }
       // A reopened stage shows the question the draft still holds open.
-      const next = withDraft(state, event.draft);
-      if (frame.ask || !event.draft.ask || event.draft.step !== "shape") return next;
-      return { ...next, frame: { ...next.frame, ask: event.draft.ask } };
+      if (frame.ask || !fresh.ask || fresh.step !== "shape") return next;
+      return { ...next, frame: { ...next.frame, ask: fresh.ask } };
     }
     case "start":
       return {
@@ -125,7 +179,42 @@ export function reduce(state: StageState, event: StageEvent): StageState {
         frame: { ...frame, line: "", lastOps: [], phase: "thinking", problem: "" },
         inked: [],
         replyAsked: false,
+        halted: null,
       };
+    case "job": {
+      // The snapshot that opens every job stream: the clock runs from when the job really began.
+      const started = Date.parse(event.job.started);
+      const running = event.job.state === "running";
+      return {
+        ...state,
+        draft: d ? { ...d, job: event.job } : d,
+        startedAt: running && Number.isFinite(started) ? started : state.startedAt,
+        halted: running ? null : state.halted,
+      };
+    }
+    case "stopped": {
+      const kind = d?.job?.kind ?? (isJobWork(state.work) ? state.work : null);
+      return {
+        ...state,
+        draft: ended(d, "stopped", event.reason),
+        work: null,
+        halted: kind,
+        frame: { ...frame, phase: "idle", problem: "" },
+      };
+    }
+    case "previewing":
+      return { ...state, halted: null, frame: { ...frame, phase: "thinking", problem: "" } };
+    case "previewed": {
+      const next = d ? { ...ended(d, "done")!, expected: event.expected } : d;
+      return {
+        ...state,
+        draft: next,
+        work: null,
+        stopping: false,
+        frame: { ...frame, phase: "idle" },
+        ...(next ? checkLines(state, next) : { marks: {}, missing: [], never: [] }),
+      };
+    }
     case "text":
       return { ...state, frame: { ...frame, line: frame.line + event.delta } };
     case "sketch": {
@@ -157,7 +246,7 @@ export function reduce(state: StageState, event: StageEvent): StageState {
       // A turn's card cannot happen on a design turn; on the stage, cards come from the test run.
       return d?.step === "rehearse" ? { ...state, rehearsal: [...state.rehearsal, event] } : state;
     case "writing": {
-      const next: StageState = { ...state, author: [event], frame: { ...frame, phase: "thinking", problem: "" } };
+      const next: StageState = { ...state, author: [event], halted: null, frame: { ...frame, phase: "thinking", problem: "" } };
       if (!d) return next;
       const coverage = skipOpen(d.coverage);
       return { ...next, draft: { ...d, step: "author", coverage, agreed: isAgreed(coverage) } };
@@ -166,8 +255,9 @@ export function reduce(state: StageState, event: StageEvent): StageState {
       return {
         ...state,
         author: [...state.author, event],
-        draft: d ? written(d, event.chore_id, event.practice) : d,
+        draft: d ? written(ended(d, "done")!, event.chore_id, event.practice) : d,
         work: null,
+        stopping: false,
         frame: { ...frame, phase: "idle" },
         marks: {},
         missing: [],
@@ -177,29 +267,39 @@ export function reduce(state: StageState, event: StageEvent): StageState {
       return {
         ...state,
         author: [...state.author, event],
-        draft: d ? { ...d, step: "shape" } : d,
+        draft: d ? { ...ended(d, "failed")!, step: "shape" } : d,
         work: null,
+        stopping: false,
         frame: { ...frame, phase: "idle" },
       };
     case "phase":
-      return { ...state, rehearsal: event.index === 1 ? [event] : [...state.rehearsal, event] };
-    case "scored": {
-      const next = d ? { ...d, step: "verdict" as const, bench: event.bench } : d;
-      if (next) delete next.verdict;
-      return { ...state, rehearsal: [...state.rehearsal, event], draft: next, work: null, frame: { ...frame, phase: "idle" } };
-    }
-    case "expected":
       return {
         ...state,
-        draft: d ? { ...d, expected: event.expected } : d,
-        marks: {},
-        missing: [],
-        never: [],
+        rehearsal: event.index === 1 ? [event] : [...state.rehearsal, event],
+        halted: event.index === 1 ? null : state.halted,
       };
+    case "scored": {
+      const next = d ? { ...ended(d, "done")!, step: "verdict" as const, bench: event.bench } : d;
+      if (next) delete next.verdict;
+      return {
+        ...state,
+        rehearsal: [...state.rehearsal, event],
+        draft: next,
+        work: null,
+        stopping: false,
+        frame: { ...frame, phase: "idle" },
+      };
+    }
+    case "expected": {
+      const next = d ? { ...d, expected: event.expected } : d;
+      return { ...state, draft: next, ...(next ? checkLines(state, next) : { marks: {}, missing: [], never: [] }) };
+    }
     case "error": {
       const failed: StageState = {
         ...state,
+        draft: ended(d, "failed", event.reason),
         work: null,
+        stopping: false,
         frame: { ...frame, phase: "failed", problem: event.reason },
       };
       if (state.work === "write") return { ...failed, author: [...state.author, event as AuthorEvent] };
@@ -212,6 +312,19 @@ export function reduce(state: StageState, event: StageEvent): StageState {
 // --- applyLocal: what the person does before anything is sent -----------------------------------
 
 const clean = (text: string) => text.split(/\s+/).filter(Boolean).join(" ");
+
+/** Notes as sent: each line cleaned, empty and repeated lines dropped, within the daemon's caps. */
+function cleanNotes(notes: DraftNotes): DraftNotes {
+  const lines = (xs: readonly string[]) => {
+    const out: string[] = [];
+    for (const x of xs) {
+      const t = clean(x).slice(0, LINE_MAX);
+      if (t && !out.some((y) => y.toLowerCase() === t.toLowerCase()) && out.length < LINES_MAX) out.push(t);
+    }
+    return out;
+  };
+  return { expect: lines(notes.expect), never: lines(notes.never) };
+}
 
 /** The person's own acts that stay local until sent: guarded, pure; anything else is unchanged. */
 export function applyLocal(state: StageState, action: StageAction): StageState {
@@ -257,6 +370,16 @@ export function applyLocal(state: StageState, action: StageAction): StageState {
       return d?.sketch.nodes.some((n) => n.id === action.node_id) ? { ...state, card: action.node_id } : state;
     case "close_card":
       return state.card ? { ...state, card: null } : state;
+    case "notes": {
+      const touched = state.meanwhile.touched.includes(action.question)
+        ? state.meanwhile.touched
+        : [...state.meanwhile.touched, action.question];
+      return { ...state, notes: cleanNotes(action.notes), meanwhile: { ...state.meanwhile, touched } };
+    }
+    case "meanwhile_done":
+      return state.meanwhile.done.includes(action.question)
+        ? state
+        : { ...state, meanwhile: { ...state.meanwhile, done: [...state.meanwhile.done, action.question] } };
     default:
       return state;
   }
@@ -281,7 +404,10 @@ export type StageApi = Pick<
   | "draftConfirm"
   | "draftDrop"
   | "draftWrite"
-  | "draftPreview"
+  | "draftPreviewJob"
+  | "draftFollow"
+  | "draftStopJob"
+  | "draftNotes"
   | "draftKey"
   | "draftRehearse"
   | "draftVerdict"
@@ -289,10 +415,12 @@ export type StageApi = Pick<
 >;
 
 export interface StageStore extends StageState {
-  /** Opens a draft by id, or starts `#stage/new` when null. */
+  /** Opens a draft by id, or starts `#stage/new` when null. A running job is followed again. */
   open: (draftId: string | null) => Promise<void>;
   dispatch: (action: StageAction) => void;
   place: (view: StageView, nodeId: string, place: Place) => void;
+  /** A draft's job started or ended elsewhere (the `draft_job` app event): read it again unless followed. */
+  refresh: (draftId: string) => Promise<void>;
 }
 
 const LOCAL: ReadonlySet<StageAction["type"]> = new Set([
@@ -308,20 +436,32 @@ const LOCAL: ReadonlySet<StageAction["type"]> = new Set([
 ]);
 
 const CUT = "Her answer stopped before the end. Nothing was kept from it.";
+/** A job's stream was lost while the job runs on in the background: following it again is the retry. */
+const LOST = "Lost sight of her work. She is still at it; look again.";
 
 /**
  * A stage store over `io`. `now` is the clock the slow notice reads. Every daemon act waits for any
  * rubbed-out guess to be sent first (or never, if undone), one act runs at a time, and any stream that
- * ends in `error` is followed by a fresh read of the draft.
+ * ends in `error` is followed by a fresh read of the draft. Writing, the preview and the test run are
+ * the draft's background jobs: the store follows their streams, never times them out, re-attaches to a
+ * running one when a draft is opened, and lets go of one (the job runs on) when the person leaves.
  */
 export function createStageStore(io: StageApi = api, now: () => number = Date.now) {
   return create<StageStore>()((set, get) => {
     let dropTimer: ReturnType<typeof setTimeout> | null = null;
-    let session = 0; // bumped by open(): an answer for a draft no longer on stage is ignored
+    let session = 0; // bumped by open() and leave: an answer for a draft no longer on stage is ignored
+    let ctl: AbortController | null = null; // the open stream, so leaving can let go of it
+    let notesChain: Promise<void> = Promise.resolve(); // notes go out one at a time, in order
 
     const feed = (event: StageEvent, from = session) => {
       if (from !== session) return;
       set((s) => ({ ...reduce(s, event), heardAt: now() }));
+    };
+
+    /** A job stream's line: also moves the follow cursor past it (the snapshot is not one of its events). */
+    const feedJob = (event: JobEvent, from: number) => {
+      if (from !== session) return;
+      set((s) => ({ ...reduce(s, event), heardAt: now(), cursor: event.type === "job" ? s.cursor : s.cursor + 1 }));
     };
 
     const begin = (work: StageWork, action: StageAction, extra: Partial<StageState> = {}) => {
@@ -377,19 +517,73 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
       }
     };
 
-    /** Streams one route; a stream that closes while its work is still open was cut short. */
-    const stream = async (work: StageWork, action: StageAction, run: (from: number) => Promise<void>) => {
-      const { from } = begin(work, action, work === "write" ? { author: [] } : work === "rehearse" ? { rehearsal: [] } : {});
+    /**
+     * Streams one route; a stream that closes while its work is still open was cut short. A job's
+     * stream that closes early leaves the job running in the daemon: the draft is read again, and if
+     * the job still runs the retry follows it (a second start would be refused as busy).
+     */
+    const stream = async (
+      work: StageWork,
+      action: StageAction,
+      run: (from: number, signal: AbortSignal) => Promise<void>,
+      fresh = true,
+    ) => {
+      const lists = !fresh ? {} : work === "write" ? { author: [] } : work === "rehearse" ? { rehearsal: [] } : {};
+      const job = isJobWork(work) ? { stopping: false, ...(fresh ? { cursor: 0 } : {}) } : {};
+      const { from } = begin(work, action, { ...lists, ...job });
+      const mine = new AbortController();
+      ctl = mine;
       try {
-        await run(from);
-        if (from === session && get().work === work) await fail(action, from, new Error(CUT));
-        else if (from === session && get().frame.phase === "failed") {
+        await run(from, mine.signal);
+        if (from !== session) return;
+        if (get().work === work) {
+          if (isJobWork(work)) return await lost(action, from);
+          await fail(action, from, new Error(CUT));
+        } else if (get().frame.phase === "failed") {
           set({ failed: action });
           await reread(from);
+        } else if (get().halted) {
+          await reread(from); // the daemon's own step after a stop
         }
       } catch (e) {
+        if (mine.signal.aborted) return; // the person left; the job runs on
+        if (isJobWork(work) && !(e instanceof DaemonError) && from === session) return await lost(action, from);
         await fail(action, from, e);
+      } finally {
+        if (ctl === mine) ctl = null;
       }
+    };
+
+    /** A job's stream closed with no end: read the draft; a finished job shows its result, a running one waits for a look. */
+    const lost = async (action: StageAction, from: number) => {
+      const id = get().draft?.id;
+      let draft: Draft | null = null;
+      try {
+        if (id) draft = await io.getDraft(id);
+      } catch {
+        // the notice below says it; the retry reads again
+      }
+      if (from !== session) return;
+      if (draft) feed({ type: "draft", draft }, from);
+      if (draft?.job && draft.job.state !== "running") {
+        set({ work: null, stopping: false, frame: { ...get().frame, phase: "idle", problem: "" } });
+        return;
+      }
+      const retry: StageAction = draft?.job?.state === "running" && id ? { type: "reload", draft_id: id } : action;
+      set((s) => ({ work: null, failed: retry, frame: { ...s.frame, phase: "failed", problem: draft ? LOST : CUT } }));
+    };
+
+    /** Follows the draft's running job from the cursor (all of it on a fresh stage). */
+    const follow = async (draft: Draft) => {
+      const job = draft.job;
+      if (!job || job.state !== "running") return;
+      const fresh = get().cursor === 0;
+      await stream(
+        job.kind,
+        { type: "reload", draft_id: draft.id },
+        (from, signal) => io.draftFollow(draft.id, get().cursor, (e) => feedJob(e, from), signal),
+        fresh,
+      );
     };
 
     const say = async (body: SayBody, action: StageAction) => {
@@ -397,7 +591,7 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
       if (!id) return;
       const words = body.text || body.choice || (get().draft?.need ?? "");
       set((s) => ({ lastSay: body, frame: { ...s.frame, youSaid: words } }));
-      await stream("say", action, (from) => io.draftSay(id, body, (e) => feed(e, from)));
+      await stream("say", action, (from, signal) => io.draftSay(id, body, (e) => feed(e, from), signal));
     };
 
     /** One request that answers the draft. */
@@ -455,19 +649,12 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
         }
         case "enough":
           if (!d || (d.step !== "shape" && d.step !== "author")) return;
-          await stream("write", action, (from) => io.draftWrite(d.id, (e) => feed(e, from)));
+          await stream("write", action, (from, signal) => io.draftWrite(d.id, (e) => feedJob(e, from), signal));
           return;
-        case "preview": {
+        case "preview":
           if (!d || d.step !== "preview") return;
-          const { from } = begin("preview", action);
-          try {
-            feed({ type: "expected", expected: (await io.draftPreview(d.id)).expected }, from);
-            finish();
-          } catch (e) {
-            await fail(action, from, e);
-          }
+          await stream("preview", action, (from, signal) => io.draftPreviewJob(d.id, (e) => feedJob(e, from), signal));
           return;
-        }
         case "send_key": {
           if (!d || (d.step !== "preview" && d.step !== "rehearse") || !allMarked(get())) return;
           const key = keyOf(get());
@@ -477,7 +664,7 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
         }
         case "rehearse":
           if (!d || d.step !== "rehearse") return;
-          await stream("rehearse", action, (from) => io.draftRehearse(d.id, (e) => feed(e, from)));
+          await stream("rehearse", action, (from, signal) => io.draftRehearse(d.id, (e) => feedJob(e, from), signal));
           return;
         case "verdict": {
           if (!d) return;
@@ -509,13 +696,61 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
     const load = async (draftId: string) => {
       const action: StageAction = { type: "reload", draft_id: draftId };
       const { from } = begin("open", action);
+      let draft: Draft;
       try {
-        feed({ type: "draft", draft: await io.getDraft(draftId) }, from);
+        draft = await io.getDraft(draftId);
+        feed({ type: "draft", draft }, from);
         finish();
       } catch (e) {
         if (from !== session) return;
         set((s) => ({ work: null, failed: action, frame: { ...s.frame, phase: "failed", problem: reasonOf(e, "Could not open the draft") } }));
+        return;
       }
+      if (from === session) await follow(draft);
+    };
+
+    /** Ends the running job's model process; the job's own stream then says `stopped`. */
+    const stop = async () => {
+      const kind = runningJob(get());
+      const id = get().draft?.id;
+      if (!kind || !id || get().stopping) return;
+      const from = session;
+      set({ stopping: true });
+      try {
+        const answer = await io.draftStopJob(id);
+        if (from !== session) return;
+        // only the job: the rest of the draft follows the stream, which is still open
+        set((s) => (s.draft && answer.job ? { draft: { ...s.draft, job: answer.job } } : {}));
+      } catch {
+        if (from === session) set({ stopping: false }); // the job runs on; Stop stays offered
+      }
+    };
+
+    /** Sends the whole notes, one save at a time; only the notes are taken from the daemon's answer. */
+    const saveNotes = (notes: DraftNotes) => {
+      const id = get().draft?.id;
+      if (!id) return;
+      const from = session;
+      notesChain = notesChain.then(async () => {
+        try {
+          const answer = await io.draftNotes(id, notes);
+          if (from !== session) return;
+          set((s) => (s.draft ? { draft: { ...s.draft, notes: answer.notes ?? notes } } : {}));
+        } catch {
+          // kept here; the next change sends the whole notes again
+        }
+      });
+    };
+
+    /** Lets go of the stream (no stop: the job runs on) and clears the stage; opening the draft again re-attaches. */
+    const leave = () => {
+      if (get().dropping.length) void flushDrop(); // a rub-out still waiting is sent, not lost
+      if (dropTimer) clearTimeout(dropTimer);
+      dropTimer = null;
+      session++;
+      ctl?.abort();
+      ctl = null;
+      set({ ...initialStage(get().view) });
     };
 
     return {
@@ -526,12 +761,55 @@ export function createStageStore(io: StageApi = api, now: () => number = Date.no
         if (dropTimer) clearTimeout(dropTimer);
         dropTimer = null;
         session++;
+        ctl?.abort();
+        ctl = null;
         set({ ...initialStage(get().view) });
         if (draftId !== null) await load(draftId);
       },
 
+      refresh: async (draftId) => {
+        const s = get();
+        if (s.draft?.id !== draftId || s.work) return;
+        const from = session;
+        try {
+          const draft = await io.getDraft(draftId);
+          if (from !== session || get().work) return;
+          feed({ type: "draft", draft }, from);
+          await follow(draft);
+        } catch {
+          // the next act reads the draft again
+        }
+      },
+
       dispatch: (action) => {
         if (action.type === "switch_view") writeView(action.view);
+        if (action.type === "stop") {
+          void stop();
+          return;
+        }
+        if (action.type === "leave") {
+          leave();
+          return;
+        }
+        if (action.type === "notes") {
+          const before = get();
+          set((s) => applyLocal(s, action));
+          if (get() !== before) saveNotes(notesOf(get()));
+          return;
+        }
+        if (action.type === "meanwhile_done") {
+          // "Keep these" on the never question keeps the sketch's lines the person did not change.
+          const s = get();
+          if (action.question === "never" && !action.skip && !s.meanwhile.touched.includes("never")) {
+            const never = neverLinesOf(s);
+            if (never.length && never.join("\n") !== notesOf(s).never.join("\n")) {
+              set((x) => applyLocal(x, { type: "notes", question: "never", notes: { ...notesOf(x), never } }));
+              saveNotes(notesOf(get()));
+            }
+          }
+          set((x) => applyLocal(x, action));
+          return;
+        }
         if (action.type === "drop") {
           const before = get().dropping;
           const next = applyLocal(get(), action);

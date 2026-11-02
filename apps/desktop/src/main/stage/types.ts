@@ -6,8 +6,11 @@ import type {
   Ask,
   AuthorEvent,
   Draft,
+  DraftJobKind,
+  DraftNotes,
   DraftVerdict,
   ExpectedCard,
+  JobEvent,
   Mark,
   RehearsalEvent,
   SayBody,
@@ -84,7 +87,20 @@ export interface StageState {
   replyAsked: boolean;
   /** The piece whose card is open, or null. Escape closes it. */
   card: string | null;
+  /** Events of the draft's job heard so far: where a follow picks up (`GET /drafts/{id}/job?after=n`). */
+  cursor: number;
+  /** The kind of job that ended in `stopped` and is still shown so; null once anything moves on. */
+  halted: DraftJobKind | null;
+  /** The person pressed Stop on this job; kept once it ended, so the stage says "You stopped her." */
+  stopping: boolean;
+  /** What the person said while she worked, as typed here; null until they change it (the draft's then). */
+  notes: DraftNotes | null;
+  /** The "meanwhile" questions answered or skipped, and the ones the person has changed. */
+  meanwhile: { done: MeanwhileQuestion[]; touched: MeanwhileQuestion[] };
 }
+
+/** The two questions asked while she works. */
+export type MeanwhileQuestion = "expect" | "never";
 
 export type StageAction =
   | { type: "describe"; need: string }
@@ -111,7 +127,15 @@ export type StageAction =
   | { type: "open_card"; node_id: string }
   | { type: "close_card" }
   /** Reads the draft again from the daemon (after a failed open, or to recover). */
-  | { type: "reload"; draft_id: string };
+  | { type: "reload"; draft_id: string }
+  /** Ends the running job's model process (`POST /drafts/{id}/job/stop`). */
+  | { type: "stop" }
+  /** Lets go of the job's stream only; the job runs on and the draft is read again on return. */
+  | { type: "leave" }
+  /** The whole notes, sent each time they change (`PUT /drafts/{id}/notes`). */
+  | { type: "notes"; notes: DraftNotes; question: MeanwhileQuestion }
+  /** A "meanwhile" question answered (its lines are kept) or skipped. */
+  | { type: "meanwhile_done"; question: MeanwhileQuestion; skip?: boolean };
 
 /** Everything a stream can hand the store, plus a fresh read of the draft (after any `error`). */
 export type StageEvent =
@@ -119,8 +143,10 @@ export type StageEvent =
   | AuthorEvent
   | RehearsalEvent
   | { type: "draft"; draft: Draft }
-  /** The preview's answer (`POST /drafts/{id}/preview` returns the list, not the draft). */
-  | { type: "expected"; expected: ExpectedCard[] };
+  /** The preview's answer, as the old JSON route gave it (the harness's beats still use it). */
+  | { type: "expected"; expected: ExpectedCard[] }
+  /** A job stream's own lines: its snapshot, `stopped`, and the preview's events. */
+  | JobEvent;
 
 /** What every view receives. A view draws from these and calls `dispatch`; it holds no copy of the model. */
 export interface StageViewProps {

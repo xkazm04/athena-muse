@@ -1474,6 +1474,23 @@
 [data-stage-view="orbit"] .ob-pane--side {
   padding-left: 18px;
   border-left: 1px solid var(--edge);
+  overflow-y: auto;
+}
+[data-stage-view="orbit"] .sp-job {
+  padding: 10px 14px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-md);
+  background: var(--recess);
+}
+[data-stage-view="orbit"] .sp-meanwhile {
+  padding: 12px 14px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-md);
+  background: var(--wash);
+}
+[data-stage-view="orbit"] .ob-view--author[data-meanwhile="true"] .sp-problems {
+  max-height: 120px;
+  overflow-y: auto;
 }
 [data-stage-view="orbit"] .sp-phases__list {
   display: grid;

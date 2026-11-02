@@ -8,6 +8,7 @@ export { Composer, Echo, EnoughButton, Question, ReplyNotice, RevisitBanner, Sti
 export { CheckCard, LineAdder, RunTestButton } from "./Check";
 export { DESCRIBE_WORDS, Describe } from "./Describe";
 export { StageSeal, StepRail } from "./Frame";
+export { JobStatus, Meanwhile } from "./Job";
 export { FiledCards, PhaseList, PracticeTile, ProblemList, RunProgress, clock } from "./Later";
 export { KindGlyph, KindLabel, NeedSentence, PieceCard, UndoToast } from "./Piece";
 export { SavedCard, ScoreLine, VerdictActions, VerdictRows } from "./Score";

@@ -4,17 +4,18 @@
 
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import type { Draft } from "../../../lib/contract";
-import { useClock, useDraftProject } from "../hooks";
+import { useDraftProject, useJob } from "../hooks";
 import {
   AccessList,
   CheckCard,
   FiledCards,
+  JobStatus,
   LineAdder,
+  Meanwhile,
   PhaseList,
   PracticeTile,
   ProblemList,
   ReplyNotice,
-  RunProgress,
   RunTestButton,
   SavedCard,
   ScoreLine,
@@ -27,11 +28,10 @@ import type { StageWords } from "../words";
 import { DRAWING_WORDS as dw } from "./words";
 
 /**
- * What the clocks measure against. Writing: "about a minute" (ADR 0007's authoring, one call plus up
- * to two repairs). The test run: 2-5 min on Claude Code (the plan's Risks, measured); the bar says
- * "of about 4:00" and never claims done before the daemon does.
+ * What the test run's clock measures against: 1-4 min (measured, onboarding-jobs); the bar says "of
+ * about 4:00" until then and never claims done before the daemon does, then the clock alone. Writing
+ * shows no estimate at all: 15 s to 5 min, so any promise would read as broken.
  */
-export const WRITE_ABOUT_S = 90;
 export const RUN_ABOUT_S = 240;
 
 interface LaterProps {
@@ -42,10 +42,15 @@ interface LaterProps {
   words: StageWords;
 }
 
-/** Writing, the written chore's practice apps, and the test run: a strip where the note was. */
+/**
+ * Writing, the written chore's practice apps, and the test run: a strip where the note was. While she
+ * works the strip stays compact (a clock, Stop, Leave for now) and her two "meanwhile" questions sit
+ * beside it in the last column; nothing waits on them.
+ */
 export function Strip({ draft, frame, state, dispatch, words }: LaterProps) {
-  const running = state.work === "write" || state.work === "rehearse";
-  const elapsed = useClock(state.startedAt, running);
+  const write = useJob(state, dispatch, "write", words);
+  const preview = useJob(state, dispatch, "preview", words);
+  const test = useJob(state, dispatch, "rehearse", words, RUN_ABOUT_S);
   const author = authorOf(state.author);
   const run = runOf(state.rehearsal);
   const failed = frame.phase === "failed" && !state.work;
@@ -56,20 +61,30 @@ export function Strip({ draft, frame, state, dispatch, words }: LaterProps) {
   );
 
   if (draft.step === "author") {
-    const stopped = author.status === "stopped" || failed;
-    const title = stopped ? words.unwritten : author.status === "repairing" ? words.repairing : words.writing;
+    const halted = write.status?.state === "stopped";
+    const stopped = !halted && (author.status === "stopped" || failed);
+    const title = halted
+      ? write.status?.byYou === false
+        ? words.sheStopped
+        : words.youStopped
+      : stopped
+        ? words.unwritten
+        : author.status === "repairing"
+          ? words.repairing
+          : words.writing;
+    const aside = write.meanwhile && <Meanwhile {...write.meanwhile} />;
     return (
-      <section className="dr-strip" data-role="strip" data-step="author" aria-label={title}>
+      <section className="dr-strip" data-role="strip" data-step="author" data-meanwhile={aside ? "true" : undefined} aria-label={title}>
         <div className="dr-strip__lead">
           <h2 className="dr-strip__title">{title}</h2>
-          <p className="dr-strip__sub">{stopped ? frame.problem || words.nothingLost : words.writingHint}</p>
-          {!stopped && <RunProgress label={words.writing} elapsedS={elapsed} aboutS={WRITE_ABOUT_S} words={words} />}
+          {!halted && <p className="dr-strip__sub">{stopped ? frame.problem || words.nothingLost : words.writingHint}</p>}
+          {write.status && <JobStatus {...write.status} />}
         </div>
         <div className="dr-strip__body">
           {author.problems.length > 0 && (
             <ProblemList title={words.problems} problems={author.problems} tone={stopped ? "failed" : "repair"} />
           )}
-          {!stopped && (
+          {!stopped && !halted && (
             <div className="dr-tile-next">
               <span className="sp-dots" aria-hidden="true">
                 <i />
@@ -81,6 +96,7 @@ export function Strip({ draft, frame, state, dispatch, words }: LaterProps) {
           )}
         </div>
         <div className="dr-strip__act">
+          {aside}
           {retry}
           {stopped && <p className="dr-strip__why">{words.nothingLost}</p>}
         </div>
@@ -94,6 +110,7 @@ export function Strip({ draft, frame, state, dispatch, words }: LaterProps) {
         <div className="dr-strip__lead">
           <h2 className="dr-strip__title">{words.written}</h2>
           <p className="dr-strip__sub">{failed ? frame.problem : dw.writtenHint}</p>
+          {preview.status && <JobStatus {...preview.status} />}
         </div>
         <div className="dr-strip__body">
           {(draft.practice ?? []).map((a) => (
@@ -101,25 +118,28 @@ export function Strip({ draft, frame, state, dispatch, words }: LaterProps) {
           ))}
         </div>
         <div className="dr-strip__act">
-          {retry || (
-            <button type="button" className="btn btn-primary dr-strip__go" disabled={!!state.work} onClick={() => dispatch({ type: "preview" })}>
-              {words.showCards}
-            </button>
-          )}
+          {retry ||
+            (!preview.status && (
+              <button type="button" className="btn btn-primary dr-strip__go" disabled={!!state.work} onClick={() => dispatch({ type: "preview" })}>
+                {words.showCards}
+              </button>
+            ))}
         </div>
       </section>
     );
   }
 
   // the test run: phases across her practice apps, the cards she filed (shown, never signable)
-  const stopped = !!run.stopped || failed;
-  const idle = !state.work && !state.rehearsal.length;
+  const halted = test.status?.state === "stopped";
+  const stopped = !halted && (!!run.stopped || failed);
+  const idle = !state.work && !state.rehearsal.length && !halted;
+  const aside = test.meanwhile && <Meanwhile {...test.meanwhile} />;
   return (
-    <section className="dr-strip" data-role="strip" data-step="rehearse" aria-label={words.running}>
+    <section className="dr-strip" data-role="strip" data-step="rehearse" data-meanwhile={aside ? "true" : undefined} aria-label={words.running}>
       <div className="dr-strip__lead">
-        <h2 className="dr-strip__title">{stopped ? words.stopped : words.running}</h2>
-        <p className="dr-strip__sub">{stopped ? run.stopped || frame.problem : words.runningHint}</p>
-        {!stopped && !idle && <RunProgress label={words.running} elapsedS={elapsed} aboutS={RUN_ABOUT_S} words={words} />}
+        <h2 className="dr-strip__title">{stopped || halted ? words.stopped : words.running}</h2>
+        {!halted && <p className="dr-strip__sub">{stopped ? run.stopped || frame.problem : words.runningHint}</p>}
+        {test.status && <JobStatus {...test.status} />}
       </div>
       <div className="dr-strip__body">
         <PhaseList phases={run.phases} done={false} appName={appNameOf(draft)} words={words} />
@@ -127,12 +147,13 @@ export function Strip({ draft, frame, state, dispatch, words }: LaterProps) {
       </div>
       <div className="dr-strip__act">
         {retry ||
+          aside ||
           (idle ? (
             <button type="button" className="btn btn-primary dr-strip__go" onClick={() => dispatch({ type: "rehearse" })}>
               {words.startTest}
             </button>
           ) : (
-            <p className="dr-strip__why">{dw.nothingNeeded}</p>
+            !halted && <p className="dr-strip__why">{dw.nothingNeeded}</p>
           ))}
       </div>
     </section>
@@ -160,11 +181,12 @@ function useFit(ref: RefObject<HTMLElement | null>, deps: readonly unknown[]) {
 /** The check step: the cards she expects to file, each marked yes or no, and the person's own lines. */
 export function CheckDrawer({ draft, frame, state, dispatch, words }: LaterProps) {
   const ref = useRef<HTMLElement>(null);
+  const job = useJob(state, dispatch, "preview", words);
   const expected = draft.expected ?? [];
   const loading = !draft.expected;
   const left = expected.filter((c) => !state.marks[c.id]).length;
   const appName = appNameOf(draft);
-  useFit(ref, [draft.expected, state.marks, state.missing, state.never, loading]);
+  useFit(ref, [draft.expected, state.marks, state.missing, state.never, loading, job.meanwhile?.left.length]);
 
   return (
     <aside className="dr-drawer" data-role="drawer" data-step="preview" ref={ref} aria-label={words.checkTitle}>
@@ -182,9 +204,12 @@ export function CheckDrawer({ draft, frame, state, dispatch, words }: LaterProps
       <div className="dr-drawer__body">
         {loading ? (
           <>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="dr-loadrow" aria-hidden="true" />
-            ))}
+            {job.status && <JobStatus {...job.status} />}
+            {job.meanwhile?.left.length ? (
+              <Meanwhile {...job.meanwhile} />
+            ) : (
+              [0, 1, 2, 3, 4].map((i) => <div key={i} className="dr-loadrow" aria-hidden="true" />)
+            )}
             <ReplyNotice
               phase={frame.phase === "failed" ? "failed" : "thinking"}
               problem={frame.problem}

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Draft, ExpectedList, SayBody, TurnEvent } from "../../lib/contract";
+import type { Draft, DraftJob, JobEvent, SayBody, TurnEvent } from "../../lib/contract";
 import { DaemonError } from "../../lib/daemon";
 import { STAGED } from "./fixture/staged";
 import { useShownPhase } from "./hooks";
@@ -8,11 +8,14 @@ import {
   allMarked,
   applyOps,
   coverageOf,
+  covers,
   isAgreed,
   keyOf,
+  meanwhileLeft,
   missingFor,
   needMarks,
   needsInk,
+  neverLinesOf,
   overlayOf,
   runOf,
   scoreOf,
@@ -236,7 +239,10 @@ function fakeApi(over: Partial<StageApi> = {}): StageApi & { calls: { name: stri
     draftConfirm: rec("draftConfirm", never),
     draftDrop: rec("draftDrop", never),
     draftWrite: rec("draftWrite", never),
-    draftPreview: rec("draftPreview", never),
+    draftPreviewJob: rec("draftPreviewJob", never),
+    draftFollow: rec("draftFollow", never),
+    draftStopJob: rec("draftStopJob", never),
+    draftNotes: rec("draftNotes", never),
     draftKey: rec("draftKey", never),
     draftRehearse: rec("draftRehearse", never),
     draftVerdict: rec("draftVerdict", never),
@@ -401,13 +407,23 @@ describe("the stage store", () => {
     expect(stored(store.getState().draft!)).toEqual(stored(STAGED.scored));
   });
 
-  it("takes the preview's list onto the draft", async () => {
-    const io = fakeApi({ draftPreview: () => Promise.resolve<ExpectedList>(STAGED.preview) });
+  it("takes the preview job's list onto the draft", async () => {
+    const io = fakeApi({
+      draftPreviewJob: (_id, on) => {
+        on({ type: "job", job: { kind: "preview", state: "running", started: "2026-11-02T10:00:00Z", events: 0 } });
+        on({ type: "previewing" });
+        on({ type: "previewed", expected: STAGED.preview.expected });
+        return Promise.resolve();
+      },
+    });
     const store = createStageStore(io);
     store.setState({ draft: STAGED.written });
     store.getState().dispatch({ type: "preview" });
     await flush();
-    expect(stored(store.getState().draft!)).toEqual(stored(STAGED.previewed));
+    const { job, ...rest } = store.getState().draft!;
+    expect(stored(rest as Draft)).toEqual(stored(STAGED.previewed));
+    expect(job).toMatchObject({ kind: "preview", state: "done" });
+    expect(store.getState()).toMatchObject({ work: null, cursor: 2 });
   });
 
   it("keeps the draft, the frame, the open question and both place memos when the view switches", async () => {
@@ -522,5 +538,207 @@ describe("the access step", () => {
     await flush();
     expect(store.getState().frame.problem).toContain("not open");
     expect(io.calls.map((c) => c.name)).toEqual(["draftAccess", "getDraft"]);
+  });
+});
+
+// --- the background job, "meanwhile" and the check's pre-fill (onboarding-jobs) -----------------
+
+const STARTED = "2026-11-02T10:00:00Z";
+const writeJob = (over: Partial<DraftJob> = {}): DraftJob => ({ kind: "write", state: "running", started: STARTED, events: 1, ...over });
+const WRITING: Draft = { ...AGREED, step: "author", job: writeJob() };
+const authorLines = (): JobEvent[] => STAGED.author.map((t) => t.event);
+/** draftWrite and draftRehearse are typed by their kind's events; their streams carry the job's lines too. */
+type Push = (e: JobEvent) => void;
+
+describe("the background job", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("folds a job stream: the snapshot, its events, and stopped", () => {
+    let s = at(AGREED);
+    s = { ...s, work: "write" };
+    s = reduce(s, { type: "job", job: writeJob({ events: 0 }) });
+    expect(s.draft!.job).toMatchObject({ kind: "write", state: "running" });
+    expect(s.startedAt).toBe(Date.parse(STARTED));
+    s = reduce(s, authorLines()[0]!);
+    expect(s.draft!.step).toBe("author");
+    s = reduce(s, { type: "stopped", reason: "Stopped at your request." });
+    expect(s.work).toBeNull();
+    expect(s.halted).toBe("write");
+    expect(s.draft!.job).toMatchObject({ state: "stopped", reason: "Stopped at your request." });
+    // anything that moves on clears it: a new write
+    expect(reduce(s, authorLines()[0]!).halted).toBeNull();
+    // a draft opened with a stopped job says so
+    expect(reduce(initialStage(), { type: "draft", draft: { ...WRITING, job: writeJob({ state: "stopped" }) } }).halted).toBe("write");
+  });
+
+  it("re-attaches to a running job when the draft is opened, from the start of its events", async () => {
+    const io = fakeApi({
+      getDraft: () => Promise.resolve(WRITING),
+      draftFollow: (_id, _after, on) => {
+        on({ type: "job", job: writeJob({ events: 1 }) });
+        for (const e of authorLines()) on(e);
+        return Promise.resolve();
+      },
+    });
+    const store = createStageStore(io);
+    await act(() => store.getState().open(WRITING.id));
+    await flush();
+    expect(io.calls.map((c) => c.name)).toEqual(["getDraft", "draftFollow"]);
+    expect(io.calls[1]!.args.slice(0, 2)).toEqual([WRITING.id, 0]);
+    const s = store.getState();
+    expect(s.draft!.step).toBe("preview");
+    expect(s.draft!.job!.state).toBe("done");
+    expect(s.cursor).toBe(authorLines().length);
+    expect(s.work).toBeNull();
+  });
+
+  it("shows a job that ended while away as it ended, without following it", async () => {
+    const io = fakeApi({ getDraft: () => Promise.resolve({ ...STAGED.written, job: writeJob({ state: "done" }) }) });
+    const store = createStageStore(io);
+    await act(() => store.getState().open(STAGED.written.id));
+    await flush();
+    expect(io.calls.map((c) => c.name)).toEqual(["getDraft"]);
+    expect(store.getState().draft!.step).toBe("preview");
+  });
+
+  it("follows the job again on a draft_job event when nothing follows it", async () => {
+    const io = fakeApi({
+      getDraft: () => Promise.resolve(WRITING),
+      draftFollow: (_id, _after, on) => {
+        on({ type: "job", job: writeJob() });
+        on({ type: "stopped", reason: "Stopped." });
+        return Promise.resolve();
+      },
+    });
+    const store = createStageStore(io);
+    store.setState({ draft: AGREED });
+    await act(() => store.getState().refresh("drf_other"));
+    expect(io.calls).toEqual([]);
+    await act(() => store.getState().refresh(AGREED.id));
+    await flush();
+    expect(io.calls.map((c) => c.name)).toContain("draftFollow");
+    expect(store.getState().halted).toBe("write");
+  });
+
+  it("lets go of the stream when the person leaves mid-job, and never stops the job", async () => {
+    let signal: AbortSignal | undefined;
+    const io = fakeApi({
+      draftWrite: (_id, on, sig) => {
+        signal = sig;
+        const push = on as Push;
+        push({ type: "job", job: writeJob({ events: 0 }) });
+        push(authorLines()[0]!);
+        return new Promise<void>((_ok, no) => sig?.addEventListener("abort", () => no(new DOMException("aborted", "AbortError"))));
+      },
+    });
+    const store = createStageStore(io);
+    store.setState({ draft: AGREED });
+    store.getState().dispatch({ type: "enough" });
+    await flush();
+    expect(store.getState().work).toBe("write");
+    store.getState().dispatch({ type: "leave" });
+    await flush();
+    expect(signal?.aborted).toBe(true);
+    expect(io.calls.map((c) => c.name)).toEqual(["draftWrite"]);
+    expect(store.getState().draft).toBeNull();
+    expect(store.getState().frame.phase).toBe("idle");
+  });
+
+  it("Stop ends the job through the daemon; the stream then says stopped and the draft is read again", async () => {
+    let finish: () => void = () => undefined;
+    let push: Push = () => undefined;
+    const io = fakeApi({
+      draftWrite: (_id, on) => {
+        push = on as Push;
+        push({ type: "job", job: writeJob({ events: 0 }) });
+        push(authorLines()[0]!);
+        return new Promise<void>((ok) => (finish = ok));
+      },
+      draftStopJob: () => Promise.resolve({ ...WRITING, job: writeJob({ state: "stopped" }) }),
+      getDraft: () => Promise.resolve({ ...AGREED, job: writeJob({ state: "stopped", reason: "Stopped." }) }),
+    });
+    const store = createStageStore(io);
+    store.setState({ draft: AGREED });
+    store.getState().dispatch({ type: "enough" });
+    await flush();
+    store.getState().dispatch({ type: "stop" });
+    expect(store.getState().stopping).toBe(true);
+    await flush();
+    expect(io.calls.map((c) => c.name)).toEqual(["draftWrite", "draftStopJob"]);
+    push({ type: "stopped", reason: "Stopped." });
+    finish();
+    await flush();
+    expect(io.calls.map((c) => c.name)).toEqual(["draftWrite", "draftStopJob", "getDraft"]);
+    expect(store.getState()).toMatchObject({ work: null, halted: "write", stopping: true }); // "You stopped her."
+    expect(store.getState().frame.phase).toBe("idle");
+  });
+
+  it("a lost job stream with the job still running offers a look again, not a second start", async () => {
+    const io = fakeApi({
+      draftRehearse: (_id, on) => {
+        (on as Push)({ type: "job", job: { kind: "rehearse", state: "running", started: STARTED, events: 0 } });
+        return Promise.resolve();
+      },
+      getDraft: () => Promise.resolve({ ...STAGED.keyed, job: { kind: "rehearse", state: "running", started: STARTED, events: 3 } }),
+    });
+    const store = createStageStore(io);
+    store.setState({ draft: STAGED.keyed });
+    store.getState().dispatch({ type: "rehearse" });
+    await flush();
+    expect(store.getState().failed).toEqual({ type: "reload", draft_id: STAGED.keyed.id });
+    expect(store.getState().frame.phase).toBe("failed");
+  });
+});
+
+describe("meanwhile", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("sends the whole notes each time they change", async () => {
+    const io = fakeApi({ draftNotes: (_id, body) => Promise.resolve({ ...WRITING, notes: body }) });
+    const store = createStageStore(io);
+    store.setState({ draft: WRITING, work: "write" });
+    store.getState().dispatch({ type: "notes", question: "expect", notes: { expect: ["  a query for 7 Oct "], never: [] } });
+    await flush();
+    store.getState().dispatch({
+      type: "notes",
+      question: "expect",
+      notes: { expect: ["a query for 7 Oct", "A QUERY FOR 7 OCT", "teo on the 21st"], never: [] },
+    });
+    await flush();
+    expect(io.calls.map((c) => c.args)).toEqual([
+      [WRITING.id, { expect: ["a query for 7 Oct"], never: [] }],
+      [WRITING.id, { expect: ["a query for 7 Oct", "teo on the 21st"], never: [] }],
+    ]);
+    expect(store.getState().draft!.notes).toEqual({ expect: ["a query for 7 Oct", "teo on the 21st"], never: [] });
+  });
+
+  it("keeps the sketch's never pieces when the person keeps them, and asks only what is left", async () => {
+    const io = fakeApi({ draftNotes: (_id, body) => Promise.resolve({ ...WRITING, notes: body }) });
+    const store = createStageStore(io);
+    store.setState({ draft: WRITING, work: "write" });
+    const sketchNever = WRITING.sketch.nodes.filter((n) => n.slot === "never").map((n) => n.label);
+    expect(sketchNever.length).toBeGreaterThan(0);
+    expect(neverLinesOf(store.getState())).toEqual(sketchNever);
+    expect(meanwhileLeft(store.getState())).toEqual(["expect", "never"]);
+    store.getState().dispatch({ type: "meanwhile_done", question: "expect" }); // skipped
+    store.getState().dispatch({ type: "meanwhile_done", question: "never" });
+    await flush();
+    expect(io.calls.map((c) => c.args[1])).toEqual([{ expect: [], never: sketchNever }]);
+    expect(meanwhileLeft(store.getState())).toEqual([]);
+  });
+
+  it("pre-fills the check from the notes: lines no card covers become missed lines, never lines carry over", () => {
+    const notes = { expect: ["mila billed on tue 7 oct", "A query for the swimming fee"], never: ["Pay the club"] };
+    let s = at({ ...STAGED.written, notes });
+    s = reduce(s, { type: "previewed", expected: STAGED.preview.expected });
+    expect(s.missing).toEqual(["A query for the swimming fee"]);
+    expect(s.never).toEqual(["Pay the club"]);
+    expect(covers(STAGED.preview.expected[0]!, "Mila billed on Tue 7 Oct")).toBe(true);
+    // the person can still change them before the test
+    s = applyLocal(s, { type: "remove_missing", index: 0 });
+    expect(keyOf(s).missing).toEqual([]);
+    // opening a draft whose check is already listed fills them the same way
+    const opened = reduce(initialStage(), { type: "draft", draft: { ...STAGED.previewed, notes } });
+    expect(opened.missing).toEqual(["A query for the swimming fee"]);
   });
 });

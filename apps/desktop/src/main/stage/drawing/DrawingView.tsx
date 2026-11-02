@@ -6,8 +6,8 @@
 
 import { useEffect, useMemo } from "react";
 import type { SketchNode } from "../../../lib/contract";
-import { useDraftProject } from "../hooks";
-import { RevisitBanner } from "../parts";
+import { useDraftProject, useJob } from "../hooks";
+import { JobStatus, RevisitBanner } from "../parts";
 import { authorOf, isPencil, overlayOf, shownSketch } from "../select";
 import type { Place, StageViewProps } from "../types";
 import { AccessDrawer, CheckDrawer, Finale, Strip, VerdictDrawer } from "./Later";
@@ -55,8 +55,11 @@ export function DrawingView({ draft, frame, state, dispatch, words, place }: Sta
   }, [shaping, ask, phase, draft.sketch, lay]);
 
   const { project } = useDraftProject(draft);
+  // a write the person stopped, when the daemon took the draft back to the sketch
+  const write = useJob(state, dispatch, "write", words);
   const side = (
     <>
+      {step === "shape" && write.status?.state === "stopped" && <JobStatus {...write.status} />}
       {revisit && (
         <RevisitBanner
           why={draft.verdict === "revise" ? "revise" : "unwritten"}

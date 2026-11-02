@@ -70,14 +70,26 @@ export function ProblemList({ title, problems, tone }: ProblemListProps) {
 export interface RunProgressProps {
   label: string;
   elapsedS: number;
-  /** The measured time it usually takes; the bar never claims to be done before the daemon says so. */
-  aboutS: number;
+  /**
+   * The measured time it usually takes; the bar never claims to be done before the daemon says so.
+   * Absent (writing, which can take five minutes) or passed, only the clock is shown: "5:12 so far".
+   */
+  aboutS?: number;
   words: StageWords;
 }
 
-/** A bar and a clock: "1:12 of about 1:30". */
+/** A bar and a clock, "1:12 of about 4:00", until the usual time is passed; then the clock alone. */
 export function RunProgress({ label, elapsedS, aboutS, words }: RunProgressProps) {
-  const share = Math.min(0.95, aboutS > 0 ? elapsedS / aboutS : 0);
+  if (!aboutS || elapsedS >= aboutS) {
+    return (
+      <div className="sp-progress" data-role="progress" data-open="true" role="timer" aria-label={label}>
+        <p className="sp-progress__clock">
+          {clock(elapsedS)} {words.soFar}
+        </p>
+      </div>
+    );
+  }
+  const share = Math.min(0.95, elapsedS / aboutS);
   return (
     <div className="sp-progress" data-role="progress">
       <div

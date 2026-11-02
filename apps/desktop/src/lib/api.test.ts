@@ -114,7 +114,9 @@ describe("draft routes", () => {
       url: "/drafts/drf_1/drop",
       body: { node_ids: ["n4"] },
     });
-    expect(await called(() => api.draftPreview("drf_1"))).toEqual({ method: "POST", url: "/drafts/drf_1/preview" });
+    expect(await called(() => api.draftStopJob("drf_1"))).toEqual({ method: "POST", url: "/drafts/drf_1/job/stop" });
+    const notes = { expect: ["a late fee"], never: ["pay"] };
+    expect(await called(() => api.draftNotes("drf_1", notes))).toEqual({ method: "PUT", url: "/drafts/drf_1/notes", body: notes });
     const key = { marks: [{ expected_id: "e1", mark: "yes" as const }], missing: [], never: ["pay"] };
     expect(await called(() => api.draftKey("drf_1", key))).toEqual({ method: "PUT", url: "/drafts/drf_1/key", body: key });
     expect(await called(() => api.draftVerdict("drf_1", { verdict: "revise", note: "n" }))).toEqual({

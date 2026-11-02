@@ -29,7 +29,6 @@ import {
   type EngineChoiceBody,
   type EngineId,
   type EngineStatus,
-  type ExpectedList,
   type GoalList,
   type GoalsBody,
   type Health,
@@ -168,7 +167,6 @@ export const draftDrop = (id: string, nodeIds: string[]) =>
   request<Draft>("POST", path(ROUTES.draft_drop, { id }), { node_ids: nodeIds } satisfies DropBody);
 export const draftWrite = (id: string, onEvent: (e: AuthorEvent) => void, signal?: AbortSignal) =>
   streamNdjson<AuthorEvent>("POST", path(ROUTES.draft_write, { id }), undefined, onEvent, signal);
-export const draftPreview = (id: string) => request<ExpectedList>("POST", path(ROUTES.draft_preview, { id }));
 export const draftKey = (id: string, body: KeyBody) => request<Draft>("PUT", path(ROUTES.draft_key, { id }), body);
 export const draftRehearse = (id: string, onEvent: (e: RehearsalEvent) => void, signal?: AbortSignal) =>
   streamNdjson<RehearsalEvent>("POST", path(ROUTES.draft_rehearse, { id }), undefined, onEvent, signal);

@@ -5,6 +5,7 @@
 import { useEffect, useMemo } from "react";
 import type { StageView } from "../../lib/contract";
 import { toggleAthena } from "../../lib/windows";
+import { useAppEvents } from "../../ui";
 import { useMain } from "../store";
 import { useAccessWatch, useAccessWheel, useShownPhase } from "./hooks";
 import { useStageKeys, type StageKey } from "./keymap";
@@ -157,12 +158,21 @@ function onKey(key: StageKey, e: KeyboardEvent, state: StageState, dispatch: (a:
   }
 }
 
-/** The stage on the app's store: opens the draft in the address and follows a new draft to its own. */
+/**
+ * The stage on the app's store: opens the draft in the address and follows a new draft to its own. A
+ * draft's job that starts or ends elsewhere (the `draft_job` event) reads the draft again when this
+ * stage is not already following it; leaving lets go of a job's stream, and the job runs on.
+ */
 export function Stage({ id }: { id: string | null }) {
   const state = useStage();
   const navigate = useMain((s) => s.navigate);
   const draftId = state.draft?.id ?? null;
   const open = state.open;
+  const refresh = state.refresh;
+
+  useAppEvents((e) => {
+    if (e.type === "draft_job" && e.draft_id) void refresh(e.draft_id);
+  });
 
   useEffect(() => {
     void open(id);
@@ -179,7 +189,10 @@ export function Stage({ id }: { id: string | null }) {
       state={state}
       dispatch={state.dispatch}
       place={state.place}
-      onLeave={() => navigate({ view: "projects" })}
+      onLeave={() => {
+        navigate({ view: "projects" });
+        state.dispatch({ type: "leave" });
+      }}
       onHistory={() => void toggleAthena()}
     />
   );
