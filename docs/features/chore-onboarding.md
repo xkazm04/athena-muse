@@ -24,7 +24,7 @@ is a Project and every stage reply is an ordinary turn in it.
 | Step | What happens | Done when |
 |---|---|---|
 | describe | The person types the need; Athena proposes a project name. | The first stage turn returns. |
-| shape | Frames: her line + sketch ops + at most one `ask`. | Coverage gate, or "That's enough, write it". |
+| shape | Frames: her line + sketch ops + at most one `ask`; one line per frame (only the first model round with words is shown and kept, and the turn ends once her question is asked). | Coverage gate, or "That's enough, write it". |
 | author | Athena writes `playbook.json` and `world.json` from the sketch, using the nearest library chore as an example; `load_chore` validates, up to 2 repairs. | The validator. |
 | preview | One call lists the cards she would file (`ExpectedCard`); the person marks each yes/no and may add "she must never" lines. | Every card marked. |
 | rehearse | `truth.json` is written from the marks; the bench runner plays the phases on a throwaway daemon and scores against the key. | The run ends. |
@@ -115,7 +115,6 @@ python scripts/parity/run.py --engines claude_code,muse_code --cases 1-10 --mode
 
 ## Known gaps (none blocks use)
 
-- Her line repeats itself (both engines; the largest loss in the parity grades, no-repeats ~1.8 of 5): a shaping turn shows the words of every model round joined (`turn.py`, `_rounds`), and the `ask` result "wait for their answer" invites "I'm waiting for your answer on screen". Fix: one line per frame (stop the turn once her question is accepted; show one round's words).
 - She proposes again what the person rubbed out (both engines, parity run 2): the frame shows the sketch but not what was rubbed out.
 - A reply may ask in words without the question card (seen once), so the person has nothing to pick.
 - The verdict reads "She found everything you expected" on a 0 of 0 run, when the person said no to every card.

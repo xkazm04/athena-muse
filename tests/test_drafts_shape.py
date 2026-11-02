@@ -274,6 +274,34 @@ def test_an_empty_reply_is_an_error_and_changes_nothing(daemon: Daemon) -> None:
     assert roles == ["person"]
 
 
+def test_one_line_per_frame_a_later_rounds_words_are_not_shown_or_kept(daemon: Daemon) -> None:
+    draft_id = drafted(daemon)
+    engine = Stage(
+        ("I drew the job.", [sketch_call(1, op="add", slot="need", kind="step", label="Check the bill")]),
+        ("I drew the job. I am waiting for your answer.", [ask_call(2, "apps")]),
+    )
+    events = run(daemon, engine, draft_id)
+    assert engine.calls == 2  # the frame was not whole after round one: no question yet
+    assert "".join(e["delta"] for e in of(events, "text")) == "I drew the job."
+    assert of(events, "ask") and of(events, "done")
+    said = [t["text"] for t in daemon.conversation.list(daemon.drafts.get(draft_id)["space_id"], 10)]
+    assert not any("waiting" in t for t in said)
+
+
+def test_an_asked_frame_ends_the_turn_with_that_round(daemon: Daemon) -> None:
+    draft_id = drafted(daemon)
+    engine = Stage(
+        (
+            "Where does it happen?",
+            [sketch_call(1, op="add", slot="need", kind="step", label="Check"), ask_call(2, "apps")],
+        ),
+        ("Restating myself.", []),
+    )
+    events = run(daemon, engine, draft_id)
+    assert engine.calls == 1
+    assert "Restating" not in "".join(e["delta"] for e in of(events, "text"))
+
+
 def test_a_reply_that_fails_after_drawing_leaves_the_draft_as_it_was(daemon: Daemon) -> None:
     draft_id = drafted(daemon)
     run(
@@ -283,7 +311,8 @@ def test_a_reply_that_fails_after_drawing_leaves_the_draft_as_it_was(daemon: Dae
     )
     before = daemon.drafts.get(draft_id)
     engine = Stage(
-        ("", [sketch_call(1, op="add", slot="apps", kind="app", label="Portal"), ask_call(2, "apps")]),
+        # draws without asking, so a second round runs and fails (an asked frame ends the turn)
+        ("", [sketch_call(1, op="add", slot="apps", kind="app", label="Portal")]),
         fail_at=2,
     )
     events = run(daemon, engine, draft_id, "next")

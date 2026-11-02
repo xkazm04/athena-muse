@@ -160,6 +160,17 @@ class Design(Protocol):
         """The reply changed something or asked something."""
         ...
 
+    @property
+    def whole(self) -> bool:
+        """The frame is whole: her question is asked, so no further model round is needed."""
+        ...
+
+    @property
+    def one_line(self) -> bool:
+        """Only the first round with words reaches the person (a shaping frame); a tool loop that
+        reads first and answers later says False."""
+        ...
+
     def owns(self, name: str) -> bool: ...
 
     def tools(self) -> list[dict[str, Any]]: ...
@@ -243,6 +254,13 @@ class SketchDesign(ABC):
     def progressed(self) -> bool:
         """The reply changed the sketch or asked something."""
         return bool(self.applied) or self.ask is not None
+
+    @property
+    def whole(self) -> bool:
+        """Her question is asked: the turn ends with this round (one line per frame)."""
+        return self.ask is not None
+
+    one_line = True
 
     def frame(self) -> str:
         places = self.rubric.places
@@ -328,9 +346,7 @@ class SketchDesign(ABC):
         # one of the rubric's places; the chore's are Slot
         ask: Ask = {"slot": cast("Slot", slot), "text": text, "suggestions": suggestions, "follow_up": used}
         self.ask = ask
-        return "Asked. The person sees your question and suggestions; wait for their answer.", [
-            {"type": "ask", "ask": ask}
-        ]
+        return "Asked. Your reply ends here; say nothing more.", [{"type": "ask", "ask": ask}]
 
     def _sketch(self, call: ToolCall) -> tuple[str, list[dict[str, Any]]]:
         op = _arg(call, "op").lower()
@@ -443,7 +459,8 @@ RULES = (
     "your proposal, and the person confirms it on screen.\n"
     f"- Propose at most {PROPOSALS_MAX} new pieces per reply that the person did not say; "
     "ask about the rest.\n"
-    "- Keep your line to one or two short sentences. Never mention tools, ids or slots by name."
+    "- Write your line once, before your calls: one or two short sentences. Do not describe the "
+    "sketch, say what is on screen, or say you are waiting. Never mention tools, ids or slots by name."
 )
 
 

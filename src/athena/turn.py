@@ -299,11 +299,16 @@ def _rounds(
         round_text: list[str] = []
         calls: list[ToolCall] = []
         usage: Usage | None = None
+        # A design turn shows one line per frame: once a round has words, later rounds' words (the
+        # model restating itself after its tools ran) are not shown or kept. Measured: joined rounds
+        # repeated her line on both CLI engines (onboarding parity, no-repeats ~1.8 of 5).
+        quiet = design is not None and design.one_line and any(part.strip() for part in reply_parts)
         try:
             for chunk in engine.complete(messages, tools):
                 if isinstance(chunk, TextDelta):
                     round_text.append(chunk.text)
-                    yield {"type": "text", "delta": chunk.text}
+                    if not quiet:
+                        yield {"type": "text", "delta": chunk.text}
                 elif isinstance(chunk, ToolCall):
                     calls.append(chunk)
                 else:
@@ -315,7 +320,8 @@ def _rounds(
         cost = _record(daemon, engine, surface, space_id, started, usage)
         if cost is not None:
             cost_total = (cost_total or 0.0) + cost
-        reply_parts.append("".join(round_text))
+        if not quiet:
+            reply_parts.append("".join(round_text))
         if not calls:
             break
 
@@ -357,7 +363,7 @@ def _rounds(
                 cards.append(done.card)
                 filed = True
             messages.append({"role": "tool", "tool_call_id": call.id, "content": done.result})
-        if filed:
+        if filed or (design is not None and design.whole):
             break
     return reply_parts, cards, cost_total
 
