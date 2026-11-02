@@ -183,6 +183,14 @@ class Design(Protocol):
         ...
 
 
+#: Her new guesses per reply (pieces not in the person's words). Measured: without a cap one engine drew
+#: every place in pencil on the first reply and asked nothing (onboarding parity baseline, case 2).
+PROPOSALS_MAX = 2
+TOO_MANY_PROPOSALS = (
+    f"Not drawn: at most {PROPOSALS_MAX} new guesses per reply. Ask the person about the rest instead."
+)
+
+
 # --- the shaping conversation over a sketch and a rubric -------------------------------------------
 
 
@@ -197,6 +205,8 @@ class SketchDesign(ABC):
     rules: ClassVar[str] = ""
     #: What the sketch draws, in the `sketch` tool's description.
     subject: ClassVar[str] = "what the person described"
+    #: Her new guesses per reply, or None for no cap (the chore's design caps them; a twin's does not).
+    proposals_max: ClassVar[int | None] = None
 
     def __init__(
         self,
@@ -217,6 +227,8 @@ class SketchDesign(ABC):
         self.asked = dict(asked or {})
         self.applied: list[SketchOp] = []
         self.ask: Ask | None = None
+        #: Her new pieces this reply that are not the person's words (PROPOSALS_MAX caps them).
+        self.proposed = 0
 
     # --- what run_turn asks -----------------------------------------------------------------------
 
@@ -326,6 +338,9 @@ class SketchDesign(ABC):
         try:
             if op == "add":
                 node, note = self._new_node(call)
+                cap = self.proposals_max
+                if node["origin"] == "athena" and cap is not None and self.proposed >= cap:
+                    return TOO_MANY_PROPOSALS, []
                 ops: list[SketchOp] = [{"op": "add", "node": node}]
             elif op == "change":
                 fields: dict[str, Any] = {
@@ -351,6 +366,7 @@ class SketchDesign(ABC):
         except SketchError as e:
             return f"Not drawn: {e}. The sketch is unchanged.", []
         self.applied += applied
+        self.proposed += sum(1 for o in applied if o["op"] == "add" and o["node"].get("origin") == "athena")
         return _done(applied) + note, [{"type": "sketch", "ops": applied}]
 
     def _new_node(self, call: ToolCall) -> tuple[SketchNode, str]:
@@ -425,6 +441,8 @@ RULES = (
     "- Never say or imply the sketch is complete, done or ready. The person decides when it is enough.\n"
     "- Draw the person's own words with `quote` set to their exact words; anything else you add is "
     "your proposal, and the person confirms it on screen.\n"
+    f"- Propose at most {PROPOSALS_MAX} new pieces per reply that the person did not say; "
+    "ask about the rest.\n"
     "- Keep your line to one or two short sentences. Never mention tools, ids or slots by name."
 )
 
@@ -437,6 +455,7 @@ class ChoreDesign(SketchDesign):
     surface: ClassVar[Surface] = "design"
     rules: ClassVar[str] = RULES
     subject: ClassVar[str] = "the person's process"
+    proposals_max: ClassVar[int | None] = PROPOSALS_MAX
 
     def __init__(
         self,

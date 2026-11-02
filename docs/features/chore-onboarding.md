@@ -35,7 +35,7 @@ is a Project and every stage reply is an ordinary turn in it.
 **Rubric** (seven slots: `need`, `apps`, `inputs`, `steps`, `hand`, `output`, `never`). Coverage per
 slot is 0 / 0.5 / 1, computed from the sketch, never claimed by the model: 1 holds a node the person
 confirmed, 0.5 only Athena's proposals. Agreed when `need`, `apps`, `hand`, `output` are 1 and the rest
-0.5 or skipped with a stated default. At most 2 follow-ups per slot; the exit is visible from frame one.
+0.5 or skipped with a stated default. At most 2 follow-ups per slot; the exit is visible from frame one. Her new guesses (pieces not in the person's words) are capped at 2 per reply; a third is refused in plain words and she asks instead (`PROPOSALS_MAX`, the chore's design only; a twin's is not capped).
 Since [ADR 0010](../adr/0010-one-shaping-conversation-two-rubrics.md) this is `CHORE_RUBRIC`, one of two rubrics on the same drafts machinery.
 
 **Real sites** ([ADR 0014](../adr/0014-a-chores-onboarding-signs-in-to-its-real-sites-and-only-onboarding-grants-trust.md)). An `app` node may carry a real website (`site`): Athena proposes it in pencil with the `sketch` tool, even on the person's own node; inking the node inks the site, rubbing out an agreed node's site removes only the site. Her practice apps stay invented and never reach access. The look that says "signed in" opens the site's address in a hidden tab and reads where it ended and whether a password field shows; the step never asks for or keeps a password. After onboarding, the Project's overview shows a lapsed site as a blocker with "Sign in again".

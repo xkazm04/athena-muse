@@ -99,6 +99,18 @@ def ask_call(n: int, slot: str, text: str = "Where does it happen?", answers: st
     return ToolCall(f"c{n}", "ask", {"slot": slot, "text": text, "suggestions": answers})
 
 
+class Heard(Stage):
+    """A Stage that keeps the messages of its last call (the tool results of the round before)."""
+
+    heard: list[dict[str, Any]]
+
+    def complete(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+    ) -> Iterator[TextDelta | ToolCall | Usage]:
+        self.heard = list(messages)
+        yield from super().complete(messages, tools)
+
+
 def run(daemon: Daemon, engine: Stage, draft_id: str, text: str = "") -> list[dict[str, Any]]:
     return list(shape.say(daemon, engine, draft_id, text, None))  # type: ignore[arg-type]
 
@@ -202,6 +214,28 @@ def test_a_quote_not_in_the_persons_words_is_her_proposal(daemon: Daemon) -> Non
         ("athena", False),  # too short to prove anything
     ]
     assert [n["id"] for n in nodes] == ["n1", "n2", "n3"]
+
+
+def test_at_most_two_guesses_per_reply_and_the_persons_words_are_not_capped(daemon: Daemon) -> None:
+    draft_id = drafted(daemon)
+    guess = [
+        sketch_call(n, op="add", slot=slot, kind=kind, label=f"Guess {n}")
+        for n, (slot, kind) in enumerate(
+            [("apps", "app"), ("inputs", "source"), ("steps", "step"), ("output", "output")], 1
+        )
+    ]
+    theirs = sketch_call(5, op="add", slot="apps", kind="app", label="Portal", quote="the school portal has")
+    engine = Heard(("Drawn.", [*guess, theirs]))
+    events = run(daemon, engine, draft_id)
+    nodes = [op["node"] for e in of(events, "sketch") for op in e["ops"]]
+    assert [(n["label"], n["origin"]) for n in nodes] == [
+        ("Guess 1", "athena"),
+        ("Guess 2", "athena"),
+        ("Portal", "you"),  # the person's own words are never refused
+    ]
+    tool_results = [m for m in engine.heard if m.get("role") == "tool"]
+    assert sum(shape.TOO_MANY_PROPOSALS in str(m["content"]) for m in tool_results) == 2
+    assert f"at most {shape.PROPOSALS_MAX} new pieces per reply" in engine.system
 
 
 def test_a_quote_from_a_picked_suggestion_counts(client: TestClient, daemon: Daemon) -> None:
