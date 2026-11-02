@@ -103,11 +103,13 @@ scores: question logic, no repeats, clarity, progress, fidelity to the persona's
 | after the guess cap and the "no" marks | Muse 1.3 | 3.24 | 10 of 10 | 7 | ~5.4 s / 20 s |
 | after one line per frame | Sonnet | 4.62 | 9 of 10 (writing unreadable, case 1) | 3 | ~7.2 s / 100 s |
 | after one line per frame | Muse 1.3 | 3.94 | 9 of 10 (writing timed out at 300 s, case 7) | 6 | ~5.9 s / 20 s (writing 314 s) |
+| background jobs, rubbed-out memory, long need drawn whole, bracket repair | Sonnet | 4.62 | 10 of 10 | 7 | ~7.5 s / 79 s |
+| background jobs, rubbed-out memory, long need drawn whole, bracket repair | Muse 1.3 | 3.90 | 10 of 10 | 6 | ~6.5 s / 21 s |
 
 The second run's persona is stricter (it reviews each pencil mark and answers an open question
 before leaving), so its grades are not directly comparable with the baseline's; the end states,
 the case-level scores (case 2 on Muse 0 of 1 -> 8 of 8, case 5 short -> exceeds on both) and the
-bar are. One line per frame (runs 2 and 3 share the persona, so this delta is clean) lifted Sonnet by 1.4 and Muse by 0.7: every line is one short statement, no restating. Muse stays within the bar's margin of Sonnet and is faster; Sonnet fails the bar mostly on writing calls over 60 s. Muse's remaining losses: it re-asks what a long need already said (case 4) and re-proposes a piece the person rubbed out (case 9). Writing failed once per engine (an unreadable answer on Sonnet, twice across the runs; a 300 s time-out on Muse). Muse Code sends about 5x the
+bar are. One line per frame (runs 2 and 3 share the persona, so this delta is clean) lifted Sonnet by 1.4 and Muse by 0.7: every line is one short statement, no restating. Muse stays within the bar's margin of Sonnet and is faster; Sonnet fails the bar mostly on writing calls over 60 s. Muse's remaining losses: it re-asks what a long need already said (case 4) and re-proposes a piece the person rubbed out (case 9). Writing failed once per engine (an unreadable answer on Sonnet, twice across the runs; a 300 s time-out on Muse). Run 4 (ADR 0020 jobs; cases 5-10 re-run after the runner lost one lane's port): every case reached its end on both engines; Muse's long need is drawn whole on the first frame (case 4: 8 turns to agreed -> 1). Kept answers showed Sonnet's unreadable chore was one `}` short (now closed and validated) and one Muse answer closed a bracket too early mid-answer (the repair message now quotes the text around the break; not yet measured live). Muse Code sends about 5x the
 input tokens (its own instructions). The bar: the expected end state with no blocker, grade within 1
 of Sonnet's, turns to agreed within Sonnet + 2, test run at least 4 of 5, no call over 60 s
 (Sonnet's slow writing calls fail it in three cases).
@@ -123,6 +125,8 @@ python scripts/parity/run.py --engines claude_code,muse_code --cases 1-10 --mode
 
 ## Known gaps (none blocks use)
 
+- Her short lines can say nothing ("Got it, that fits.", "Thanks - that helps."), mostly on Muse since one line per frame; the rule asks her not to describe the sketch, and some replies keep only the acknowledgement.
+- A pencil guess in the `need` slot has no piece in Drawing (the need is the quote header): "1 idea of hers still in pencil" shows, but only "Ink them all" reaches it (parity run 4, case 5).
 - A reply may ask in words without the question card (seen once), so the person has nothing to pick.
 - The verdict reads "She found everything you expected" on a 0 of 0 run, when the person said no to every card.
 - "Ink them all" skips a pencil website on an inked piece, and "Rub out" on that website does nothing (`drop` accepts pencil pieces only); inking the piece in its card works.
