@@ -95,11 +95,13 @@ scores: question logic, no repeats, clarity, progress, fidelity to the persona's
 | baseline | Muse 1.3 | 3.34 | 9 of 10 (second preview named no card, case 8) | 5 | ~4.7 s / 18 s |
 | after the guess cap and the "no" marks | Sonnet | 3.20 | 10 of 10 | 7 | ~6.0 s / 86 s |
 | after the guess cap and the "no" marks | Muse 1.3 | 3.24 | 10 of 10 | 7 | ~5.4 s / 20 s |
+| after one line per frame | Sonnet | 4.62 | 9 of 10 (writing unreadable, case 1) | 3 | ~7.2 s / 100 s |
+| after one line per frame | Muse 1.3 | 3.94 | 9 of 10 (writing timed out at 300 s, case 7) | 6 | ~5.9 s / 20 s (writing 314 s) |
 
 The second run's persona is stricter (it reviews each pencil mark and answers an open question
 before leaving), so its grades are not directly comparable with the baseline's; the end states,
 the case-level scores (case 2 on Muse 0 of 1 -> 8 of 8, case 5 short -> exceeds on both) and the
-bar are. Muse reaches parity with Sonnet on this suite and is faster; Muse Code sends about 5x the
+bar are. One line per frame (runs 2 and 3 share the persona, so this delta is clean) lifted Sonnet by 1.4 and Muse by 0.7: every line is one short statement, no restating. Muse stays within the bar's margin of Sonnet and is faster; Sonnet fails the bar mostly on writing calls over 60 s. Muse's remaining losses: it re-asks what a long need already said (case 4) and re-proposes a piece the person rubbed out (case 9). Writing failed once per engine (an unreadable answer on Sonnet, twice across the runs; a 300 s time-out on Muse). Muse Code sends about 5x the
 input tokens (its own instructions). The bar: the expected end state with no blocker, grade within 1
 of Sonnet's, turns to agreed within Sonnet + 2, test run at least 4 of 5, no call over 60 s
 (Sonnet's slow writing calls fail it in three cases).
