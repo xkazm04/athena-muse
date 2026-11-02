@@ -1,6 +1,10 @@
 node_modules/
 .venv/
 __pycache__/
+# python tool caches (mypy, pytest, ruff)
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
 target/
 dist/
 .env
