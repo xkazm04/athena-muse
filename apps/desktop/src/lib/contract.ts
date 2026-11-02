@@ -81,7 +81,8 @@ export type AppEventType =
   | "wheel"
   | "site"
   | "report"
-  | "routine";
+  | "routine"
+  | "draft_job";
 /** Her browser's answer when a hand did not run (ADR 0013). */
 export type HandReason = "no_browser" | "no_tab" | "moved" | "refused" | "timeout" | "failed" | "unknown_ref";
 export type WheelState = "back" | "closed" | "timeout";
@@ -368,6 +369,43 @@ export interface DraftSite {
   moved_to?: string;
 }
 
+/** A draft's background job: writing the chore, previewing its cards, or the test run. */
+export type DraftJobKind = "write" | "preview" | "rehearse";
+/** `failed`: an engine error or an unusable answer; `stopped`: Stop, or the daemon closed while it ran. */
+export type DraftJobState = "running" | "done" | "failed" | "stopped";
+
+/**
+ * The draft's last background job. It runs on a daemon thread, survives a closed window, and any
+ * window re-attaches with `GET /drafts/{id}/job?after=n`. No wall-clock limit on `write`;
+ * `POST /drafts/{id}/job/stop` ends the model process.
+ */
+export interface DraftJob {
+  kind: DraftJobKind;
+  state: DraftJobState;
+  /** ISO 8601 UTC. */
+  started: string;
+  /** Events the job has emitted so far: the follow cursor. */
+  events: number;
+  ended?: string;
+  /** failed / stopped: plain words, screen copy. */
+  reason?: string;
+}
+
+/** What the person says while she works: lines that pre-fill the key at the check. */
+export interface DraftNotes {
+  /** Cards they expect her to find; at the check, the ones she missed become missing lines. */
+  expect: string[];
+  never: string[];
+}
+
+/** A Project's open draft, on `SpaceSummary.draft`. */
+export interface DraftBadge {
+  id: string;
+  step: DraftStep;
+  /** The last job's state; absent before the first job. */
+  job?: DraftJobState;
+}
+
 export interface Draft {
   id: string;
   space_id: string;
@@ -392,6 +430,12 @@ export interface Draft {
   views?: Partial<Record<StageView, number>>;
   /** From the keep on: the real sites the access step signs in to. */
   sites?: DraftSite[];
+  /** The last background job; absent before the first. */
+  job?: DraftJob;
+  /** What the person said while she worked. */
+  notes?: DraftNotes;
+  /** Labels of her guesses the person rubbed out; she does not propose them again. */
+  rubbed?: string[];
 }
 
 /** DELETE /drafts/{id}: the draft is gone, its Project stays. */
@@ -418,6 +462,12 @@ export interface ConfirmBody {
 /** Athena's unconfirmed guesses the person rubs out, with their links. */
 export interface DropBody {
   node_ids: string[];
+}
+
+/** PUT /drafts/{id}/notes: the whole notes, replaced. Allowed at any step before `verdict`. */
+export interface NotesBody {
+  expect: string[];
+  never: string[];
 }
 
 export interface KeyBody {
@@ -449,6 +499,24 @@ export type AuthorEvent =
   | { type: "written"; chore_id: string; practice: PracticeApp[] }
   | { type: "author_failed"; problems: string[] }
   | { type: "error"; error: ErrorWord; reason: string };
+
+export type PreviewEvent =
+  | { type: "previewing" }
+  | { type: "previewed"; expected: ExpectedCard[] }
+  | { type: "error"; error: ErrorWord; reason: string };
+
+/**
+ * Every job stream (POST /drafts/{id}/write, /preview, /rehearse, and GET /drafts/{id}/job?after=n)
+ * opens with one `job` snapshot, then the job's events from `after` as they happen, and ends after the
+ * terminal event (written | author_failed | previewed | scored | error | stopped). Leaving the stream
+ * changes nothing: the job runs on. A POST while a job runs answers 409 `space_busy`.
+ */
+export type JobEvent =
+  | { type: "job"; job: DraftJob }
+  | { type: "stopped"; reason: string }
+  | AuthorEvent
+  | PreviewEvent
+  | RehearsalEvent;
 
 export type RehearsalEvent =
   | { type: "phase"; /** from 1 */ index: number; app: string; message: string }
@@ -563,6 +631,8 @@ export interface SpaceSummary {
   counts: SpaceCounts;
   /** The record kinds it keeps; omitted when none. */
   kinds?: RecordKind[];
+  /** Its open (not yet saved) draft; omitted when none. */
+  draft?: DraftBadge;
 }
 
 // List routes answer wrapped, never as a bare array.
@@ -717,6 +787,8 @@ export interface AppEvent {
   wheel?: WheelNote;
   routine?: Routine;
   site?: Site;
+  draft_id?: string;
+  job?: DraftJob;
 }
 
 /**
@@ -1535,6 +1607,9 @@ export const ROUTES = {
   draft_key: "/drafts/{id}/key",
   draft_rehearse: "/drafts/{id}/rehearse",
   draft_verdict: "/drafts/{id}/verdict",
+  draft_job: "/drafts/{id}/job",
+  draft_job_stop: "/drafts/{id}/job/stop",
+  draft_notes: "/drafts/{id}/notes",
   twins: "/twins",
   twin: "/twins/{id}",
   twin_say: "/twins/{id}/say",

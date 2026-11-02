@@ -98,6 +98,7 @@ AppEventType = Literal[
     "site",
     "report",
     "routine",
+    "draft_job",
 ]
 #: Her browser's answer when a hand did not run (ADR 0013).
 HandReason = Literal["no_browser", "no_tab", "moved", "refused", "timeout", "failed", "unknown_ref"]
@@ -300,6 +301,7 @@ class SpaceSummary(TypedDict):
     updated: str
     counts: SpaceCounts
     kinds: NotRequired[list[RecordKind]]  # the record kinds it keeps; omitted when none
+    draft: NotRequired[DraftBadge]  # its open (not yet saved) draft; omitted when none
 
 
 class SpaceList(TypedDict):
@@ -624,6 +626,42 @@ class DraftSite(TypedDict):
     moved_to: NotRequired[str]  # a look ended on another site, not a sign-in page: offered instead
 
 
+#: A draft's background job: writing the chore, previewing its cards, or the test run.
+DraftJobKind = Literal["write", "preview", "rehearse"]
+#: `failed`: an engine error or her answer could not be used; `stopped`: the person pressed Stop, or
+#: the daemon closed while it ran (found at the next start).
+DraftJobState = Literal["running", "done", "failed", "stopped"]
+
+
+class DraftJob(TypedDict):
+    """The draft's last background job. It runs on a daemon thread, survives a closed window, and any
+    window re-attaches with `GET /drafts/{id}/job?after=n` (the follow stream). No wall-clock limit on
+    `write`; `POST /drafts/{id}/job/stop` ends the model process."""
+
+    kind: DraftJobKind
+    state: DraftJobState
+    started: str  # ISO 8601 UTC
+    events: int  # events the job has emitted so far: the follow cursor
+    ended: NotRequired[str]  # once not running
+    reason: NotRequired[str]  # failed / stopped: plain words, screen copy
+
+
+class DraftNotes(TypedDict):
+    """What the person says while she works (the stage's "meanwhile"): lines that pre-fill the key at
+    the check. Absent before the person says anything; an empty list is "said nothing"."""
+
+    expect: list[str]  # cards they expect her to find; at the check, the ones she missed become missing lines
+    never: list[str]  # "she must never" lines
+
+
+class DraftBadge(TypedDict):
+    """A Project's open draft, on `SpaceSummary.draft`: where it stands, for a badge."""
+
+    id: str
+    step: DraftStep
+    job: NotRequired[DraftJobState]  # the last job's state; absent before the first job
+
+
 class Draft(TypedDict):
     id: str  # drf_ + 12 hex
     space_id: str  # the draft's Project, made active when the draft starts
@@ -644,6 +682,9 @@ class Draft(TypedDict):
     note: NotRequired[str]  # the person's words with a "revise" verdict
     views: NotRequired[dict[StageView, int]]  # stage turns that counted, per view the person answered in
     sites: NotRequired[list[DraftSite]]  # from the keep on: the real sites the access step signs in to
+    job: NotRequired[DraftJob]  # the last background job; absent before the first
+    notes: NotRequired[DraftNotes]  # what the person said while she worked
+    rubbed: NotRequired[list[str]]  # her guesses the person rubbed out (labels); not proposed again
 
 
 class DraftAbandoned(TypedDict):
@@ -666,6 +707,13 @@ class ConfirmBody(TypedDict):
 
 class DropBody(TypedDict):
     node_ids: list[str]  # Athena's unconfirmed guesses the person rubs out, with their links
+
+
+class NotesBody(TypedDict):
+    """PUT /drafts/{id}/notes: the whole notes, replaced. Allowed at any step before `verdict`."""
+
+    expect: list[str]
+    never: list[str]
 
 
 class KeyBody(TypedDict):
@@ -776,6 +824,37 @@ class AuthorFailed(TypedDict):
     problems: list[str]
 
 
+class PreviewStarted(TypedDict):
+    type: Literal["previewing"]
+
+
+class PreviewDone(TypedDict):
+    type: Literal["previewed"]
+    expected: list[ExpectedCard]
+
+
+class JobSnapshot(TypedDict):
+    """The first line of every job stream: where the job stands when the stream opens."""
+
+    type: Literal["job"]
+    job: DraftJob
+
+
+class JobStopped(TypedDict):
+    type: Literal["stopped"]
+    reason: str  # plain words
+
+
+# The job streams (POST /drafts/{id}/write, /preview, /rehearse start a job and follow it; GET
+# /drafts/{id}/job?after=n follows the running or last job). Protocol, in order: one `job` snapshot;
+# then the job's events from index `after` (0 for a POST), as they happen - write: writing, repair*,
+# then written | author_failed | error; preview: previewing, then previewed | error; rehearse: phase,
+# card*, then scored | error; any kind may end in `stopped`. The stream ends after the terminal event.
+# A follow on a job that already ended replays its events from `after` (kept in memory until the
+# daemon closes; after a restart the snapshot alone, with the stored state). A client that leaves
+# changes nothing: the job runs on. A POST while a job runs answers 409 `space_busy`.
+
+
 class RehearsalPhase(TypedDict):
     type: Literal["phase"]
     index: int  # from 1
@@ -846,7 +925,8 @@ class AppEvent(TypedDict):
     active_space: `space_id`; engine: `status`; turn_done: `space_id`, `turn_id`; settings: `look`;
     wheel: `wheel`; site: `space_id`, `site` (a look at one of the project's sites changed what it found);
     report: `space_id` (Athena arranged that project's report again);
-    routine: `space_id`, `routine` (a routine ran, skipped or changed).
+    routine: `space_id`, `routine` (a routine ran, skipped or changed);
+    draft_job: `space_id`, `draft_id`, `job` (a draft's job started or ended).
     """
 
     type: AppEventType
@@ -859,6 +939,8 @@ class AppEvent(TypedDict):
     wheel: NotRequired[WheelNote]
     routine: NotRequired[Routine]
     site: NotRequired[Site]
+    draft_id: NotRequired[str]
+    job: NotRequired[DraftJob]
 
 
 # --- twins (ADR 0008-0010) ------------------------------------------------------------------------
@@ -1666,6 +1748,9 @@ ROUTES = {
     "draft_key": "/drafts/{id}/key",
     "draft_rehearse": "/drafts/{id}/rehearse",
     "draft_verdict": "/drafts/{id}/verdict",
+    "draft_job": "/drafts/{id}/job",
+    "draft_job_stop": "/drafts/{id}/job/stop",
+    "draft_notes": "/drafts/{id}/notes",
     "twins": "/twins",
     "twin": "/twins/{id}",
     "twin_say": "/twins/{id}/say",

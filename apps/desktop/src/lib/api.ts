@@ -33,7 +33,9 @@ import {
   type GoalList,
   type GoalsBody,
   type Health,
+  type JobEvent,
   type KeyBody,
+  type NotesBody,
   type LedgerPage,
   type LookBody,
   type MarkBody,
@@ -172,6 +174,18 @@ export const draftRehearse = (id: string, onEvent: (e: RehearsalEvent) => void, 
   streamNdjson<RehearsalEvent>("POST", path(ROUTES.draft_rehearse, { id }), undefined, onEvent, signal);
 export const draftVerdict = (id: string, body: VerdictBody) =>
   request<Draft>("POST", path(ROUTES.draft_verdict, { id }), body);
+/**
+ * The draft's background jobs (write, preview, test run). `draftPreviewJob` starts the preview as a
+ * job; `draftFollow` re-attaches to the running or last job from event `after` (see `JobEvent` for the
+ * protocol); leaving either stream changes nothing. `draftStopJob` ends the running job's model process.
+ */
+export const draftPreviewJob = (id: string, onEvent: (e: JobEvent) => void, signal?: AbortSignal) =>
+  streamNdjson<JobEvent>("POST", path(ROUTES.draft_preview, { id }), undefined, onEvent, signal);
+export const draftFollow = (id: string, after: number, onEvent: (e: JobEvent) => void, signal?: AbortSignal) =>
+  streamNdjson<JobEvent>("GET", path(ROUTES.draft_job, { id }) + query({ after }), undefined, onEvent, signal);
+export const draftStopJob = (id: string) => request<Draft>("POST", path(ROUTES.draft_job_stop, { id }));
+export const draftNotes = (id: string, body: NotesBody) =>
+  request<Draft>("PUT", path(ROUTES.draft_notes, { id }), body);
 /** The access step (ADR 0014): sign in to one real site, look at it now, or skip it. */
 export const draftAccess = (id: string, body: AccessBody) =>
   request<Draft>("POST", path(ROUTES.draft_access, { id }), body);
