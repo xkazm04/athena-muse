@@ -6,7 +6,7 @@ import * as windows from "../../lib/windows";
 import { Shell } from "../App";
 import { parseHash, toHash, type Route } from "../route";
 import { resetMain, useMain } from "../store";
-import { depthOf, trailOf } from "./Depth";
+import { depthOf, Lamp, trailOf } from "./Depth";
 import { ASK_AWAY } from "./Surface";
 
 vi.mock("../../lib/api");
@@ -139,5 +139,25 @@ describe("the surface", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Hand it to her" })));
     expect(screen.getByText(ASK_AWAY)).toBeTruthy();
     expect((input as HTMLInputElement).value).toBe("Again");
+  });
+});
+
+describe("the engine lamp", () => {
+  it.each([
+    ["claude_code", "Claude Code"],
+    ["muse_code", "Muse Code"],
+    ["muse", "Muse"],
+  ] as const)("names %s as %s, with the model in its title", (engine, label) => {
+    useMain.setState({ engine: { engine, model: "m-1", key: "absent", simulated: false } });
+    render(<Lamp />);
+    const lamp = screen.getByText(label);
+    expect(lamp.getAttribute("title")).toBe("m-1");
+    expect(lamp.getAttribute("data-tone")).toBe("success");
+  });
+
+  it("says Simulated whenever replies are simulated", () => {
+    useMain.setState({ engine: { engine: "scripted", model: "", key: "absent", simulated: true } });
+    render(<Lamp />);
+    expect(screen.getByText("Simulated").getAttribute("data-tone")).toBe("warning");
   });
 });

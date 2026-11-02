@@ -15,7 +15,7 @@ import json
 import os
 import secrets
 import socket
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -51,6 +51,16 @@ from athena.twins import routes as routes_twins
 
 # The desktop's origins: Tauri on Windows/Linux and macOS, and the Vite dev server.
 APP_ORIGINS = ("http://tauri.localhost", "tauri://localhost", "http://localhost:1420")
+#: More origins for a browser-driven test run on its own port (the parity runner): comma-separated.
+EXTRA_ORIGINS_ENV = "ATHENA_EXTRA_ORIGINS"
+
+
+def app_origins(env: Mapping[str, str] = os.environ) -> tuple[str, ...]:
+    """The desktop's origins, plus any listed in `ATHENA_EXTRA_ORIGINS`."""
+    extra = [o.strip() for o in env.get(EXTRA_ORIGINS_ENV, "").split(",") if o.strip()]
+    return APP_ORIGINS + tuple(o for o in extra if o not in APP_ORIGINS)
+
+
 OPEN_PATHS = frozenset({"/health", routes_mcp.LEASE_PATH})
 QUERY_TOKEN_PATHS = frozenset({"/events", peer_devices.EVENTS_PATH})
 
@@ -173,7 +183,7 @@ def main(argv: list[str] | None = None) -> None:
     write_handshake(args.data, port, token)
     print(f"athena-daemon listening on 127.0.0.1:{port}", flush=True)
 
-    config = uvicorn.Config(create_app(daemon, token), log_level="warning", access_log=False)
+    config = uvicorn.Config(create_app(daemon, token, app_origins()), log_level="warning", access_log=False)
     uvicorn.Server(config).run(sockets=[sock])
 
 

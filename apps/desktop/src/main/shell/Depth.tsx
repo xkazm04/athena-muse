@@ -10,6 +10,7 @@ import { toggleAthena } from "../../lib/windows";
 import { Backdrop, Seal } from "../../theme";
 import { ProjectPill } from "../../ui";
 import { isTwinRoute, type Route } from "../route";
+import { ENGINE_LABEL } from "../settings/model";
 import { useMain } from "../store";
 import { useTwins } from "../twins/store";
 import "./depth.css";
@@ -138,7 +139,7 @@ export function Mark({ size = 22 }: { size?: number }) {
   );
 }
 
-/** The engine lamp: simulated is always labelled (AGENTS.md). */
+/** The engine lamp: simulated is always labelled (AGENTS.md); a real engine is named, so a run on Claude Code never reads as Muse. */
 export function Lamp() {
   const engine = useMain((s) => s.engine);
   if (!engine) return null;
@@ -148,7 +149,7 @@ export function Lamp() {
     </span>
   ) : (
     <span className="badge m-lamp" data-tone="success" title={engine.model}>
-      Muse
+      {ENGINE_LABEL[engine.engine]}
     </span>
   );
 }
