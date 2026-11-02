@@ -35,7 +35,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             "bar": 60,
             "scope": "the pages you picked, and its practice page",
             "health": "stale",
-            "last_at": "2026-09-01T09:09:37Z"
+            "last_at": "2026-09-01T09:09:38Z"
           }
         ],
         "week": {
@@ -55,16 +55,16 @@ export const TWIN_FIXTURE: TwinFixture = {
             "goal": "Chase the overdue invoice from Harbor Bakery",
             "state": "resolved",
             "beats": [],
-            "created": "2026-09-01T09:09:22Z",
+            "created": "2026-09-01T09:09:23Z",
             "practice": true,
             "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Harbor Bakery'.",
-            "last_at": "2026-09-01T09:09:39Z",
+            "last_at": "2026-09-01T09:09:40Z",
             "id": "ms_000000000065",
             "turns": [
               {
                 "side": "twin",
                 "text": "(Simulated) Hi Harbor, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-                "at": "2026-09-01T09:09:24Z",
+                "at": "2026-09-01T09:09:25Z",
                 "kind": "first_message",
                 "confidence": 84,
                 "risks": [],
@@ -76,13 +76,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-                "at": "2026-09-01T09:09:27Z",
+                "at": "2026-09-01T09:09:28Z",
                 "id": "t2"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-                "at": "2026-09-01T09:09:30Z",
+                "at": "2026-09-01T09:09:31Z",
                 "kind": "reply",
                 "confidence": 77,
                 "risks": [
@@ -97,13 +97,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Sounds fair. Go for it, credit me as Harbor Bakery and link the track please.",
-                "at": "2026-09-01T09:09:33Z",
+                "at": "2026-09-01T09:09:34Z",
                 "id": "t4"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Harbor Bakery with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-                "at": "2026-09-01T09:09:36Z",
+                "at": "2026-09-01T09:09:37Z",
                 "kind": "reply",
                 "confidence": 91,
                 "risks": [],
@@ -339,7 +339,7 @@ export const TWIN_FIXTURE: TwinFixture = {
         ],
         "created": "2026-09-01T09:00:02Z",
         "updated": "2026-10-29T11:20:20Z",
-        "since": "2026-09-01T09:09:41Z"
+        "since": "2026-09-01T09:09:42Z"
       },
       {
         "id": "tw_000000000067",
@@ -367,7 +367,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             "bar": 60,
             "scope": "the pages you picked, and its practice page",
             "health": "stale",
-            "last_at": "2026-09-15T09:09:37Z"
+            "last_at": "2026-09-15T09:09:38Z"
           }
         ],
         "week": {},
@@ -383,16 +383,16 @@ export const TWIN_FIXTURE: TwinFixture = {
             "goal": "Dispute the extra club days in September with Brightside Club",
             "state": "resolved",
             "beats": [],
-            "created": "2026-09-15T09:09:22Z",
+            "created": "2026-09-15T09:09:23Z",
             "practice": true,
             "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Brightside Club'.",
-            "last_at": "2026-09-15T09:09:39Z",
+            "last_at": "2026-09-15T09:09:40Z",
             "id": "ms_000000000098",
             "turns": [
               {
                 "side": "twin",
                 "text": "(Simulated) Hi Brightside, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-                "at": "2026-09-15T09:09:24Z",
+                "at": "2026-09-15T09:09:25Z",
                 "kind": "first_message",
                 "confidence": 84,
                 "risks": [],
@@ -404,13 +404,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-                "at": "2026-09-15T09:09:27Z",
+                "at": "2026-09-15T09:09:28Z",
                 "id": "t2"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-                "at": "2026-09-15T09:09:30Z",
+                "at": "2026-09-15T09:09:31Z",
                 "kind": "reply",
                 "confidence": 77,
                 "risks": [
@@ -425,13 +425,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Sounds fair. Go for it, credit me as Brightside Club and link the track please.",
-                "at": "2026-09-15T09:09:33Z",
+                "at": "2026-09-15T09:09:34Z",
                 "id": "t4"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Brightside Club with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-                "at": "2026-09-15T09:09:36Z",
+                "at": "2026-09-15T09:09:37Z",
                 "kind": "reply",
                 "confidence": 91,
                 "risks": [],
@@ -446,7 +446,7 @@ export const TWIN_FIXTURE: TwinFixture = {
         "waiting": [],
         "created": "2026-09-15T09:00:02Z",
         "updated": "2026-10-26T19:30:01Z",
-        "since": "2026-09-15T09:09:41Z",
+        "since": "2026-09-15T09:09:42Z",
         "paused_because": "You paused it."
       },
       {
@@ -483,7 +483,7 @@ export const TWIN_FIXTURE: TwinFixture = {
         "missions": [],
         "waiting": [],
         "created": "2026-10-29T15:58:02Z",
-        "updated": "2026-10-29T16:02:59Z"
+        "updated": "2026-10-29T16:03:00Z"
       }
     ],
     "stats": {
@@ -523,7 +523,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             "bar": 60,
             "scope": "the pages you picked, and its practice page",
             "health": "stale",
-            "last_at": "2026-09-01T09:09:37Z"
+            "last_at": "2026-09-01T09:09:38Z"
           }
         ],
         "week": {
@@ -543,16 +543,16 @@ export const TWIN_FIXTURE: TwinFixture = {
             "goal": "Chase the overdue invoice from Harbor Bakery",
             "state": "resolved",
             "beats": [],
-            "created": "2026-09-01T09:09:22Z",
+            "created": "2026-09-01T09:09:23Z",
             "practice": true,
             "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Harbor Bakery'.",
-            "last_at": "2026-09-01T09:09:39Z",
+            "last_at": "2026-09-01T09:09:40Z",
             "id": "ms_000000000065",
             "turns": [
               {
                 "side": "twin",
                 "text": "(Simulated) Hi Harbor, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-                "at": "2026-09-01T09:09:24Z",
+                "at": "2026-09-01T09:09:25Z",
                 "kind": "first_message",
                 "confidence": 84,
                 "risks": [],
@@ -564,13 +564,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-                "at": "2026-09-01T09:09:27Z",
+                "at": "2026-09-01T09:09:28Z",
                 "id": "t2"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-                "at": "2026-09-01T09:09:30Z",
+                "at": "2026-09-01T09:09:31Z",
                 "kind": "reply",
                 "confidence": 77,
                 "risks": [
@@ -585,13 +585,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Sounds fair. Go for it, credit me as Harbor Bakery and link the track please.",
-                "at": "2026-09-01T09:09:33Z",
+                "at": "2026-09-01T09:09:34Z",
                 "id": "t4"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Harbor Bakery with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-                "at": "2026-09-01T09:09:36Z",
+                "at": "2026-09-01T09:09:37Z",
                 "kind": "reply",
                 "confidence": 91,
                 "risks": [],
@@ -827,7 +827,7 @@ export const TWIN_FIXTURE: TwinFixture = {
         ],
         "created": "2026-09-01T09:00:02Z",
         "updated": "2026-10-29T11:20:20Z",
-        "since": "2026-09-01T09:09:41Z"
+        "since": "2026-09-01T09:09:42Z"
       },
       {
         "id": "tw_000000000067",
@@ -855,7 +855,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             "bar": 60,
             "scope": "the pages you picked, and its practice page",
             "health": "stale",
-            "last_at": "2026-09-15T09:09:37Z"
+            "last_at": "2026-09-15T09:09:38Z"
           }
         ],
         "week": {},
@@ -871,16 +871,16 @@ export const TWIN_FIXTURE: TwinFixture = {
             "goal": "Dispute the extra club days in September with Brightside Club",
             "state": "resolved",
             "beats": [],
-            "created": "2026-09-15T09:09:22Z",
+            "created": "2026-09-15T09:09:23Z",
             "practice": true,
             "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Brightside Club'.",
-            "last_at": "2026-09-15T09:09:39Z",
+            "last_at": "2026-09-15T09:09:40Z",
             "id": "ms_000000000098",
             "turns": [
               {
                 "side": "twin",
                 "text": "(Simulated) Hi Brightside, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-                "at": "2026-09-15T09:09:24Z",
+                "at": "2026-09-15T09:09:25Z",
                 "kind": "first_message",
                 "confidence": 84,
                 "risks": [],
@@ -892,13 +892,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-                "at": "2026-09-15T09:09:27Z",
+                "at": "2026-09-15T09:09:28Z",
                 "id": "t2"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-                "at": "2026-09-15T09:09:30Z",
+                "at": "2026-09-15T09:09:31Z",
                 "kind": "reply",
                 "confidence": 77,
                 "risks": [
@@ -913,13 +913,13 @@ export const TWIN_FIXTURE: TwinFixture = {
               {
                 "side": "other",
                 "text": "(Simulated) Sounds fair. Go for it, credit me as Brightside Club and link the track please.",
-                "at": "2026-09-15T09:09:33Z",
+                "at": "2026-09-15T09:09:34Z",
                 "id": "t4"
               },
               {
                 "side": "twin",
                 "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Brightside Club with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-                "at": "2026-09-15T09:09:36Z",
+                "at": "2026-09-15T09:09:37Z",
                 "kind": "reply",
                 "confidence": 91,
                 "risks": [],
@@ -934,7 +934,7 @@ export const TWIN_FIXTURE: TwinFixture = {
         "waiting": [],
         "created": "2026-09-15T09:00:02Z",
         "updated": "2026-10-26T19:30:01Z",
-        "since": "2026-09-15T09:09:41Z",
+        "since": "2026-09-15T09:09:42Z",
         "paused_because": "You paused it."
       },
       {
@@ -1084,7 +1084,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "bar": 60,
           "scope": "the pages you picked, and its practice page",
           "health": "stale",
-          "last_at": "2026-09-01T09:09:37Z"
+          "last_at": "2026-09-01T09:09:38Z"
         }
       ],
       "week": {
@@ -1104,16 +1104,16 @@ export const TWIN_FIXTURE: TwinFixture = {
           "goal": "Chase the overdue invoice from Harbor Bakery",
           "state": "resolved",
           "beats": [],
-          "created": "2026-09-01T09:09:22Z",
+          "created": "2026-09-01T09:09:23Z",
           "practice": true,
           "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Harbor Bakery'.",
-          "last_at": "2026-09-01T09:09:39Z",
+          "last_at": "2026-09-01T09:09:40Z",
           "id": "ms_000000000065",
           "turns": [
             {
               "side": "twin",
               "text": "(Simulated) Hi Harbor, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-              "at": "2026-09-01T09:09:24Z",
+              "at": "2026-09-01T09:09:25Z",
               "kind": "first_message",
               "confidence": 84,
               "risks": [],
@@ -1125,13 +1125,13 @@ export const TWIN_FIXTURE: TwinFixture = {
             {
               "side": "other",
               "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-              "at": "2026-09-01T09:09:27Z",
+              "at": "2026-09-01T09:09:28Z",
               "id": "t2"
             },
             {
               "side": "twin",
               "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-              "at": "2026-09-01T09:09:30Z",
+              "at": "2026-09-01T09:09:31Z",
               "kind": "reply",
               "confidence": 77,
               "risks": [
@@ -1146,13 +1146,13 @@ export const TWIN_FIXTURE: TwinFixture = {
             {
               "side": "other",
               "text": "(Simulated) Sounds fair. Go for it, credit me as Harbor Bakery and link the track please.",
-              "at": "2026-09-01T09:09:33Z",
+              "at": "2026-09-01T09:09:34Z",
               "id": "t4"
             },
             {
               "side": "twin",
               "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Harbor Bakery with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-              "at": "2026-09-01T09:09:36Z",
+              "at": "2026-09-01T09:09:37Z",
               "kind": "reply",
               "confidence": 91,
               "risks": [],
@@ -1388,7 +1388,7 @@ export const TWIN_FIXTURE: TwinFixture = {
       ],
       "created": "2026-09-01T09:00:02Z",
       "updated": "2026-10-29T11:20:20Z",
-      "since": "2026-09-01T09:09:41Z",
+      "since": "2026-09-01T09:09:42Z",
       "pieces": [
         {
           "id": "p_purpose",
@@ -1908,16 +1908,16 @@ export const TWIN_FIXTURE: TwinFixture = {
         "goal": "Chase the overdue invoice from Harbor Bakery",
         "state": "resolved",
         "beats": [],
-        "created": "2026-09-01T09:09:22Z",
+        "created": "2026-09-01T09:09:23Z",
         "practice": true,
         "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Harbor Bakery'.",
-        "last_at": "2026-09-01T09:09:39Z",
+        "last_at": "2026-09-01T09:09:40Z",
         "id": "ms_000000000065",
         "turns": [
           {
             "side": "twin",
             "text": "(Simulated) Hi Harbor, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-            "at": "2026-09-01T09:09:24Z",
+            "at": "2026-09-01T09:09:25Z",
             "kind": "first_message",
             "confidence": 84,
             "risks": [],
@@ -1929,13 +1929,13 @@ export const TWIN_FIXTURE: TwinFixture = {
           {
             "side": "other",
             "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-            "at": "2026-09-01T09:09:27Z",
+            "at": "2026-09-01T09:09:28Z",
             "id": "t2"
           },
           {
             "side": "twin",
             "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-            "at": "2026-09-01T09:09:30Z",
+            "at": "2026-09-01T09:09:31Z",
             "kind": "reply",
             "confidence": 77,
             "risks": [
@@ -1950,13 +1950,13 @@ export const TWIN_FIXTURE: TwinFixture = {
           {
             "side": "other",
             "text": "(Simulated) Sounds fair. Go for it, credit me as Harbor Bakery and link the track please.",
-            "at": "2026-09-01T09:09:33Z",
+            "at": "2026-09-01T09:09:34Z",
             "id": "t4"
           },
           {
             "side": "twin",
             "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Harbor Bakery with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-            "at": "2026-09-01T09:09:36Z",
+            "at": "2026-09-01T09:09:37Z",
             "kind": "reply",
             "confidence": 91,
             "risks": [],
@@ -1994,7 +1994,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "bar": 60,
           "scope": "the pages you picked, and its practice page",
           "health": "stale",
-          "last_at": "2026-09-15T09:09:37Z"
+          "last_at": "2026-09-15T09:09:38Z"
         }
       ],
       "week": {},
@@ -2010,16 +2010,16 @@ export const TWIN_FIXTURE: TwinFixture = {
           "goal": "Dispute the extra club days in September with Brightside Club",
           "state": "resolved",
           "beats": [],
-          "created": "2026-09-15T09:09:22Z",
+          "created": "2026-09-15T09:09:23Z",
           "practice": true,
           "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Brightside Club'.",
-          "last_at": "2026-09-15T09:09:39Z",
+          "last_at": "2026-09-15T09:09:40Z",
           "id": "ms_000000000098",
           "turns": [
             {
               "side": "twin",
               "text": "(Simulated) Hi Brightside, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-              "at": "2026-09-15T09:09:24Z",
+              "at": "2026-09-15T09:09:25Z",
               "kind": "first_message",
               "confidence": 84,
               "risks": [],
@@ -2031,13 +2031,13 @@ export const TWIN_FIXTURE: TwinFixture = {
             {
               "side": "other",
               "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-              "at": "2026-09-15T09:09:27Z",
+              "at": "2026-09-15T09:09:28Z",
               "id": "t2"
             },
             {
               "side": "twin",
               "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-              "at": "2026-09-15T09:09:30Z",
+              "at": "2026-09-15T09:09:31Z",
               "kind": "reply",
               "confidence": 77,
               "risks": [
@@ -2052,13 +2052,13 @@ export const TWIN_FIXTURE: TwinFixture = {
             {
               "side": "other",
               "text": "(Simulated) Sounds fair. Go for it, credit me as Brightside Club and link the track please.",
-              "at": "2026-09-15T09:09:33Z",
+              "at": "2026-09-15T09:09:34Z",
               "id": "t4"
             },
             {
               "side": "twin",
               "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Brightside Club with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-              "at": "2026-09-15T09:09:36Z",
+              "at": "2026-09-15T09:09:37Z",
               "kind": "reply",
               "confidence": 91,
               "risks": [],
@@ -2073,7 +2073,7 @@ export const TWIN_FIXTURE: TwinFixture = {
       "waiting": [],
       "created": "2026-09-15T09:00:02Z",
       "updated": "2026-10-26T19:30:01Z",
-      "since": "2026-09-15T09:09:41Z",
+      "since": "2026-09-15T09:09:42Z",
       "paused_because": "You paused it.",
       "pieces": [
         {
@@ -2594,16 +2594,16 @@ export const TWIN_FIXTURE: TwinFixture = {
         "goal": "Dispute the extra club days in September with Brightside Club",
         "state": "resolved",
         "beats": [],
-        "created": "2026-09-15T09:09:22Z",
+        "created": "2026-09-15T09:09:23Z",
         "practice": true,
         "note": "(Simulated) They agreed to the feature. Played on your Notion practice page 'Practice: Brightside Club'.",
-        "last_at": "2026-09-15T09:09:39Z",
+        "last_at": "2026-09-15T09:09:40Z",
         "id": "ms_000000000098",
         "turns": [
           {
             "side": "twin",
             "text": "(Simulated) Hi Brightside, I've had 'your track' on repeat all week; the way it opens up after the second chorus is lovely. I make music visualizers and feature tracks I love every Friday. Would you be open to me featuring 'your track' with a full visualizer and a credit to you?\n\ncheers",
-            "at": "2026-09-15T09:09:24Z",
+            "at": "2026-09-15T09:09:25Z",
             "kind": "first_message",
             "confidence": 84,
             "risks": [],
@@ -2615,13 +2615,13 @@ export const TWIN_FIXTURE: TwinFixture = {
           {
             "side": "other",
             "text": "(Simulated) Hey! That sounds great honestly. What would I get out of it? And would it need to be exclusive to your channel?",
-            "at": "2026-09-15T09:09:27Z",
+            "at": "2026-09-15T09:09:28Z",
             "id": "t2"
           },
           {
             "side": "twin",
             "text": "(Simulated) Great question! You'd get a free visualizer you can use anywhere, plus a credit and link in the description. And no, totally not exclusive, it's yours to share wherever you like!\n\ncheers",
-            "at": "2026-09-15T09:09:30Z",
+            "at": "2026-09-15T09:09:31Z",
             "kind": "reply",
             "confidence": 77,
             "risks": [
@@ -2636,13 +2636,13 @@ export const TWIN_FIXTURE: TwinFixture = {
           {
             "side": "other",
             "text": "(Simulated) Sounds fair. Go for it, credit me as Brightside Club and link the track please.",
-            "at": "2026-09-15T09:09:33Z",
+            "at": "2026-09-15T09:09:34Z",
             "id": "t4"
           },
           {
             "side": "twin",
             "text": "(Simulated) Brilliant, thank you! It goes out this Friday, credited to Brightside Club with a link to 'your track'. I'll send you the link when it's live.\n\ncheers",
-            "at": "2026-09-15T09:09:36Z",
+            "at": "2026-09-15T09:09:37Z",
             "kind": "reply",
             "confidence": 91,
             "risks": [],
@@ -2971,7 +2971,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:58:06Z",
+          "updated": "2026-10-29T15:58:07Z",
           "pieces": [
             {
               "id": "p_name",
@@ -3290,7 +3290,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:58:33Z",
+          "updated": "2026-10-29T15:58:34Z",
           "pieces": [
             {
               "id": "p_name",
@@ -3509,7 +3509,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:58:30Z",
+          "updated": "2026-10-29T15:58:31Z",
           "pieces": [
             {
               "id": "p_name",
@@ -3816,7 +3816,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:58:59Z",
+          "updated": "2026-10-29T15:59:00Z",
           "pieces": [
             {
               "id": "p_name",
@@ -4186,7 +4186,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:59:26Z",
+          "updated": "2026-10-29T15:59:27Z",
           "pieces": [
             {
               "id": "p_name",
@@ -4550,7 +4550,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:59:23Z",
+          "updated": "2026-10-29T15:59:24Z",
           "pieces": [
             {
               "id": "p_name",
@@ -5037,7 +5037,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:59:52Z",
+          "updated": "2026-10-29T15:59:53Z",
           "pieces": [
             {
               "id": "p_name",
@@ -5418,7 +5418,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T15:59:49Z",
+          "updated": "2026-10-29T15:59:50Z",
           "pieces": [
             {
               "id": "p_name",
@@ -5876,7 +5876,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:00:18Z",
+          "updated": "2026-10-29T16:00:19Z",
           "pieces": [
             {
               "id": "p_name",
@@ -6393,7 +6393,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:00:44Z",
+          "updated": "2026-10-29T16:00:45Z",
           "pieces": [
             {
               "id": "p_name",
@@ -6845,7 +6845,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:00:41Z",
+          "updated": "2026-10-29T16:00:42Z",
           "pieces": [
             {
               "id": "p_name",
@@ -7399,7 +7399,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:01:10Z",
+          "updated": "2026-10-29T16:01:11Z",
           "pieces": [
             {
               "id": "p_name",
@@ -7895,7 +7895,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:01:07Z",
+          "updated": "2026-10-29T16:01:08Z",
           "pieces": [
             {
               "id": "p_name",
@@ -8465,7 +8465,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:01:36Z",
+          "updated": "2026-10-29T16:01:37Z",
           "pieces": [
             {
               "id": "p_name",
@@ -8970,7 +8970,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:01:33Z",
+          "updated": "2026-10-29T16:01:34Z",
           "pieces": [
             {
               "id": "p_name",
@@ -9543,7 +9543,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:02:03Z",
+          "updated": "2026-10-29T16:02:04Z",
           "pieces": [
             {
               "id": "p_name",
@@ -10076,7 +10076,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:02:00Z",
+          "updated": "2026-10-29T16:02:01Z",
           "pieces": [
             {
               "id": "p_name",
@@ -10689,7 +10689,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:02:32Z",
+          "updated": "2026-10-29T16:02:33Z",
           "pieces": [
             {
               "id": "p_name",
@@ -11245,7 +11245,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:02:29Z",
+          "updated": "2026-10-29T16:02:30Z",
           "pieces": [
             {
               "id": "p_name",
@@ -11890,7 +11890,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:02:59Z",
+          "updated": "2026-10-29T16:03:00Z",
           "pieces": [
             {
               "id": "p_name",
@@ -12445,7 +12445,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "missions": [],
           "waiting": [],
           "created": "2026-10-29T15:58:02Z",
-          "updated": "2026-10-29T16:02:55Z",
+          "updated": "2026-10-29T16:02:56Z",
           "pieces": [
             {
               "id": "p_name",

@@ -274,13 +274,24 @@ def test_an_empty_reply_is_an_error_and_changes_nothing(daemon: Daemon) -> None:
     assert roles == ["person"]
 
 
-def test_one_line_per_frame_a_later_rounds_words_are_not_shown_or_kept(daemon: Daemon) -> None:
+def seeded(daemon: Daemon) -> str:
+    """A draft past its first frame (the need is drawn), so an asked frame ends the turn."""
     draft_id = drafted(daemon)
+    run(
+        daemon,
+        Stage(("Drawn.", [sketch_call(1, op="add", slot="need", kind="step", label="Check")])),
+        draft_id,
+    )
+    return draft_id
+
+
+def test_one_line_per_frame_a_later_rounds_words_are_not_shown_or_kept(daemon: Daemon) -> None:
+    draft_id = seeded(daemon)
     engine = Stage(
         ("I drew the job.", [sketch_call(1, op="add", slot="need", kind="step", label="Check the bill")]),
         ("I drew the job. I am waiting for your answer.", [ask_call(2, "apps")]),
     )
-    events = run(daemon, engine, draft_id)
+    events = run(daemon, engine, draft_id, "next")
     assert engine.calls == 2  # the frame was not whole after round one: no question yet
     assert "".join(e["delta"] for e in of(events, "text")) == "I drew the job."
     assert of(events, "ask") and of(events, "done")
@@ -288,8 +299,56 @@ def test_one_line_per_frame_a_later_rounds_words_are_not_shown_or_kept(daemon: D
     assert not any("waiting" in t for t in said)
 
 
-def test_an_asked_frame_ends_the_turn_with_that_round(daemon: Daemon) -> None:
+def test_the_first_frame_takes_one_silent_round_to_draw_the_rest_of_a_long_need(daemon: Daemon) -> None:
     draft_id = drafted(daemon)
+    engine = Stage(
+        (
+            "Where does it happen?",
+            [sketch_call(1, op="add", slot="need", kind="step", label="Check"), ask_call(2, "apps")],
+        ),
+        ("I also drew the portal.", [sketch_call(3, op="add", slot="apps", kind="app", label="Portal")]),
+        ("Still going.", [sketch_call(4, op="add", slot="steps", kind="step", label="Never drawn")]),
+    )
+    events = run(daemon, engine, draft_id)
+    assert engine.calls == 2  # one extra round after the ask, then the frame is whole
+    labels = [op["node"]["label"] for e in of(events, "sketch") for op in e["ops"]]
+    assert labels == ["Check", "Portal"]
+    assert "".join(e["delta"] for e in of(events, "text")) == "Where does it happen?"
+
+
+def test_a_rubbed_out_guess_is_listed_and_refused_if_proposed_again(daemon: Daemon) -> None:
+    draft_id = seeded(daemon)
+    run(
+        daemon,
+        Stage(
+            ("Guessing.", [sketch_call(1, op="add", slot="output", kind="output", label="Corrected invoice")])
+        ),
+        draft_id,
+        "next",
+    )
+    guess = next(
+        n for n in daemon.drafts.get(draft_id)["sketch"]["nodes"] if n["label"] == "Corrected invoice"
+    )
+    shape.drop(daemon, draft_id, [guess["id"]])
+    assert daemon.drafts.get(draft_id)["rubbed"] == ["Corrected invoice"]
+    engine = Heard(
+        (
+            "Again.",
+            [
+                sketch_call(1, op="add", slot="output", kind="output", label="corrected  Invoice"),
+                ask_call(2, "output"),
+            ],
+        ),
+    )
+    events = run(daemon, engine, draft_id, "next")
+    assert not of(events, "sketch")  # refused: the same guess, case and spaces aside
+    assert '"Corrected invoice"' in engine.system and "Rubbed out by the person" in engine.system
+    shape.drop(daemon, draft_id, [])  # dropping nothing changes nothing
+    assert daemon.drafts.get(draft_id)["rubbed"] == ["Corrected invoice"]
+
+
+def test_an_asked_frame_ends_the_turn_with_that_round(daemon: Daemon) -> None:
+    draft_id = seeded(daemon)
     engine = Stage(
         (
             "Where does it happen?",
@@ -297,7 +356,7 @@ def test_an_asked_frame_ends_the_turn_with_that_round(daemon: Daemon) -> None:
         ),
         ("Restating myself.", []),
     )
-    events = run(daemon, engine, draft_id)
+    events = run(daemon, engine, draft_id, "next")
     assert engine.calls == 1
     assert "Restating" not in "".join(e["delta"] for e in of(events, "text"))
 

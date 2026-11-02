@@ -122,6 +122,9 @@ _ADDED = (
     ("drafts", "ask", "TEXT"),
     ("drafts", "practice", "TEXT"),
     ("drafts", "sites", "TEXT"),
+    ("drafts", "job", "TEXT"),  # ADR 0020: the last background job (write, preview, test run)
+    ("drafts", "notes", "TEXT"),  # what the person said while she worked (pre-fills the key)
+    ("drafts", "rubbed", "TEXT"),  # her guesses the person rubbed out (labels)
     ("cards", "outcome", "TEXT"),
     ("spaces", "kinds", "TEXT"),  # business Phase 1: the record kinds a project keeps, JSON list
 )

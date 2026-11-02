@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+from difflib import SequenceMatcher
 from typing import Any, ClassVar, Protocol, cast
 
 from athena.app import Daemon
@@ -160,9 +161,8 @@ class Design(Protocol):
         """The reply changed something or asked something."""
         ...
 
-    @property
-    def whole(self) -> bool:
-        """The frame is whole: her question is asked, so no further model round is needed."""
+    def round_done(self) -> bool:
+        """A model round ended: is the frame whole, so no further round is needed?"""
         ...
 
     @property
@@ -197,6 +197,27 @@ class Design(Protocol):
 #: Her new guesses per reply (pieces not in the person's words). Measured: without a cap one engine drew
 #: every place in pencil on the first reply and asked nothing (onboarding parity baseline, case 2).
 PROPOSALS_MAX = 2
+#: Labels of rubbed-out guesses kept per draft (the oldest drop off).
+RUBBED_MAX = 30
+#: How close a new guess may come to a rubbed-out one before it counts as the same guess.
+RUBBED_LIKE = 0.85
+#: The first frame's ask result: one more silent round to draw what the person already said.
+ASKED_FIRST = (
+    "Asked. Now draw everything else the person already told you, with their words as quotes; "
+    "write no more words and ask nothing else."
+)
+
+
+def _norm(label: str) -> str:
+    return " ".join(label.casefold().split())
+
+
+def _rubbed(label: str, rubbed: list[str]) -> bool:
+    """Whether `label` is (nearly) a guess the person rubbed out."""
+    new = _norm(label)
+    return any(new == _norm(r) or SequenceMatcher(None, new, _norm(r)).ratio() >= RUBBED_LIKE for r in rubbed)
+
+
 TOO_MANY_PROPOSALS = (
     f"Not drawn: at most {PROPOSALS_MAX} new guesses per reply. Ask the person about the rest instead."
 )
@@ -228,6 +249,7 @@ class SketchDesign(ABC):
         space_id: str,
         skipped: frozenset[str] = frozenset(),
         asked: dict[str, int] | None = None,
+        rubbed: list[str] | None = None,
     ) -> None:
         self.daemon = daemon
         self.rubric = rubric
@@ -240,6 +262,11 @@ class SketchDesign(ABC):
         self.ask: Ask | None = None
         #: Her new pieces this reply that are not the person's words (PROPOSALS_MAX caps them).
         self.proposed = 0
+        #: Labels of her guesses the person rubbed out: listed in the frame, refused if proposed again.
+        self.rubbed = list(rubbed or [])
+        #: The first frame (an empty sketch) may take one more silent round after her question.
+        self.first = not sketch["nodes"]
+        self._drawing_left = 0
 
     # --- what run_turn asks -----------------------------------------------------------------------
 
@@ -255,10 +282,15 @@ class SketchDesign(ABC):
         """The reply changed the sketch or asked something."""
         return bool(self.applied) or self.ask is not None
 
-    @property
-    def whole(self) -> bool:
-        """Her question is asked: the turn ends with this round (one line per frame)."""
-        return self.ask is not None
+    def round_done(self) -> bool:
+        """Her question is asked: the turn ends with this round (one line per frame). On the first frame
+        one more silent round may draw the rest of what the person already said (a long need)."""
+        if self.ask is None:
+            return False
+        if self._drawing_left > 0:
+            self._drawing_left -= 1
+            return False
+        return True
 
     one_line = True
 
@@ -281,6 +313,9 @@ class SketchDesign(ABC):
             parts += [f"- link {e['from']} -> {e['to']}" for e in self.sketch["edges"]]
         else:
             parts.append("- (empty)")
+        if self.rubbed:
+            parts.append("### Rubbed out by the person (never propose these again; ask instead)")
+            parts += [f'- "{label}"' for label in self.rubbed]
         parts.append(
             "### Coverage now (1 = the person confirmed a node, 0.5 = only your proposals, 0 = empty, "
             "skipped = the person left it open)"
@@ -346,6 +381,9 @@ class SketchDesign(ABC):
         # one of the rubric's places; the chore's are Slot
         ask: Ask = {"slot": cast("Slot", slot), "text": text, "suggestions": suggestions, "follow_up": used}
         self.ask = ask
+        if self.first:
+            self._drawing_left = 1
+            return ASKED_FIRST, [{"type": "ask", "ask": ask}]
         return "Asked. Your reply ends here; say nothing more.", [{"type": "ask", "ask": ask}]
 
     def _sketch(self, call: ToolCall) -> tuple[str, list[dict[str, Any]]]:
@@ -355,6 +393,8 @@ class SketchDesign(ABC):
             if op == "add":
                 node, note = self._new_node(call)
                 cap = self.proposals_max
+                if node["origin"] == "athena" and _rubbed(node["label"], self.rubbed):
+                    return f'Not drawn: the person rubbed out "{node["label"]}". Do not propose it again.', []
                 if node["origin"] == "athena" and cap is not None and self.proposed >= cap:
                     return TOO_MANY_PROPOSALS, []
                 ops: list[SketchOp] = [{"op": "add", "node": node}]
@@ -490,6 +530,7 @@ class ChoreDesign(SketchDesign):
             draft["space_id"],
             frozenset(skipped),
             cast("dict[str, int]", asked),
+            rubbed=draft.get("rubbed", []),
         )
         self.draft = draft
         self.view = view
@@ -604,7 +645,10 @@ def drop(daemon: Daemon, draft_id: str, node_ids: list[str]) -> Draft:
         sketch, _ = sketches.drop(draft["sketch"], node_ids)
     except SketchError as e:
         raise ApiError("bad_request", str(e)) from e
-    return daemon.drafts.put(cast("Draft", {**draft, "sketch": sketch}))
+    gone = [n["label"] for n in draft["sketch"]["nodes"] if n["id"] in node_ids]
+    rubbed = list(draft.get("rubbed", []))
+    rubbed += [g for g in gone if all(_norm(g) != _norm(r) for r in rubbed)]
+    return daemon.drafts.put(cast("Draft", {**draft, "sketch": sketch, "rubbed": rubbed[-RUBBED_MAX:]}))
 
 
 def abandon(daemon: Daemon, draft_id: str) -> None:

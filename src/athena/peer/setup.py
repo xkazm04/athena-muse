@@ -698,8 +698,10 @@ class SetupDesign:
         self.cards: list[Card] = []
 
     progressed = False
-    whole = False
     one_line = False  # it reads, then answers: every round's words count
+
+    def round_done(self) -> bool:
+        return False  # a tool loop: it runs until the model stops calling tools
 
     def owns(self, name: str) -> bool:
         return True  # nothing else is offered in this conversation, so nothing else is dispatched

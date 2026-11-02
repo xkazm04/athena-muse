@@ -363,7 +363,7 @@ def _rounds(
                 cards.append(done.card)
                 filed = True
             messages.append({"role": "tool", "tool_call_id": call.id, "content": done.result})
-        if filed or (design is not None and design.whole):
+        if filed or (design is not None and design.round_done()):
             break
     return reply_parts, cards, cost_total
 

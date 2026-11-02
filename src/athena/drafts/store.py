@@ -20,8 +20,24 @@ from athena.store import Store
 
 DRAFT_ID = re.compile(re.escape(DRAFT_PREFIX) + r"[0-9a-f]{12}")
 _SLOT_NAMES = frozenset(typing.get_args(Slot))
-_OPTIONAL = ("chore_id", "practice", "ask", "expected", "key", "bench", "verdict", "note", "views", "sites")
-_JSON_OPTIONAL = frozenset({"practice", "ask", "expected", "key", "bench", "views", "sites"})
+_OPTIONAL = (
+    "chore_id",
+    "practice",
+    "ask",
+    "expected",
+    "key",
+    "bench",
+    "verdict",
+    "note",
+    "views",
+    "sites",
+    "job",
+    "notes",
+    "rubbed",
+)
+_JSON_OPTIONAL = frozenset(
+    {"practice", "ask", "expected", "key", "bench", "views", "sites", "job", "notes", "rubbed"}
+)
 
 
 def folder(data_dir: Path | None, draft_id: str) -> Path | None:
