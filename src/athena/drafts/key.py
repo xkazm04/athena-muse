@@ -4,7 +4,9 @@ Every expected card is marked exactly once. A "missing" line (a card the person 
 file) is placed on an act tool and a case of the written world when Athena can, in one model call;
 a line she cannot place is kept and shown, not scored. A "never" line becomes a forbidden tool only
 when it plainly names one (same call); otherwise it is kept as the person's words. `truth.json` is
-then written from the key alone and the chore is loaded again.
+then written from the key alone and the chore is loaded again. A "no" mark is also told to her: the
+person's no's go into `world.json` as a block at the end of each acting phase's message, replaced (never
+stacked) each time the key is put, so the test run does not file what the person turned down.
 """
 
 from __future__ import annotations
@@ -43,6 +45,8 @@ KEYABLE: frozenset[str] = frozenset({"preview", "rehearse"})
 LINE_MAX = DETAIL_MAX  # one missing or never line, or a mark's note
 LINES_MAX = 20  # missing lines, and never lines, per key
 MISSING_PREFIX = "m"  # a placed missing card's id: m<line>, apart from the preview's e<n>
+# Phase messages are the person's turns, so the block is in her voice; the header also marks the block.
+NO_HEADER = "When I checked your preview I said no to these; do not file them, or anything like them:"
 
 KeyParams = dict[tuple[str, str], str]
 
@@ -140,6 +144,45 @@ def truth(
             if not has(t["eligible"], card["key"]) and not has(t["traps"], card["key"]):
                 t["traps"][card["key"]] = m.get("note") or card["why"]
     return {"targets": list(targets.values()), "forbidden": list(dict.fromkeys(forbidden))}
+
+
+def no_lines(key: DraftKey, expected: list[ExpectedCard]) -> list[str]:
+    """One plain line per "no" mark: the card's label and the person's note, else the card's why."""
+    by_id = {c["id"]: c for c in expected}
+    out: list[str] = []
+    for m in key["marks"]:
+        if m["mark"] == "no":
+            card = by_id[m["expected_id"]]
+            reason = m.get("note") or card["why"]
+            out.append(cut(f"- {card['label']}: {reason}" if reason else f"- {card['label']}", LINE_MAX))
+    return out
+
+
+def without_no(message: str) -> str:
+    """A phase message with the person's no block (written by an earlier key) taken off."""
+    at = message.find(NO_HEADER)
+    return message if at < 0 else message[:at].rstrip()
+
+
+def told_no(world: dict[str, Any], chore: Chore, lines: list[str]) -> dict[str, Any]:
+    """`world.json` with the no block on every phase whose app can act (the last phase when none
+    can), and any earlier block removed first. No lines: only the earlier block is removed."""
+    out = dict(world)
+    phases = [dict(p) if isinstance(p, dict) else p for p in world.get("phases") or []]
+    out["phases"] = phases
+    dicts = [p for p in phases if isinstance(p, dict)]
+    for p in dicts:
+        if isinstance(p.get("message"), str):
+            p["message"] = without_no(p["message"])
+    if not lines or not dicts:
+        return out
+    acting = {a for a, _ in act_tools(chore)}
+    targets = [p for p in dicts if p.get("app") in acting] or dicts[-1:]
+    block = "\n".join([NO_HEADER, *lines])
+    for p in targets:
+        said = str(p.get("message") or "")
+        p["message"] = f"{said}\n\n{block}" if said else block
+    return out
 
 
 def _place_messages(
@@ -269,12 +312,18 @@ def put_key(daemon: Daemon, engine: Engine | None, draft_id: str, body: KeyBody)
         root = chore_root(daemon, draft)
         path = root / "truth.json"
         before = path.read_text(encoding="utf-8") if path.is_file() else None
+        world_path = root / "world.json"
+        world_before = world_path.read_text(encoding="utf-8")
+        world = told_no(json.loads(world_before), chore, no_lines(key, expected))
         path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if world != json.loads(world_before):  # touched only when a no block comes or goes
+            world_path.write_text(json.dumps(world, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         try:
             load_chore(root, origin="yours")
         except ChoreError as e:
             if before is not None:
                 path.write_text(before, encoding="utf-8")
+            world_path.write_text(world_before, encoding="utf-8")
             raise _bad(f"the key does not fit the written chore: {e}") from e
         stored = cast("dict[str, Any]", dict(daemon.drafts.get(draft_id)))
         stored.update(key=key, step="rehearse")

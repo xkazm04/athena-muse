@@ -41,6 +41,9 @@ Since [ADR 0010](../adr/0010-one-shaping-conversation-two-rubrics.md) this is `C
 **Real sites** ([ADR 0014](../adr/0014-a-chores-onboarding-signs-in-to-its-real-sites-and-only-onboarding-grants-trust.md)). An `app` node may carry a real website (`site`): Athena proposes it in pencil with the `sketch` tool, even on the person's own node; inking the node inks the site, rubbing out an agreed node's site removes only the site. Her practice apps stay invented and never reach access. The look that says "signed in" opens the site's address in a hidden tab and reads where it ended and whether a password field shows; the step never asks for or keeps a password. After onboarding, the Project's overview shows a lapsed site as a blocker with "Sign in again".
 
 **The key.** yes -> eligible, no -> trap, a never line -> forbidden. Athena never writes her own key.
+A no is also told to her: putting the key ends each acting phase's message in `world.json` (the last
+phase when none can act) with one plain block, each no card's label and the person's note or the
+card's why, replaced on every re-put, so the test run and the kept chore know what the person turned down.
 The sketch is an abstraction for the person's understanding, not the chore's source; the preview runs
 on the written files, so what the person confirms is the real chore.
 
