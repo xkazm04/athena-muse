@@ -116,6 +116,33 @@ def test_an_unreadable_answer_is_a_problem_like_any_other(daemon: Daemon) -> Non
     assert events[-1]["type"] == "written"
 
 
+def test_an_answer_one_closing_bracket_short_is_read_whole(daemon: Daemon) -> None:
+    # Measured (parity smoke, Sonnet): a whole chore answer one `}` short, three times running.
+    draft = agreed_draft(daemon)
+    events = write(daemon, Fake([chore_answer()[:-1]]), draft["id"])
+    assert [e["type"] for e in events] == ["writing", "written"]
+
+
+def test_an_unreadable_answer_is_told_where_its_json_breaks(daemon: Daemon) -> None:
+    draft = agreed_draft(daemon)
+    fake = Fake(['{"playbook": {"title": "x"}, "world": {"apps": [}', chore_answer()])
+    events = write(daemon, fake, draft["id"])
+    assert events[-1]["type"] == "written"
+    fed_back = str(fake.asked[1][-1]["content"])
+    assert "the JSON breaks at character" in fed_back and "count your closing brackets" in fed_back
+    assert events[1]["problems"] == [
+        "Her answer could not be read as a chore."
+    ]  # the person's words stay plain
+
+
+def test_closed_balances_only_what_is_left_open() -> None:
+    assert author.closed('{"a": "x}", "b": [1, {"c": 2}') == '{"a": "x}", "b": [1, {"c": 2}]}'
+    assert author.closed('{"a": 1}') is None  # nothing open
+    assert author.closed('{"a": "cut') is None  # ends inside a string
+    assert author.closed('{"a": 1]') is None  # a wrong closer is not guessed at
+    assert author.closed('{"q": "\\"}"') == '{"q": "\\"}"}'
+
+
 def test_an_engine_error_is_an_error_event_and_the_draft_goes_back_to_shape(daemon: Daemon) -> None:
     draft = agreed_draft(daemon)
     events = write(daemon, Fake(fail="author"), draft["id"])

@@ -159,6 +159,12 @@ def json_values(text: str, key: str | None = None) -> list[Any]:
         return [json.loads(text)]
     except ValueError:
         pass
+    shut = closed(text)
+    if shut is not None:
+        try:
+            return [json.loads(shut)]
+        except ValueError:
+            pass
     out: list[Any] = []
     for block in _FENCE.findall(text):
         try:
@@ -181,6 +187,44 @@ def json_values(text: str, key: str | None = None) -> list[Any]:
         else:
             i += 1
     return out
+
+
+def closed(text: str) -> str | None:
+    """`text` with the brackets it leaves open closed at the end, or None when nothing is left open (or
+    it ends inside a string). Measured: one engine's chore answer was whole but one `}` short, three
+    times running; the loader still validates what this yields, so a cut answer still fails."""
+    stack: list[str] = []
+    in_string = escaped = False
+    for ch in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+        elif ch == '"':
+            in_string = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]" and (not stack or stack.pop() != ch):
+            return None
+    if in_string or not stack or not text.lstrip().startswith(("{", "[")):
+        return None
+    return text + "".join(reversed(stack))
+
+
+def json_error(text: str) -> str | None:
+    """Where the answer stops being JSON, in a developer's words (for the repair message only)."""
+    body = text.strip()
+    start = min((i for i in (body.find("{"), body.find("[")) if i >= 0), default=-1)
+    if start < 0:
+        return "there is no JSON object in the answer"
+    try:
+        json.loads(body[start:])
+    except ValueError as e:
+        return f"the JSON breaks at character {getattr(e, 'pos', '?')}: {e}"
+    return None
 
 
 def first_object(text: str, key: str) -> dict[str, Any] | list[Any] | None:
@@ -560,8 +604,10 @@ def _messages(daemon: Daemon, draft: Draft) -> list[dict[str, Any]]:
     ]
 
 
-def _repair_message(problems: list[str]) -> str:
-    lines = "\n".join(f"- {p}" for p in problems)
+def _repair_message(problems: list[str], answer: str = "") -> str:
+    why = json_error(answer) if NO_ANSWER in problems else None
+    hint = f" ({why}; count your closing brackets)" if why else ""
+    lines = "\n".join(f"- {p}" + (hint if p == NO_ANSWER else "") for p in problems)
     return (
         f"The files were checked and these problems were found:\n{lines}\n"
         'Fix every one and answer with the whole corrected JSON object {"playbook": {...}, "world": {...}}.'
@@ -682,7 +728,7 @@ def _write(daemon: Daemon, engine: Engine, draft_id: str, folder: Path) -> Itera
                 messages = [
                     *messages,
                     {"role": "assistant", "content": answer},
-                    {"role": "user", "content": _repair_message(problems)},
+                    {"role": "user", "content": _repair_message(problems, answer)},
                 ]
         _clear(folder)
         _back(daemon, draft_id)
