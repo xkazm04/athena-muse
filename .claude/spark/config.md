@@ -55,4 +55,7 @@ default
 - 2026-11-02: a fix in a shared base (SketchDesign) broke 41 twin tests the first cut never ran; the scout had named `twins/setup.py` as a consumer. Scope a behaviour change in a shared base with a class-level switch, and run the consumer's tests before the commit.
 - 2026-11-02: when the operator names a model version and the repo's default differs (1.2 vs 1.3), ask which in plain words; recommending the operator's stale version was corrected via Other.
 - 2026-11-02: blind grading (engine names stripped, key in a separate file) reversed the Director's prior (Muse expected to degrade; it was faster and level) and caught a Sonnet blocker that would have been pinned on Muse.
+- 2026-11-02 (onboarding-jobs): keeping every unusable model answer on disk turned an "unreproducible" writing failure (seen twice) into a one-line parser fix on the first smoke run. Keep the raw artefact of any model failure by default; a re-run is not a diagnosis.
+- 2026-11-02: drafts store each optional field in its own column; a new Draft field vanished on put until the column was added. For a new persisted field, the scout names the writer that serialises it.
+- 2026-11-02: on Windows a killed daemon's port is freed a moment after taskkill returns; the parity runner lost six cases to a 1 s gap. A runner that reuses ports waits for them to free.
 
