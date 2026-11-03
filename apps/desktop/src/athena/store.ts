@@ -110,8 +110,9 @@ export interface HerState {
   /** The transcript is the setup conversation (ADR 0017), not the active project's. */
   setup: boolean;
 
-  /** Words the surface handed over while a reply was still being written; the composer takes them. */
-  handed: string;
+  /** What the person is writing on the new page: kept here, so turning the page keeps it, and words the
+   *  surface handed over while she was writing wait in it. */
+  draft: string;
   /** The words of the turn the person stopped in this window, so its page can say so. */
   stoppedByYou: string;
 
@@ -122,8 +123,7 @@ export interface HerState {
   /** Words from the surface's ask (ADR 0016): sent as the next turn, or left in the composer when a
    *  reply is still being written. */
   hand(text: string): Promise<void>;
-  /** The composer took the handed words. */
-  takeHanded(): void;
+  setDraft(text: string): void;
   retry(): Promise<void>;
   /** A failed page that could not be read back is put away; the composer comes back. */
   dismiss(): void;
@@ -148,7 +148,7 @@ const initial = {
   pendingId: undefined,
   signed: false,
   setup: false,
-  handed: "",
+  draft: "",
   stoppedByYou: "",
 };
 
@@ -307,20 +307,20 @@ export const useHer = create<HerState>()((set, get) => {
         return;
       }
       set({ pendingId: undefined });
-      // A failed turn keeps its note and "Try again" on screen; anything else reloads so ids are true.
-      if (get().live?.error) return;
+      // Every ending reloads, so the page settles into the book from what the daemon kept (ADR 0024: a
+      // stopped turn is kept too). Only when the reload fails does the live page stay, with its note.
       if (await loadConversation(spaceId)) set({ live: null, sent: "" });
     },
 
     async hand(raw) {
       const text = raw.trim();
       if (!text) return;
-      if (get().streaming || get().status !== "ready") set({ handed: text });
+      if (get().streaming || get().status !== "ready") set({ draft: text });
       else await get().send(text);
     },
 
-    takeHanded() {
-      set({ handed: "" });
+    setDraft(text) {
+      set({ draft: text });
     },
 
     async retry() {

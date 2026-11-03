@@ -49,6 +49,10 @@
 .card-channel { margin: 0; color: var(--muted-foreground); font-size: var(--fs-sm); }
 .card-actions { display: flex; gap: var(--sp-2); }
 .card-problem { margin: 0; color: var(--status-error); font-size: var(--fs-sm); }
+.card-detail { display: flex; flex-direction: column; gap: 2px; }
+.card-detail .card-action { margin: 0; }
+.card-quote { margin: 0; padding: var(--sp-2) var(--sp-3); border-left: 2px solid var(--role-human); border-radius: 0 var(--r-sm) var(--r-sm) 0; background: var(--recess); font-size: var(--fs-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.card-outcome { margin: 0; color: var(--status-success); font-size: var(--fs-sm); }
 
 /* The stat strip: tiles of one value each; a skin sizes and colours them. */
 .ui-stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--sp-2); }

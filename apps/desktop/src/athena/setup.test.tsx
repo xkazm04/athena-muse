@@ -74,7 +74,7 @@ describe("her window in the setup conversation", () => {
   it("speaks first: the press sends start with no words, on the setup route and not /run", async () => {
     plays({ type: "start", turn_id: "t1", engine: "muse", simulated: false }, { type: "text", delta: "Hello. " }, done("t1"));
     render(<App />);
-    await waitFor(() => expect((screen.getByRole("textbox", { name: "Message Athena" }) as HTMLTextAreaElement).disabled).toBe(false));
+    await waitFor(() => expect((screen.getByRole("textbox", { name: "Your words to Athena" }) as HTMLTextAreaElement).disabled).toBe(false));
     await act(async () => startSetup());
     expect(streamSetup).toHaveBeenCalledWith({ start: true }, expect.any(Function), expect.any(AbortSignal));
     expect(streamRun).not.toHaveBeenCalled();

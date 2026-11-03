@@ -1,5 +1,5 @@
-/* Her window. The coat fills a transparent, frameless window; nothing paints outside it.
- * Tokens only. Motion is transform and opacity only, and the base stills it for reduced motion. */
+/* Her window: the book folded to one page (ADR 0024; the book's own rules are spread/spread.css). The
+ * coat fills a transparent, frameless window; nothing paints outside it. Tokens only. */
 
 html:has(> body.her),
 body.her {
@@ -19,76 +19,41 @@ body.her #root {
   flex-direction: column;
   min-height: 0;
 }
+.her-app > [data-spread] {
+  flex: 1 1 auto;
+  padding-bottom: var(--sp-1);
+}
 
 /* In her window every answer is a pill, the shape the coat's round edge asks for (Loop Tide). */
 .her-app .btn {
   border-radius: var(--r-pill);
 }
 
-/* ---- head: the seal, her name and state, the project, hide ---- */
-.her-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-4) var(--sp-3) var(--sp-3) var(--sp-4);
+/* the head is the window's handle: it has no frame of its own */
+.her-app .sp-top {
   cursor: grab;
-  user-select: none;
 }
-.her-head:active {
+.her-app .sp-top:active {
   cursor: grabbing;
 }
-.her-head .seal {
-  /* the orbit ring reaches past the svg box; keep it clear of the coat's edge */
-  margin: 4px;
-}
-.her-who {
-  min-width: 0;
-}
-/* the variant's window (ADR 0016): her name is the eyebrow, her state the display line in Outfit */
-.her-name {
-  margin: 0;
-  color: var(--accent-text);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  line-height: var(--lh-tight);
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
-}
-.her-state {
-  margin: 2px 0 0;
-  color: var(--foreground);
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: 400;
-  line-height: var(--lh-tight);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color var(--dur-base) ease;
-}
-.her-state[data-state="waiting"] {
-  color: var(--role-human);
-}
-.her-state[data-state="working"],
-.her-state[data-state="signed"] {
-  color: var(--accent-text);
-}
-.her-head .pill,
-.her-hide {
+.her-app .sp-top .pill,
+.her-app .sp-top button {
   cursor: default;
 }
+
 .her-hide {
   display: inline-grid;
   place-items: center;
   width: 28px;
   height: 28px;
+  margin-left: auto;
   padding: 0;
   border: 0;
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--faint);
   cursor: pointer;
+  font-size: var(--fs-xs);
   transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 .her-hide:hover {
@@ -102,291 +67,8 @@ body.her #root {
   stroke-linecap: round;
 }
 
-/* ---- simulated: amber means status, and this is one ---- */
-.her-band {
-  margin: 0 var(--sp-4) var(--sp-2);
-  padding: var(--sp-1) var(--sp-3);
-  border: 1px solid color-mix(in srgb, var(--status-warning) 45%, transparent);
-  border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--status-warning) 10%, transparent);
-  color: var(--status-warning);
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-  text-align: center;
-}
-
-/* ---- transcript ---- */
-.her-transcript {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  margin: 0 var(--sp-2);
-  padding: var(--sp-3) var(--sp-2) var(--sp-4) calc(var(--sp-2) + 26px);
-  border-top: 1px solid var(--border-subtle);
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--edge) transparent;
-}
-.her-quiet {
-  margin: auto 0;
-  color: var(--faint);
-  font-size: var(--fs-sm);
-  text-align: center;
-}
-.her-empty {
-  padding: 0 var(--sp-5);
-  line-height: var(--lh-body);
-}
-
-/* the transcript is a timeline: a thread down the left, a mark for each line, an eyebrow naming who */
-.her-line,
-.her-tool,
-.her-card,
-.her-blocks {
-  position: relative;
-}
-.her-line::before,
-.her-tool::after,
-.her-card::before,
-.her-blocks::before {
-  content: "";
-  position: absolute;
-  left: -20px;
-  top: -6px;
-  bottom: -14px;
-  width: 1px;
-  background: color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.her-line::after,
-.her-card::after {
-  content: "";
-  position: absolute;
-  left: -24px;
-  top: 4px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--glass-solid);
-}
-.her-line--person::after {
-  background: var(--glass-solid);
-  border: 2px solid var(--foreground);
-}
-.her-card::after {
-  top: 14px;
-  background: var(--role-human);
-}
-.her-line {
-  display: flex;
-  flex-direction: column;
-  max-width: 100%;
-  animation: her-arrive var(--dur-base) var(--ease-settle);
-}
-.her-line--person,
-.her-line--athena {
-  align-items: flex-start;
-}
-.her-bubble::before,
-.her-say::before {
-  display: block;
-  margin-bottom: 2px;
-  color: var(--accent-text);
-  font-family: var(--font-sans);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-eyebrow);
-  text-transform: uppercase;
-}
-.her-bubble::before {
-  content: "You";
-}
-.her-say::before {
-  content: "Athena";
-}
-.her-say--pending::before,
-.her-say--more::before {
-  display: none;
-}
-.her-bubble,
-.her-say {
-  margin: 0;
-  font-size: var(--fs-md);
-  line-height: var(--lh-body);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-/* the person's words are the display line of their turn */
-.her-bubble {
-  max-width: 100%;
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  line-height: 1.35;
-}
-.her-say {
-  max-width: 94%;
-  padding: var(--sp-1) var(--sp-1) 0;
-}
-.her-say--pending {
-  display: inline-flex;
-  gap: 5px;
-  padding: var(--sp-2) var(--sp-1);
-}
-.her-say--pending i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: her-pulse 1.2s ease-in-out infinite;
-}
-.her-say--pending i:nth-child(2) {
-  animation-delay: 0.15s;
-}
-.her-say--pending i:nth-child(3) {
-  animation-delay: 0.3s;
-}
-.her-cost {
-  padding: 2px var(--sp-1) 0;
-  color: var(--faint);
-  font-size: var(--fs-xs);
-  font-variant-numeric: tabular-nums;
-}
-.her-tool {
-  margin: 0;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--border-default);
-  border-radius: var(--r-card);
-  background: var(--recess);
-  color: var(--faint);
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.her-tool::before {
-  content: "";
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-right: var(--sp-2);
-  border-radius: 50%;
-  background: var(--lt-arc);
-  vertical-align: 2px;
-}
-.her-card {
-  animation: her-arrive var(--dur-base) var(--ease-settle);
-}
-.her-card .card {
-  background: var(--raised);
-}
-/* report parts in her reply (ADR 0022): the report's own blocks, one per row at the window's width;
- * no grid and no scroller of their own, so the transcript is the one thing that scrolls */
-.her-blocks {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  min-width: 0;
-  animation: her-arrive var(--dur-base) var(--ease-settle);
-}
-.her-blocks .rp-block {
-  background: var(--raised);
-}
-
-.her-note {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  margin: 0;
-  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
-  border: 1px solid color-mix(in srgb, var(--status-error) 40%, transparent);
-  border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--status-error) 8%, transparent);
-  color: var(--status-error);
-  font-size: var(--fs-sm);
-}
-.her-note p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.her-note .btn {
-  flex: none;
-  min-height: 30px;
-  color: var(--foreground);
-}
-.her-note--quiet {
-  border-color: var(--border-default);
-  background: var(--recess);
-  color: var(--muted-foreground);
-}
-
-/* ---- composer ---- */
-/* the variant's composer: a pill to write in and a round button to send */
-.her-composer {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--sp-2);
-  padding: var(--sp-3);
-  border-top: 1px solid var(--border-subtle);
-  background: var(--recess);
-}
-.her-input {
-  flex: 1 1 auto;
-  min-height: 42px;
-  padding: 9px var(--sp-4);
-  border-color: var(--edge);
-  border-radius: 21px;
-  background: var(--recess);
-  resize: none;
-}
-textarea.her-input {
-  resize: none;
-}
-.her-input:disabled {
-  opacity: 0.7;
-}
-.her-composer__side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--sp-1);
-}
-.her-count {
-  color: var(--status-warning);
-  font-size: var(--fs-xs);
-  font-variant-numeric: tabular-nums;
-}
-.her-send {
-  min-height: 42px;
-}
-.her-send--round {
-  width: 42px;
-  padding: 0;
-}
-.her-send--round svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-@keyframes her-arrive {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-@keyframes her-pulse {
-  0%,
-  100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
+@media (prefers-reduced-motion: reduce) {
+  .her-hide {
+    transition: none;
   }
 }

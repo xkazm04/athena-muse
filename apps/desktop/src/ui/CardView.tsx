@@ -101,6 +101,8 @@ export function CardView({ card, onDecide, onResolved, where }: CardViewProps) {
   };
 
   const fieldId = `card-text-${card.id}`;
+  // The label cuts a new brief short; the person signs the whole of it, so the card shows it whole.
+  const brief = card.action === "propose_brief" && typeof card.args.brief === "string" ? card.args.brief : null;
   const noun = card.action === "twin_note" ? "note" : "message";
 
   return (
@@ -117,6 +119,12 @@ export function CardView({ card, onDecide, onResolved, where }: CardViewProps) {
         <p className="card-channel" data-role="web-channel" data-channel={String(card.args.channel)}>
           {web}
         </p>
+      )}
+      {brief !== null && (
+        <div className="card-detail" data-role="card-brief">
+          <p className="card-action">The new brief, in full</p>
+          <p className="card-quote">{brief}</p>
+        </div>
       )}
       {drafted !== null &&
         (waiting ? (
@@ -155,6 +163,11 @@ export function CardView({ card, onDecide, onResolved, where }: CardViewProps) {
             {busy === "decline" ? "Declining..." : "Decline"}
           </button>
         </div>
+      )}
+      {card.state === "approved" && card.outcome && (
+        <p className="card-outcome" data-role="card-outcome">
+          {card.outcome}
+        </p>
       )}
       {problem && (
         <p className="card-problem" role="alert">

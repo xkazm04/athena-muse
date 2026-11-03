@@ -25,9 +25,10 @@ export const SHOWS: Readonly<Record<Phase, { composer: boolean; stop: boolean; c
   failed: { composer: false, stop: false, clock: false, retry: true },
 };
 
-/** The phase the conversation store is in. */
+/** The phase the conversation store is in. A page that has ended but not yet settled (the reload is on
+ *  its way) still reads as written, so the composer does not flash between the two. */
 export function phaseOf(s: { streaming: boolean; live: Live | null }): Phase {
-  if (s.streaming) return "writing";
-  if (s.live?.error !== undefined) return "failed";
+  if (s.live?.error !== undefined && !s.streaming) return "failed";
+  if (s.streaming || s.live !== null) return "writing";
   return "ask";
 }

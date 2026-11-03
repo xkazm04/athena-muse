@@ -83,6 +83,8 @@
   --depth-2: var(--background);
   --depth-3: color-mix(in srgb, black 35%, var(--background));
   --vignette: color-mix(in srgb, black 45%, transparent);
+  /* the book's gutter (ADR 0024): the shade where its two pages meet */
+  --gutter-shade: color-mix(in srgb, black 34%, transparent);
 }
 
 [data-theme="light"] {
@@ -147,6 +149,7 @@
   --depth-2: color-mix(in srgb, var(--primary) 5%, var(--background));
   --depth-3: var(--background);
   --vignette: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --gutter-shade: color-mix(in srgb, #0a1e50 16%, transparent);
 }
 
 @media (prefers-color-scheme: light) {
@@ -212,6 +215,7 @@
     --depth-2: color-mix(in srgb, var(--primary) 5%, var(--background));
     --depth-3: var(--background);
     --vignette: color-mix(in srgb, var(--foreground) 7%, transparent);
+    --gutter-shade: color-mix(in srgb, #0a1e50 16%, transparent);
   }
 }
 
@@ -264,4 +268,25 @@
   --ease-settle: cubic-bezier(0.22, 0.8, 0.3, 1);
   --dur-fast: 120ms;
   --dur-base: 220ms;
+
+  /* The book (ADR 0024, The Spread): what it added to Loop Tide. Its two pages, the reading sizes of
+   * a page, and the moves of a turned page; each move has a still form (calm, reduced motion). */
+  --page-l: color-mix(in srgb, var(--recessed) 55%, var(--card-bg));
+  --page-r: radial-gradient(120% 95% at 35% 0%, var(--depth-0), var(--card-bg) 72%);
+  /* what you asked, as the left page's title; it grows with the window */
+  --fs-ask: clamp(24px, 2.5vw, 34px);
+  /* her answer at a reading measure, and a heading inside it */
+  --fs-read: 17px;
+  --fs-read-head: 22px;
+  /* a short answer, set large */
+  --fs-answer: clamp(22px, 2.2vw, 30px);
+  /* her one sentence on the report's page */
+  --fs-callout: 20px;
+  /* at her window's width the two grow no further */
+  --fs-ask-folded: 24px;
+  --fs-answer-folded: 21px;
+  --dur-turn: 480ms;
+  --dur-page: 380ms;
+  --dur-rise: 520ms;
+  --dur-pulse: 1.4s;
 }

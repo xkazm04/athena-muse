@@ -6,7 +6,6 @@ import { streamRun } from "../lib/daemon";
 import { SETTLE_MS } from "../theme";
 import { App } from "./App";
 import { resetHer, useHer } from "./store";
-import { formatCost } from "./Transcript";
 
 vi.mock("../lib/api", () => ({
   engine: vi.fn(),
@@ -17,6 +16,7 @@ vi.mock("../lib/api", () => ({
   setActiveSpace: vi.fn(),
   decide: vi.fn(),
   settings: vi.fn(),
+  setLook: vi.fn(),
 }));
 
 let emitApp: (e: AppEvent) => void = () => undefined;
@@ -60,15 +60,20 @@ const card: Card = {
   space_id: "spc_1",
   action: "propose_brief",
   label: "Change this project's brief to: file by April",
-  args: { brief: "file by April" },
+  args: { brief: "file by April, and keep every receipt" },
   state: "waiting",
   created: "2026-10-26T12:00:00Z",
 };
 
 const sealState = () => document.querySelector(".seal")!.getAttribute("data-state");
-/** Her paragraph whose whole text is `text`, however many spans the word reveal split it into. */
-const said = (text: string) => screen.getByText((_, el) => el?.tagName === "P" && el.closest(".her-say") !== null && el.textContent === text);
-const composer = () => screen.getByRole("textbox", { name: "Message Athena" }) as HTMLTextAreaElement;
+const book = () => document.querySelector('[data-role="book"]')!;
+const left = () => document.querySelector('[data-role="page-left"]')!;
+const right = () => document.querySelector('[data-role="page-right"]')!;
+/** Each receipt's own words (its small second line aside). */
+const receipts = () => [...left().querySelectorAll(".sp-rc-x")].map((r) => r.firstChild!.textContent);
+const answer = () => right().querySelector('[data-role="answer"]')!;
+const composer = () => screen.getByRole("textbox", { name: "Your words to Athena" }) as HTMLTextAreaElement;
+const select = () => document.querySelector("#sp-page-select") as HTMLSelectElement;
 
 function type(text: string) {
   fireEvent.change(composer(), { target: { value: text } });
@@ -92,6 +97,7 @@ function heldStream() {
 beforeEach(() => {
   resetHer();
   vi.clearAllMocks();
+  document.documentElement.removeAttribute("data-motion");
   m.engine.mockResolvedValue(live);
   m.activeSpace.mockResolvedValue({ space_id: "spc_1" });
   m.spaces.mockResolvedValue([space("spc_1", "Taxes"), space("spc_2", "Garden")]);
@@ -101,101 +107,149 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+/** Boots her window; with no conversation it opens on the page being written. */
 async function boot() {
   render(<App />);
+  await waitFor(() => expect(useHer.getState().status).toBe("ready"));
+}
+
+async function bootOnNewPage() {
+  await boot();
   await waitFor(() => expect(composer().disabled).toBe(false));
 }
 
-describe("her window", () => {
-  it("takes the surface's handed words as a turn, and keeps them in the composer while she writes", async () => {
-    await boot();
+describe("her window: the book folded to one page", () => {
+  it("takes the surface's handed words as a page, and keeps later ones for the next page", async () => {
+    await bootOnNewPage();
     const stream = heldStream();
     await act(async () => handOver("  Appeal my mother's plan denial  "));
     expect(run).toHaveBeenCalledWith({ text: "Appeal my mother's plan denial", space_id: "spc_1" }, expect.any(Function), expect.any(AbortSignal));
     await act(async () => handOver("And the pharmacy bill"));
     expect(run).toHaveBeenCalledTimes(1);
-    expect(composer().value).toBe("And the pharmacy bill");
+    m.conversation.mockResolvedValue([turn("t1", "person", "Appeal my mother's plan denial"), turn("t2", "athena", "Done.")]);
     await stream.emit({ type: "done", turn_id: "turn_1", waiting: false });
     await stream.end();
+    await waitFor(() => expect(composer().value).toBe("And the pharmacy bill"));
+    expect(book().getAttribute("data-page")).toBe("now");
   });
 
-  it("sends, streams the reply in place, and the reloaded conversation persists across reopen", async () => {
-    const saved = [turn("t1", "person", "When are taxes due?"), turn("t2", "athena", "By April 15.", { cost_usd: 0.0004 })];
-    await boot();
+  it("writes a page while you watch, then the page settles into the book and persists across reopen", async () => {
+    const saved = [
+      turn("t1", "person", "When are taxes due?"),
+      turn("t2", "athena", "By April 15.", {
+        cost_usd: 0.0004,
+        duration_ms: 6200,
+        parts: [
+          { kind: "tool", name: "recall", label: "Looked through memory", class: "auto", at_ms: 4000 },
+          { kind: "text", text: "By April 15.", at_ms: 5100 },
+        ],
+      }),
+    ];
+    await bootOnNewPage();
     expect(sealState()).toBe("rest");
+    expect(screen.getByText("Ask Athena anything. In a project, she remembers it there.")).toBeTruthy();
 
     const stream = heldStream();
     m.conversation.mockResolvedValue(saved);
     type("When are taxes due?");
     expect(run).toHaveBeenCalledWith({ text: "When are taxes due?", space_id: "spc_1" }, expect.any(Function), expect.any(AbortSignal));
-    expect(screen.getByText("When are taxes due?")).toBeTruthy(); // optimistic
-    expect(composer().disabled).toBe(true);
+    expect(screen.getByText("Writing now")).toBeTruthy();
+    expect(left().querySelector('[data-role="ask"], .sp-ask')!.textContent).toBe("When are taxes due?");
     expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
+    expect(screen.getByText("Her answer will be written here.")).toBeTruthy();
 
     await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
     expect(sealState()).toBe("working");
-    expect(screen.getByText("Thinking...", { selector: ".her-state" })).toBeTruthy();
+    expect(screen.getByText("Thinking...", { selector: ".sp-state" })).toBeTruthy();
     await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
     await stream.emit({ type: "text", delta: "By April" });
-    expect(said("By April")).toBeTruthy();
     await stream.emit({ type: "text", delta: " 15." });
-    // live words arrive in their own reveal spans; the paragraph reads whole
-    expect(said("By April 15.")).toBeTruthy();
-    expect(screen.getByText("Looked through memory")).toBeTruthy();
+    expect(receipts()).toEqual(["Looked through memory", "Writing to you"]);
+    // live moments are this window's own count, said in words
+    expect(left().querySelector(".sp-rc-t")!.textContent).toMatch(/^after \d+ s$/);
+    expect(answer().textContent).toBe("By April 15.");
+    expect(answer().textContent).not.toContain("Looked through memory"); // a step is a receipt, not her answer
     await stream.emit({ type: "done", turn_id: "turn_1", waiting: false, cost_usd: 0.0004 });
     await stream.end();
 
-    await waitFor(() => expect(m.conversation).toHaveBeenCalledTimes(2));
-    expect(m.conversation).toHaveBeenLastCalledWith("spc_1");
-    await waitFor(() => expect(screen.getByText("est. $0.0004")).toBeTruthy());
-    expect(screen.getAllByText("When are taxes due?")).toHaveLength(1);
-    expect(screen.getAllByText("By April 15.")).toHaveLength(1);
+    // settled: the window turns to the page it became, with the daemon's moments and the tally
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p1"));
+    expect([...left().querySelectorAll(".sp-rc-t")].map((t) => t.textContent)).toEqual(["after 4 s", "after 5 s"]);
+    expect(left().querySelector('[data-role="tally"]')!.textContent).toBe("Took 6 sest. $0.0004");
+    expect(right().querySelector(".sp-cost")!.textContent).toBe("est. $0.0004");
+    expect(answer().classList.contains("is-short")).toBe(true);
     expect(sealState()).toBe("rest");
 
-    // Reopen: a fresh window boots from the daemon and shows the same two lines.
+    // Reopen: a fresh window boots from the daemon on the newest page.
     cleanup();
     resetHer();
     await boot();
-    expect(await screen.findByText("When are taxes due?")).toBeTruthy();
-    expect(screen.getByText("By April 15.")).toBeTruthy();
-    expect(screen.getByText("est. $0.0004")).toBeTruthy();
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p1"));
+    expect(answer().textContent).toBe("By April 15.");
   });
 
-  it("files a card inline; it signs once and the seal goes waiting -> signed -> rest", async () => {
+  it("files a card inline; it signs once, the seal goes waiting -> signed -> rest, and the bookmark finds it", async () => {
+    m.conversation.mockResolvedValue([turn("t0", "person", "Hello"), turn("t00", "athena", "Hi.")]);
     await boot();
+    fireEvent.change(select(), { target: { value: "now" } });
     const stream = heldStream();
     m.conversation.mockResolvedValue([
+      turn("t0", "person", "Hello"),
+      turn("t00", "athena", "Hi."),
       turn("t1", "person", "Set the brief"),
-      turn("t2", "athena", `I filed a card for you to sign: ${card.label}`, { card_id: card.id }),
+      turn("t2", "athena", "Here it is.", {
+        card_id: card.id,
+        parts: [
+          { kind: "text", text: "Here it is.", at_ms: 900 },
+          { kind: "tool", name: "propose_brief", label: card.label, class: "gated", at_ms: 1000 },
+          { kind: "card", card_id: card.id, at_ms: 1000 },
+        ],
+      }),
     ]);
     type("Set the brief");
     await stream.emit({ type: "start", turn_id: "turn_1", engine: "scripted", simulated: false });
+    await stream.emit({ type: "text", delta: "Here it is." });
     await stream.emit({ type: "tool", name: "propose_brief", label: card.label, class: "gated" });
     await stream.emit({ type: "card", card });
     expect(sealState()).toBe("waiting");
     await stream.emit({ type: "done", turn_id: "turn_1", waiting: true });
     await stream.end();
-    await waitFor(() => expect(m.conversation).toHaveBeenCalledTimes(2));
-    expect(sealState()).toBe("waiting");
-    expect(document.querySelector(".seal__count")!.textContent).toBe("1");
-    expect(screen.getByText("Waiting on you")).toBeTruthy();
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p2"));
+    expect(receipts()).toEqual(["Wrote to you", "Filed a card for your signature"]);
+    expect(screen.getByText("Waits for your signature")).toBeTruthy();
+    expect(document.querySelector('[data-role="card-brief"]')!.textContent).toContain("file by April, and keep every receipt");
 
-    const approved: Card = { ...card, state: "approved", resolved: "2026-10-26T12:01:00Z" };
+    // the bookmark: from another page, it opens the page that holds the card
+    fireEvent.change(select(), { target: { value: "p1" } });
+    const mark = document.querySelector('[data-role="bookmark"]')!;
+    expect(mark.textContent).toBe("1 waits for your signatureOpen its page");
+    await act(async () => fireEvent.click(mark));
+    expect(book().getAttribute("data-page")).toBe("p2");
+
+    const approved: Card = { ...card, state: "approved", resolved: "2026-10-26T12:01:00Z", outcome: "The brief now reads: file by April." };
     m.decide.mockResolvedValue(approved);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Sign" })));
     expect(m.decide).toHaveBeenCalledTimes(1);
     expect(m.decide).toHaveBeenCalledWith(card.id, "approve");
     expect(sealState()).toBe("signed");
     expect(screen.getByText("Signed, ran once")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Sign" })).toBeNull();
+    expect(document.querySelector('[data-role="card-outcome"]')!.textContent).toBe("The brief now reads: file by April.");
+    expect(document.querySelector('[data-role="bookmark"]')).toBeNull();
 
-    // The daemon's own echo of the same resolution changes nothing and asks nothing again.
     act(() => emitApp({ type: "card_resolved", card: approved }));
     expect(m.decide).toHaveBeenCalledTimes(1);
-
     await act(() => new Promise((r) => setTimeout(r, SETTLE_MS + 100)));
     expect(sealState()).toBe("rest");
-    expect(document.querySelector(".seal__count")).toBeNull();
+  });
+
+  it("puts a card waiting on no page of this book on its own page, which the bookmark opens", async () => {
+    m.cards.mockImplementation(async (state) => (state === "waiting" ? [{ ...card, space_id: "spc_2" }] : []));
+    m.conversation.mockResolvedValue([turn("t1", "person", "Hi"), turn("t2", "athena", "Hello.")]);
+    await boot();
+    await waitFor(() => expect(document.querySelector('[data-role="bookmark"]')).toBeTruthy());
+    await act(async () => fireEvent.click(document.querySelector('[data-role="bookmark"]')!));
+    expect(book().getAttribute("data-page")).toBe("waiting");
+    expect(right().querySelector(".card-where")!.textContent).toBe("Garden");
   });
 
   it("follows a card signed in the main window, seal included", async () => {
@@ -206,23 +260,20 @@ describe("her window", () => {
     expect(sealState()).toBe("signed");
   });
 
-  it("switching project switches the conversation, and a switch mid-reply waits for the reply", async () => {
+  it("switching project switches the book, and a switch mid-reply waits for the reply", async () => {
     m.conversation.mockImplementation(async (id) =>
-      id === "spc_1"
-        ? [turn("a1", "person", "Taxes question")]
-        : [{ ...turn("b1", "person", "Garden question"), space_id: "spc_2" }],
+      id === "spc_1" ? [turn("a1", "person", "Taxes question")] : [{ ...turn("b1", "person", "Garden question"), space_id: "spc_2" }],
     );
     m.setActiveSpace.mockImplementation(async (id) => ({ space_id: id }));
     await boot();
-    expect(await screen.findByText("Taxes question")).toBeTruthy();
+    expect(await screen.findByText("Taxes question", { selector: ".sp-ask" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Taxes/ }));
     await act(async () => fireEvent.click(screen.getByRole("menuitemradio", { name: /Garden/ })));
     expect(m.setActiveSpace).toHaveBeenCalledWith("spc_2");
-    expect(await screen.findByText("Garden question")).toBeTruthy();
-    expect(screen.queryByText("Taxes question")).toBeNull();
+    expect(await screen.findByText("Garden question", { selector: ".sp-ask" })).toBeTruthy();
 
-    // Held: asked for during a turn, applied when it is done.
+    fireEvent.change(select(), { target: { value: "now" } });
     const stream = heldStream();
     type("Plant tomatoes?");
     await stream.emit({ type: "start", turn_id: "turn_2", engine: "muse", simulated: false });
@@ -233,121 +284,121 @@ describe("her window", () => {
     await stream.emit({ type: "done", turn_id: "turn_2", waiting: false });
     await stream.end();
     await waitFor(() => expect(m.setActiveSpace).toHaveBeenLastCalledWith("spc_1"));
-    expect(await screen.findByText("Taxes question")).toBeTruthy();
-    expect(screen.queryByText("switches after this reply")).toBeNull();
+    expect(await screen.findByText("Taxes question", { selector: ".sp-ask" })).toBeTruthy();
   });
 
-  it("reloads when the other window switches the project", async () => {
+  it("reloads when the other window switches the project, or ends a turn there", async () => {
     m.conversation.mockImplementation(async (id) => (id === "spc_2" ? [turn("b1", "person", "Garden question")] : []));
     await boot();
     act(() => emitApp({ type: "active_space", space_id: "spc_2" }));
-    expect(await screen.findByText("Garden question")).toBeTruthy();
+    expect(await screen.findByText("Garden question", { selector: ".sp-ask" })).toBeTruthy();
     expect(m.conversation).toHaveBeenLastCalledWith("spc_2");
   });
 
-  it("wears the look chosen in Settings, at boot and when the main window changes it", async () => {
-    m.settings.mockResolvedValue({
-      look: { theme: "light", type_scale: "large", motion: "system" },
-      engine: "muse",
-      source: "default",
-      engines: [],
-    });
+  it("wears the look chosen in Settings, and its own two switches write that same setting", async () => {
+    m.settings.mockResolvedValue({ look: { theme: "light", type_scale: "large", motion: "system" }, engine: "muse", source: "default", engines: [] });
     await boot();
     await waitFor(() => expect(document.documentElement.getAttribute("data-theme")).toBe("light"));
-    expect(document.documentElement.getAttribute("data-type-scale")).toBe("large");
     act(() => emitApp({ type: "settings", look: { theme: "auto", type_scale: "standard", motion: "calm" } }));
-    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
     expect(document.documentElement.getAttribute("data-motion")).toBe("calm");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Calm motion" }).getAttribute("aria-pressed")).toBe("true"));
+
+    // "auto" with no system answer reads dark here, so the switch offers light
+    m.setLook.mockResolvedValue({ look: { theme: "light", type_scale: "standard", motion: "calm" }, engine: "muse", source: "default", engines: [] });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Switch to the light look/ })));
+    expect(m.setLook).toHaveBeenCalledWith({ theme: "light" });
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("labels the simulated engine, and only then", async () => {
     m.engine.mockResolvedValue({ ...live, engine: "scripted", key: "absent", simulated: true });
-    await boot();
-    const band = await screen.findByRole("note");
-    expect(band.textContent).toBe("Simulated - connect Muse in the main window for real answers");
+    await bootOnNewPage();
+    expect(screen.getByText("Simulated", { selector: ".badge" })).toBeTruthy();
+    expect(screen.getByText("Simulated - connect Muse in the main window for real answers")).toBeTruthy();
     act(() => emitApp({ type: "engine", status: live }));
-    expect(screen.queryByRole("note")).toBeNull();
+    expect(screen.queryByText("Simulated", { selector: ".badge" })).toBeNull();
   });
 
-  it("shows a stream error verbatim and Try again re-sends the same text", async () => {
-    await boot();
+  it("keeps a stopped try as its own page with its reason, and Try again asks the same words", async () => {
+    await bootOnNewPage();
     const stream = heldStream();
     type("Hello?");
     await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
+    await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
     await stream.emit({ type: "error", error: "engine_unavailable", reason: "Muse did not answer in time" });
+    // the daemon kept the try (ADR 0024)
+    m.conversation.mockResolvedValue([
+      turn("t1", "person", "Hello?"),
+      turn("t2", "athena", "", {
+        stopped: "Muse did not answer in time",
+        duration_ms: 9000,
+        parts: [{ kind: "tool", name: "recall", label: "Looked through memory", class: "auto", at_ms: 1000 }],
+      }),
+    ]);
     await stream.end();
-    expect(screen.getByRole("alert").textContent).toContain("Muse did not answer in time");
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p1"));
+    expect(screen.getByText("This try stopped", { selector: ".badge" })).toBeTruthy();
+    expect(receipts()).toEqual(["Looked through memory", "Stopped: Muse did not answer in time"]);
+    expect(right().querySelector('[role="alert"]')!.textContent).toContain("Muse did not answer in time");
+    expect(left().querySelector('[data-role="tally"]')!.textContent).toBe("Took 9 sno cost figure: this try stopped");
     expect(sealState()).toBe("rest");
 
     const again = heldStream();
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
     expect(run).toHaveBeenCalledTimes(2);
     expect(run.mock.calls[1]![0]).toEqual({ text: "Hello?", space_id: "spc_1" });
-    expect(screen.getAllByText("Hello?")).toHaveLength(1);
+    expect(book().getAttribute("data-page")).toBe("now");
     await again.end();
   });
 
-  it("Stop aborts the reply", async () => {
+  it("marks the same words asked after a stopped try as its second try, each page linking the other", async () => {
+    m.conversation.mockResolvedValue([
+      turn("t1", "person", "Which offers wait?"),
+      turn("t2", "athena", "", { stopped: "Meta is rate limiting", parts: [] }),
+      turn("t3", "person", "Which offers wait?"),
+      turn("t4", "athena", "Two."),
+    ]);
     await boot();
+    expect(screen.getByText("Second try")).toBeTruthy();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /The try that stopped/ })));
+    expect(book().getAttribute("data-page")).toBe("p1");
+    expect(screen.getByRole("button", { name: "See her second try" })).toBeTruthy();
+  });
+
+  it("keeps a failed page on screen with Try again when the conversation cannot be read back", async () => {
+    await bootOnNewPage();
+    const stream = heldStream();
+    type("Hello?");
+    await stream.emit({ type: "error", error: "engine_unavailable", reason: "Muse did not answer in time" });
+    m.conversation.mockRejectedValue(new Error("down"));
+    await stream.end();
+    expect(book().getAttribute("data-page")).toBe("now");
+    expect(receipts()).toEqual(["Stopped: Muse did not answer in time"]);
+    expect(screen.getByRole("button", { name: "Write another page" })).toBeTruthy();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Write another page" })));
+    expect(composer()).toBeTruthy();
+  });
+
+  it("Stop aborts the reply, and its page says you stopped her", async () => {
+    await bootOnNewPage();
     let signal: AbortSignal | undefined;
     run.mockImplementationOnce((_b, _on, s) => {
       signal = s;
       return new Promise<void>((_, reject) => s!.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
     });
+    m.conversation.mockResolvedValue([turn("t1", "person", "Long story please")]);
     type("Long story please");
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Stop" })));
     expect(signal!.aborted).toBe(true);
-    await waitFor(() => expect(composer().disabled).toBe(false));
-    expect(screen.queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p1"));
+    expect(screen.getByText("You stopped her before she wrote anything.")).toBeTruthy();
   });
 
-  it("keeps the live parts in the order they streamed: text, tool, text, card, text", async () => {
-    await boot();
-    const stream = heldStream();
-    type("Look into it");
-    await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
-    await stream.emit({ type: "text", delta: "Let me look." });
-    await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
-    await stream.emit({ type: "text", delta: "Found **two** notes." });
-    await stream.emit({ type: "tool", name: "propose_brief", label: card.label, class: "gated" });
-    await stream.emit({ type: "card", card });
-    await stream.emit({ type: "text", delta: "Sign it" });
-    await stream.emit({ type: "text", delta: " when ready." });
-
-    const parts = useHer.getState().live!.parts;
-    expect(parts.map((p) => p.kind)).toEqual(["text", "tool", "text", "card", "text"]);
-    expect(parts[4]).toMatchObject({ kind: "text", text: "Sign it when ready.", marks: [0, 7] });
-
-    // The screen says them in that order, and her name only once.
-    const rows = [...document.querySelectorAll(".her-transcript > *")].slice(1);
-    expect(rows.map((r) => r.className.split(" ")[0])).toEqual(["her-line", "her-tool", "her-line", "her-card", "her-line"]);
-    expect(rows.map((r) => r.textContent)).toEqual([
-      "Let me look.",
-      "Looked through memory",
-      "Found two notes.",
-      expect.stringContaining(card.label),
-      "Sign it when ready.",
-    ]);
-    expect(document.querySelectorAll(".her-say:not(.her-say--more)")).toHaveLength(1);
-    expect(document.querySelector(".her-transcript strong")!.textContent).toBe("two");
-
-    // While she writes, the newest words are their own reveal span; once done, none is left.
-    // A run a tool line or card followed is finished: only the last run is still revealing.
-    expect(rows[4]!.querySelectorAll(".prose-new").length).toBeGreaterThan(0);
-    expect(rows[0]!.querySelector(".prose-new")).toBeNull();
-    expect(rows[2]!.querySelector(".prose-new")).toBeNull();
-    await stream.emit({ type: "done", turn_id: "turn_1", waiting: true, cost_usd: 0.0004 });
-    expect(document.querySelectorAll(".prose-new")).toHaveLength(0);
-    expect(rows[4]!.textContent).toBe("Sign it when ready.est. $0.0004");
-    await stream.end();
-  });
-
-  it("draws a settled turn from its stored parts exactly as it drew it live", async () => {
+  it("draws a settled page from its stored parts exactly as it drew it live", async () => {
     m.cards.mockResolvedValue([card]);
-    await boot();
+    await bootOnNewPage();
     const stream = heldStream();
     type("Look into it");
-    await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
     await stream.emit({ type: "text", delta: "Let me look." });
     await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
     await stream.emit({ type: "text", delta: "Found **two** notes." });
@@ -356,39 +407,35 @@ describe("her window", () => {
     await stream.emit({ type: "text", delta: "Sign it" });
     await stream.emit({ type: "text", delta: " when ready." });
     await stream.emit({ type: "done", turn_id: "turn_1", waiting: true, cost_usd: 0.0004 });
-    const rowsOf = () =>
-      [...document.querySelectorAll(".her-transcript > *")].slice(1).map((r) => [r.className.split(" ")[0], r.textContent]);
-    const before = rowsOf();
-    const liveKinds = useHer.getState().live!.parts.map((p) => p.kind);
-
-    // The daemon's reload: the turn as it was stored, its parts in the order they streamed (a fixture
-    // of what `turn._Parts` keeps; tests/test_turn_parts.py holds the daemon to the same order).
+    const kinds = () => [...answer().children].map((c) => c.className.split(" ")[0]);
+    const liveKinds = kinds();
+    const liveText = answer().textContent;
+    const liveReceipts = receipts();
+    expect(liveKinds).toEqual(["prose", "prose", "card", "prose"]);
     m.conversation.mockResolvedValue([
       turn("t1", "person", "Look into it"),
       turn("t2", "athena", "Let me look.Found **two** notes.Sign it when ready.", {
         cost_usd: 0.0004,
         card_id: card.id,
         parts: [
-          { kind: "text", text: "Let me look." },
-          { kind: "tool", name: "recall", label: "Looked through memory", class: "auto" },
-          { kind: "text", text: "Found **two** notes." },
-          { kind: "tool", name: "propose_brief", label: card.label, class: "gated" },
-          { kind: "card", card_id: card.id },
-          { kind: "text", text: "Sign it when ready." },
+          { kind: "text", text: "Let me look.", at_ms: 100 },
+          { kind: "tool", name: "recall", label: "Looked through memory", class: "auto", at_ms: 200 },
+          { kind: "text", text: "Found **two** notes.", at_ms: 300 },
+          { kind: "tool", name: "propose_brief", label: card.label, class: "gated", at_ms: 400 },
+          { kind: "card", card_id: card.id, at_ms: 400 },
+          { kind: "text", text: "Sign it when ready.", at_ms: 500 },
         ],
       }),
     ]);
     await stream.end();
-    await waitFor(() => expect(useHer.getState().live).toBeNull());
-
-    const after = [...document.querySelectorAll(".her-transcript > *")].map((r) => [r.className.split(" ")[0], r.textContent]);
-    expect(after[0]).toEqual(["her-line", "Look into it"]);
-    expect(after.slice(1)).toEqual(before);
-    expect(liveKinds).toEqual(["text", "tool", "text", "card", "text"]);
-    expect(document.querySelector(".her-transcript strong")!.textContent).toBe("two");
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p1"));
+    expect(kinds()).toEqual(liveKinds);
+    expect(answer().textContent).toBe(liveText);
+    expect(receipts()).toEqual(liveReceipts.map((r) => (r === "Writing to you" ? "Wrote to you" : r)));
+    expect(answer().querySelector("strong")!.textContent).toBe("two");
   });
 
-  it("shows report parts in place among her words, with drops said, and the same after a reload", async () => {
+  it("shows report parts in her answer with the drops said, and the same after a reload", async () => {
     const shown: ShownBlocks = {
       blocks: [
         {
@@ -403,23 +450,19 @@ describe("her window", () => {
       dropped: 1,
       reasons: ["A queue part: a queue asks for a verdict on each track, which the project's report does."],
     };
-    await boot();
+    await bootOnNewPage();
     const stream = heldStream();
     type("How are the tracks doing?");
-    await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
     await stream.emit({ type: "text", delta: "Here is where they stand." });
     await stream.emit({ type: "blocks", shown });
     await stream.emit({ type: "text", delta: "Most still wait for you." });
     await stream.emit({ type: "done", turn_id: "turn_1", waiting: false });
-    const rowsOf = () => [...document.querySelectorAll(".her-transcript > *")].map((r) => r.className.split(" ")[0]);
-    expect(rowsOf().slice(1)).toEqual(["her-line", "her-blocks", "her-line"]);
-    const part = document.querySelector('.her-blocks [data-role="report-block"]')!;
+    expect(receipts()).toContain("Showed parts of the report: “Where the tracks stand”");
+    const part = answer().querySelector('[data-role="report-block"]')!;
     expect(part.getAttribute("data-kind")).toBe("pipeline");
-    expect(part.textContent).toContain("Where the tracks stand");
-    expect(document.querySelector('.her-blocks [data-role="pin"]')).toBeNull(); // a reply's part is not pinned
-    expect(document.querySelector('.her-blocks [data-role="dropped"] summary')!.textContent).toBe("1 part could not be shown");
-    const before = document.querySelector(".her-blocks")!.innerHTML;
-
+    expect(answer().querySelector('[data-role="pin"]')).toBeNull();
+    expect(answer().querySelector('[data-role="dropped"] summary')!.textContent).toBe("1 part could not be shown");
+    const before = answer().querySelector(".her-blocks")!.innerHTML;
     m.conversation.mockResolvedValue([
       turn("t1", "person", "How are the tracks doing?"),
       turn("t2", "athena", "Here is where they stand.Most still wait for you.", {
@@ -431,40 +474,28 @@ describe("her window", () => {
       }),
     ]);
     await stream.end();
-    await waitFor(() => expect(useHer.getState().live).toBeNull());
-    expect(rowsOf()).toEqual(["her-line", "her-line", "her-blocks", "her-line"]);
-    expect(document.querySelector(".her-blocks")!.innerHTML).toBe(before);
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p1"));
+    expect(answer().querySelector(".her-blocks")!.innerHTML).toBe(before);
   });
 
-  it("draws a turn stored before parts were kept as its words and its card, as before", async () => {
+  it("draws a turn stored before parts were kept as its words and its card, with no moments", async () => {
     m.cards.mockResolvedValue([card]);
     m.conversation.mockResolvedValue([turn("t1", "person", "Brief?"), turn("t2", "athena", "Filed it.", { card_id: card.id })]);
     await boot();
-    const rows = [...document.querySelectorAll(".her-transcript > *")].map((r) => r.className.split(" ")[0]);
-    expect(rows).toEqual(["her-line", "her-line", "her-card"]);
+    await waitFor(() => expect(answer().querySelector(".card")).toBeTruthy());
+    expect([...left().querySelectorAll(".sp-rc-t")].map((t) => t.textContent)).toEqual(["", ""]);
+    expect(left().querySelector('[data-role="tally"]')!.textContent).toBe("no cost figure");
   });
 
   it("shows a stored part this window does not know as a plain row, never nothing", async () => {
     const odd = { kind: "hologram", what: "x" } as unknown as NonNullable<Turn["parts"]>[number];
     m.conversation.mockResolvedValue([turn("t1", "athena", "Here.", { parts: [{ kind: "text", text: "Here." }, odd] })]);
     await boot();
-    expect(document.querySelector(".her-tool--unknown")!.getAttribute("data-part")).toBe("hologram");
+    await waitFor(() => expect(document.querySelector(".sp-unknown")!.getAttribute("data-part")).toBe("hologram"));
+    expect(screen.getByText("She spoke first")).toBeTruthy();
   });
 
-  it("shows a tool line after the words before it, with the dots while more is coming", async () => {
-    await boot();
-    const stream = heldStream();
-    type("Check");
-    await stream.emit({ type: "text", delta: "One moment." });
-    expect(document.querySelector(".her-say--pending")).toBeNull();
-    await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
-    const after = document.querySelector(".her-tool")!.nextElementSibling!;
-    expect(after.querySelector(".her-say--pending")).toBeTruthy();
-    await stream.emit({ type: "done", turn_id: "turn_1", waiting: false });
-    await stream.end();
-  });
-
-  it("renders her words as rich text, settled and live, and any HTML in them as inert text", async () => {
+  it("renders her words as rich text, and any HTML in them as inert text", async () => {
     m.conversation.mockResolvedValue([
       turn("t1", "person", "Steps?"),
       turn("t2", "athena", "**First:**\n- open `settings`\n- sign\n\n<img src=x onerror=alert(1)><script>alert(2)</script>"),
@@ -473,33 +504,38 @@ describe("her window", () => {
     expect((await screen.findByText("First:")).tagName).toBe("STRONG");
     expect(screen.getByText("sign").tagName).toBe("LI");
     expect(screen.getByText("settings").tagName).toBe("CODE");
-    expect(said("<img src=x onerror=alert(1)><script>alert(2)</script>")).toBeTruthy();
-    expect(document.querySelector(".her-transcript img, .her-transcript script")).toBeNull();
+    expect(answer().textContent).toContain("<img src=x onerror=alert(1)><script>alert(2)</script>");
+    expect(answer().querySelector("img, script")).toBeNull();
+  });
 
-    const stream = heldStream();
-    type("And now?");
-    await stream.emit({ type: "text", delta: "Now *wait" });
-    // an unclosed marker mid-stream is styled as if closed at the tail; its star never shows
-    expect(document.querySelector(".her-transcript em")!.textContent).toBe("wait");
-    await stream.emit({ type: "text", delta: "* <b>here</b>" });
-    expect(said("Now wait <b>here</b>")).toBeTruthy();
-    expect(document.querySelector(".her-transcript b")).toBeNull();
-    await stream.emit({ type: "done", turn_id: "turn_2", waiting: false });
-    await stream.end();
+  it("turns pages with the keys and the compact bar; the leaf turns only when motion is allowed", async () => {
+    m.conversation.mockResolvedValue([turn("t1", "person", "One"), turn("t2", "athena", "A."), turn("t3", "person", "Two"), turn("t4", "athena", "B.")]);
+    await boot();
+    await waitFor(() => expect(book().getAttribute("data-page")).toBe("p2"));
+    fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+    expect(book().getAttribute("data-page")).toBe("p1");
+    expect(book().classList.contains("turn-back")).toBe(true);
+    fireEvent.keyDown(document.body, { key: "End" });
+    expect(book().getAttribute("data-page")).toBe("now");
+    fireEvent.keyDown(document.body, { key: "Home" });
+    expect(book().getAttribute("data-page")).toBe("p1");
+    // a key typed into the field is the field's
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    fireEvent.keyDown(composer(), { key: "ArrowLeft" });
+    expect(book().getAttribute("data-page")).toBe("now");
+
+    document.documentElement.setAttribute("data-motion", "calm");
+    fireEvent.keyDown(document.body, { key: "Home" });
+    expect(book().getAttribute("data-page")).toBe("p1");
+    expect(book().classList.contains("turn-back")).toBe(false);
+    expect(left().querySelector(".sp-ask")!.textContent).toBe("One"); // the still form carries the same page
   });
 
   it("Shift+Enter is a new line, not a send", async () => {
-    await boot();
+    await bootOnNewPage();
     fireEvent.change(composer(), { target: { value: "line one" } });
     fireEvent.keyDown(composer(), { key: "Enter", shiftKey: true });
     expect(run).not.toHaveBeenCalled();
-  });
-});
-
-describe("formatCost", () => {
-  it("always says est.", () => {
-    expect(formatCost(0.0004)).toBe("est. $0.0004");
-    expect(formatCost(0.00001)).toBe("est. under $0.0001");
-    expect(formatCost(1.5)).toBe("est. $1.50");
   });
 });

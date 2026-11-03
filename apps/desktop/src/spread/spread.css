@@ -1,0 +1,814 @@
+/* The Spread (ADR 0024): the conversation as an open book on Loop Tide water, ported from the winning
+ * prototype's stylesheet. Every rule is scoped under [data-spread]; colours, type and motion come from
+ * tokens (the page, gutter, leaf, ribbon and bookmark tokens are in theme/tokens.css). The book's own
+ * measures are declared once, on its root. 12 px is the floor; every move has a still form. */
+
+[data-spread] {
+  --sp-top-min: 64px;
+  --sp-page-pad: 32px 52px 24px 44px;
+  --sp-page-pad-r: 60px;
+  --sp-gutter-w: 64px;
+  --sp-rc-dot: 12px;
+  --sp-rc-time: 92px;
+  --sp-ask-measure: 24ch;
+  --sp-answer-measure: 62ch;
+  --sp-foot-measure: 52ch;
+  --sp-card-measure: 52ch;
+  --sp-bm-w: 150px;
+  --sp-bm-notch: 14px;
+  --sp-dot: 8px;
+  --sp-btn-sm: 30px;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+}
+[data-spread] [hidden] {
+  display: none !important;
+}
+[data-spread] .btn-sm {
+  min-height: var(--sp-btn-sm);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-xs);
+}
+[data-spread] .sp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- the head: her presence, never cut ---- */
+[data-spread] .sp-top {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 10px var(--sp-5) 10px 18px;
+  min-height: var(--sp-top-min);
+}
+[data-spread] .sp-presence {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+}
+[data-spread] .sp-presence .eyebrow {
+  margin: 0;
+  line-height: 1.2;
+}
+[data-spread] .sp-state {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+[data-spread] .sp-state[data-s="waiting"] {
+  color: var(--role-human);
+}
+[data-spread] .sp-state[data-s="signed"] {
+  color: var(--status-success);
+}
+[data-spread] .sp-spacer {
+  flex: 1;
+}
+[data-spread] .sp-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+}
+[data-spread] .sp-tools .btn[aria-pressed="true"] {
+  color: var(--foreground);
+  border-color: var(--border-emphasis);
+  background: var(--hover-wash);
+}
+[data-spread] .sp-hint {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: var(--sp-2);
+}
+
+/* the bookmark: the person's pink ribbon, hanging from the gutter */
+[data-spread] .sp-bookmark {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  left: calc(50% + var(--sp-bm-notch));
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.3));
+}
+[data-spread] .sp-bm-fabric {
+  display: block;
+  width: var(--sp-bm-w);
+  padding: var(--sp-4) 14px 30px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--role-human) 82%, black), var(--role-human) 40%);
+  color: var(--on-human);
+  font: 600 var(--fs-sm) / 1.3 var(--font-sans);
+  text-align: left;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - var(--sp-bm-notch)), 0 100%);
+  transition: padding var(--dur-base) var(--ease-settle);
+}
+[data-spread] .sp-bm-fabric small {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  opacity: 0.92;
+  margin-top: 2px;
+}
+[data-spread] .sp-bookmark:hover .sp-bm-fabric {
+  padding-bottom: 36px;
+}
+
+/* ---- the book ---- */
+[data-spread] .sp-book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+  margin: 0 var(--sp-5);
+  border-radius: var(--r-coat);
+  border: 1px solid var(--edge);
+  box-shadow: var(--coat-shadow);
+  overflow: hidden;
+  background: var(--card-bg);
+}
+[data-spread] .sp-book.is-single {
+  grid-template-columns: 1fr;
+}
+[data-spread] .sp-book.is-single .sp-page-r,
+[data-spread] .sp-book.is-single .sp-gutter {
+  display: none;
+}
+[data-spread] .sp-page {
+  position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-emphasis) transparent;
+  padding: var(--sp-page-pad);
+}
+[data-spread] .sp-page:focus {
+  outline: none;
+}
+[data-spread] .sp-page-l {
+  background: var(--page-l);
+}
+[data-spread] .sp-page-r {
+  background: var(--page-r);
+  padding-left: var(--sp-page-pad-r);
+  container-type: inline-size;
+}
+[data-spread] .sp-book.is-single .sp-page-l {
+  background: var(--page-r);
+  display: grid;
+  place-items: start center;
+}
+[data-spread] .sp-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--sp-gutter-w);
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--gutter-shade) 47%,
+    color-mix(in srgb, var(--lt-rim) 80%, transparent) 50%,
+    var(--gutter-shade) 53%,
+    transparent
+  );
+  opacity: 0.8;
+}
+/* the page-turn leaf: a sheet sweeps across and thins away; still, the page is simply there */
+[data-spread] .sp-leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--card-raised), color-mix(in srgb, var(--card-raised) 70%, var(--gutter-shade)));
+}
+[data-spread] .sp-book.turn-fwd .sp-leaf {
+  left: 50%;
+  transform-origin: 0 50%;
+  animation: sp-leaf-turn var(--dur-turn) var(--ease-settle) forwards;
+}
+[data-spread] .sp-book.turn-back .sp-leaf {
+  left: 0;
+  transform-origin: 100% 50%;
+  animation: sp-leaf-turn var(--dur-turn) var(--ease-settle) forwards;
+}
+@keyframes sp-leaf-turn {
+  0% {
+    opacity: 0.95;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.02);
+  }
+}
+[data-spread] .sp-book.turned .sp-page > * {
+  animation: sp-fade var(--dur-page) var(--ease-settle) both;
+}
+@keyframes sp-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- the left page: what you asked, what she did ---- */
+[data-spread] .sp-kicker {
+  margin: 0 0 var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+[data-spread] .sp-kicker .eyebrow {
+  margin: 0;
+}
+[data-spread] .sp-ask {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--fs-ask);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  max-width: var(--sp-ask-measure);
+}
+[data-spread] .sp-when {
+  margin: 0 0 var(--sp-5);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}
+[data-spread] .sp-h {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-receipts {
+  list-style: none;
+  margin: 0 0 var(--sp-4);
+  padding: 0;
+  position: relative;
+}
+[data-spread] .sp-receipts::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--border-default);
+  border-radius: 2px;
+}
+[data-spread] .sp-rc {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--sp-4) var(--sp-rc-time) minmax(0, 1fr);
+  gap: 10px;
+  padding: var(--sp-1) 0;
+  align-items: start;
+}
+[data-spread] .sp-rc-dot {
+  width: var(--sp-rc-dot);
+  height: var(--sp-rc-dot);
+  margin: 5px 0 0 2px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 2px solid var(--accent);
+}
+[data-spread] .sp-rc[data-sort="keep"] .sp-rc-dot {
+  background: var(--accent);
+}
+[data-spread] .sp-rc[data-sort="memory"] .sp-rc-dot {
+  border-color: var(--role-agent);
+  background: var(--role-agent);
+}
+[data-spread] .sp-rc[data-sort="card"] .sp-rc-dot {
+  border-color: var(--role-human);
+  background: var(--role-human);
+}
+[data-spread] .sp-rc[data-sort="parts"] .sp-rc-dot {
+  border-radius: 3px;
+}
+[data-spread] .sp-rc[data-sort="error"] .sp-rc-dot {
+  border-color: var(--status-error);
+  background: var(--status-error);
+}
+[data-spread] .sp-rc[data-sort="write"] .sp-rc-dot,
+[data-spread] .sp-rc[data-sort="unknown"] .sp-rc-dot {
+  background: var(--card-bg);
+  border-color: var(--muted);
+}
+[data-spread] .sp-rc-t {
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+[data-spread] .sp-rc-x {
+  font-size: var(--fs-md);
+  line-height: 1.45;
+}
+[data-spread] .sp-rc-x small {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-rc[data-sort="error"] .sp-rc-x {
+  color: var(--status-error);
+}
+[data-spread] .sp-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--sp-4);
+  margin: 0;
+  padding: var(--sp-3) 0 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-tally strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+[data-spread] .sp-foot {
+  margin: var(--sp-4) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  max-width: var(--sp-foot-measure);
+  line-height: 1.5;
+}
+[data-spread] .sp-foot + .sp-h,
+[data-spread] .sp-rules + .sp-h {
+  margin-top: var(--sp-5);
+}
+[data-spread] .sp-linkish {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---- the right page: her answer at a reading measure ---- */
+[data-spread] .sp-answer {
+  max-width: var(--sp-answer-measure);
+}
+[data-spread] .sp-answer .prose {
+  font-size: var(--fs-read);
+  line-height: 1.65;
+}
+[data-spread] .sp-answer .prose-h {
+  font-size: var(--fs-read-head);
+  margin-top: 0.2em;
+}
+[data-spread] .sp-answer.is-short .prose p {
+  font-family: var(--font-display);
+  font-size: var(--fs-answer);
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+[data-spread] .sp-answer > * + * {
+  margin-top: var(--sp-4);
+}
+[data-spread] .sp-answer .card {
+  max-width: var(--sp-card-measure);
+}
+[data-spread] .sp-answer .rp-block {
+  box-shadow: none;
+}
+[data-spread] .sp-her {
+  margin: 0 0 var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+[data-spread] .sp-her .eyebrow {
+  margin: 0;
+}
+[data-spread] .sp-cost {
+  margin: var(--sp-4) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+[data-spread] .sp-note {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-stopped {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-card);
+  border: 1px solid color-mix(in srgb, var(--status-error) 55%, transparent);
+  background: color-mix(in srgb, var(--status-error) 9%, transparent);
+}
+[data-spread] .sp-stopped p {
+  margin: 0 0 var(--sp-2);
+}
+[data-spread] .sp-stopped strong {
+  color: var(--status-error);
+}
+[data-spread] .sp-placeholder {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-read-head);
+  color: var(--muted);
+  font-style: italic;
+}
+[data-spread] .sp-band {
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 55%, transparent);
+  color: var(--status-warning);
+  background: color-mix(in srgb, var(--status-warning) 8%, transparent);
+  font-size: var(--fs-sm);
+}
+[data-spread] .sp-unknown {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+
+/* report parts in her answer (ADR 0022): the report's own blocks, one per row at the page's width */
+[data-spread] .her-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+[data-spread] .her-blocks .rp-block {
+  background: var(--raised);
+}
+
+/* ---- writing a new page ---- */
+[data-spread] .sp-composer {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  margin: 0 0 var(--sp-2);
+}
+[data-spread] .sp-composer textarea {
+  flex: 1;
+  resize: none;
+  min-height: 44px;
+}
+[data-spread] .sp-said {
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+  min-height: 1.2em;
+}
+[data-spread] .sp-controls {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  align-items: center;
+  margin: var(--sp-3) 0;
+}
+[data-spread] .sp-clock {
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font-size: var(--fs-sm);
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+[data-spread] .sp-pulse {
+  width: var(--sp-dot);
+  height: var(--sp-dot);
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+  animation: sp-pulse var(--dur-pulse) ease-in-out infinite;
+}
+@keyframes sp-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+[data-spread] .sp-rise {
+  animation: sp-rise var(--dur-rise) var(--ease-settle) both;
+}
+@keyframes sp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- back pages ---- */
+[data-spread] .sp-callout {
+  margin: 0 0 var(--sp-4);
+  font-family: var(--font-display);
+  font-size: var(--fs-callout);
+  line-height: 1.4;
+  padding-left: var(--sp-3);
+  border-left: 3px solid var(--accent);
+}
+[data-spread] .sp-rules {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+[data-spread] .sp-rule {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-default);
+  font-size: var(--fs-sm);
+}
+[data-spread] .sp-rule span {
+  flex: 1;
+}
+[data-spread] .sp-rule-empty {
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-list {
+  margin: 0 0 var(--sp-4);
+  padding-left: 1.2em;
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-cards {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+/* ---- the ribbon of pages ---- */
+[data-spread] .sp-ribbon {
+  display: flex;
+  gap: 6px;
+  padding: 10px var(--sp-5) var(--sp-3);
+  align-items: stretch;
+}
+[data-spread] .sp-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 7px 10px var(--sp-2);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--card-bg) 72%, transparent);
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+  position: relative;
+}
+[data-spread] .sp-tab:hover {
+  border-color: var(--border-emphasis);
+}
+[data-spread] .sp-tab[aria-current="page"] {
+  border-color: var(--accent);
+  background: var(--card-raised);
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+[data-spread] .sp-tab-n {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+[data-spread] .sp-tab-l {
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+[data-spread] .sp-tab-c {
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+[data-spread] .sp-tab.is-stopped .sp-tab-c {
+  color: var(--status-error);
+}
+[data-spread] .sp-tab.is-now {
+  flex: 1.1 1 0;
+  border-style: dashed;
+}
+[data-spread] .sp-tab.is-back {
+  flex: 0.8 1 0;
+  background: transparent;
+}
+[data-spread] .sp-tab-sep {
+  width: 1px;
+  background: var(--border-default);
+  margin: var(--sp-1) 6px;
+  flex: none;
+}
+[data-spread] .sp-mark-pin,
+[data-spread] .sp-mark-live {
+  width: var(--sp-dot);
+  height: var(--sp-dot);
+  border-radius: 50%;
+  background: var(--role-human);
+}
+[data-spread] .sp-mark-live {
+  background: var(--accent);
+  animation: sp-pulse var(--dur-pulse) ease-in-out infinite;
+}
+[data-spread] .sp-compact {
+  display: none;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-2) 10px 10px;
+}
+[data-spread] .sp-compact select {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  min-height: 36px;
+  font: 500 var(--fs-sm) var(--font-sans);
+  color: var(--foreground);
+  background: var(--card-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: 0 var(--sp-2);
+}
+
+@media (max-width: 1180px) {
+  [data-spread] .sp-tab-l {
+    -webkit-line-clamp: 1;
+  }
+  [data-spread] .sp-hint {
+    display: none;
+  }
+}
+@media (max-width: 1000px) {
+  [data-spread] .sp-bookmark {
+    position: static;
+    filter: none;
+    flex: none;
+  }
+  [data-spread] .sp-bm-fabric {
+    width: auto;
+    padding: 6px var(--sp-3);
+    clip-path: none;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    background: var(--role-human);
+  }
+  [data-spread] .sp-bm-fabric small {
+    display: none;
+  }
+  [data-spread] .sp-bookmark:hover .sp-bm-fabric {
+    padding-bottom: 6px;
+  }
+}
+@media (max-width: 980px) {
+  [data-spread] .sp-tab-l {
+    display: none;
+  }
+  [data-spread] .sp-tab {
+    align-items: center;
+    text-align: center;
+  }
+  [data-spread] .sp-page {
+    padding: var(--sp-6) var(--sp-6) 28px 28px;
+  }
+  [data-spread] .sp-page-r {
+    padding-left: 40px;
+  }
+}
+@media (max-height: 560px) {
+  [data-spread][data-layout="open"] .sp-page {
+    padding-top: var(--sp-5);
+  }
+  [data-spread][data-layout="open"] .sp-tab-l {
+    display: none;
+  }
+}
+
+/* her window's width: the spread folds to one page, the left above the right */
+[data-spread][data-layout="folded"] .sp-top {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: var(--sp-2) var(--sp-3);
+  min-height: 0;
+}
+[data-spread][data-layout="folded"] .sp-presence .eyebrow,
+[data-spread][data-layout="folded"] .sp-spacer,
+[data-spread][data-layout="folded"] .sp-hint {
+  display: none;
+}
+[data-spread][data-layout="folded"] .sp-tools {
+  width: 100%;
+  order: 3;
+}
+[data-spread][data-layout="folded"] .pill {
+  order: 2;
+  margin-left: auto;
+}
+[data-spread][data-layout="folded"] .sp-bookmark {
+  order: 1;
+  position: static;
+  filter: none;
+  flex: none;
+}
+[data-spread][data-layout="folded"] .sp-bm-fabric {
+  width: auto;
+  padding: 6px var(--sp-3);
+  clip-path: none;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  background: var(--role-human);
+}
+[data-spread][data-layout="folded"] .sp-bm-fabric small {
+  display: none;
+}
+[data-spread][data-layout="folded"] .sp-bookmark:hover .sp-bm-fabric {
+  padding-bottom: 6px;
+}
+[data-spread][data-layout="folded"] .sp-book {
+  display: block;
+  margin: 0 var(--sp-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+[data-spread][data-layout="folded"] .sp-book.is-single .sp-page-l {
+  display: block;
+}
+[data-spread][data-layout="folded"] .sp-page {
+  overflow: visible;
+  padding: 22px 18px var(--sp-6);
+}
+[data-spread][data-layout="folded"] .sp-page-r {
+  padding-left: 18px;
+  border-top: 1px dashed var(--border-emphasis);
+}
+[data-spread][data-layout="folded"] .sp-gutter,
+[data-spread][data-layout="folded"] .sp-leaf,
+[data-spread][data-layout="folded"] .sp-ribbon {
+  display: none;
+}
+[data-spread][data-layout="folded"] .sp-compact {
+  display: flex;
+}
+[data-spread][data-layout="folded"] .sp-rc {
+  --sp-rc-time: 72px;
+}
+[data-spread][data-layout="folded"] .sp-ask {
+  font-size: var(--fs-ask-folded);
+}
+[data-spread][data-layout="folded"] .sp-answer.is-short .prose p {
+  font-size: var(--fs-answer-folded);
+}
+
+/* Still forms: the leaf, the page's fade, the rise, the pulse and the bookmark's pull all stop, and the
+ * page is simply there with the same words (the calm rule in ui/look.css does the same by choice). */
+@media (prefers-reduced-motion: reduce) {
+  [data-spread] *,
+  [data-spread] *::before,
+  [data-spread] *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
