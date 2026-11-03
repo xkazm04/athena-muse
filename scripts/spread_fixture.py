@@ -311,7 +311,8 @@ def build() -> dict[str, Any]:
 
 def main() -> int:
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "apps/desktop/src/spread/fixture.json"
-    out.write_text(json.dumps(build(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    text = json.dumps(build(), indent=2, ensure_ascii=False) + "\n"
+    out.write_text(text, encoding="utf-8", newline="\n")  # LF on every platform
     print(f"wrote {out}")
     return 0
 
