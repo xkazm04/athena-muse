@@ -27,12 +27,27 @@ async function paintLook(): Promise<void> {
   }
 }
 
-export type LiveItem = { kind: "tool"; label: string } | { kind: "card"; id: string };
+/** One piece of the reply, in the order the stream delivered it. `marks` are where each text delta
+ *  began in `text`, so the transcript can fade in only the words that just arrived. */
+export type LivePart =
+  | { kind: "text"; text: string; marks: number[] }
+  | { kind: "tool"; label: string }
+  | { kind: "card"; id: string };
+
+/** A text delta extends the text run it follows; after a tool line or a card it starts a new run. */
+export function appendText(parts: LivePart[], delta: string): LivePart[] {
+  if (!delta) return parts;
+  const last = parts[parts.length - 1];
+  if (last?.kind === "text") {
+    return [...parts.slice(0, -1), { kind: "text", text: last.text + delta, marks: [...last.marks, last.text.length] }];
+  }
+  return [...parts, { kind: "text", text: delta, marks: [0] }];
+}
 
 /** The reply being written right now (or the one that just failed). */
 export interface Live {
-  text: string;
-  items: LiveItem[];
+  /** Text runs, tool lines and cards, interleaved as they streamed (inline-structured-rows: position is meaning). */
+  parts: LivePart[];
   done: boolean;
   cost?: number;
   error?: string;
@@ -106,7 +121,7 @@ export const waitingCount = (s: Pick<HerState, "cards">): number =>
  *  a card waits on the person, otherwise rest. */
 export function sealOf(s: Pick<HerState, "signed" | "streaming" | "live" | "cards">): SealState {
   if (s.signed) return "signed";
-  if (s.streaming && !s.live?.items.some((i) => i.kind === "card")) return "working";
+  if (s.streaming && !s.live?.parts.some((p) => p.kind === "card")) return "working";
   return waitingCount(s) > 0 ? "waiting" : "rest";
 }
 
@@ -192,7 +207,7 @@ export const useHer = create<HerState>()((set, get) => {
       const ctrl = new AbortController();
       controller = ctrl;
       const spaceId = get().activeId;
-      set({ streaming: true, sent: text, live: { text: "", items: [], done: false }, problem: "" });
+      set({ streaming: true, sent: text, live: { parts: [], done: false }, problem: "" });
       const patch = (fn: (l: Live) => Live) => set((s) => (s.live ? { live: fn(s.live) } : {}));
       let ended = false;
       try {
@@ -206,15 +221,15 @@ export const useHer = create<HerState>()((set, get) => {
                 set((s) => (s.engine ? { engine: { ...s.engine, engine: e.engine, simulated: e.simulated } } : {}));
                 break;
               case "text":
-                patch((l) => ({ ...l, text: l.text + e.delta }));
+                patch((l) => ({ ...l, parts: appendText(l.parts, e.delta) }));
                 break;
               case "tool":
                 // A gated action shows as its card, which follows; a line too would say it twice.
-                if (e.class === "auto") patch((l) => ({ ...l, items: [...l.items, { kind: "tool", label: e.label }] }));
+                if (e.class === "auto") patch((l) => ({ ...l, parts: [...l.parts, { kind: "tool", label: e.label }] }));
                 break;
               case "card":
                 learnCard(e.card);
-                patch((l) => ({ ...l, items: [...l.items, { kind: "card", id: e.card.id }] }));
+                patch((l) => ({ ...l, parts: [...l.parts, { kind: "card", id: e.card.id }] }));
                 break;
               case "done":
                 ended = true;

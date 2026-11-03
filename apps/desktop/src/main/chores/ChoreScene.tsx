@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import * as api from "../../lib/api";
 import type { BenchSummary, ChoreDetail, FeaturedStatus, ProofRow } from "../../lib/contract";
+import { Prose } from "../../ui/Prose";
 import { reasonOf, useMain } from "../store";
 import {
   ENGINE_WORD,
@@ -115,7 +116,8 @@ export function ChoreDetailView({ detail }: { detail: ChoreDetail }) {
           </dl>
           <details className="m-chore__brief">
             <summary>The whole brief</summary>
-            <Brief text={detail.brief} />
+            {/* the brief is light markdown; it reads through the same door as her words */}
+            <Prose text={detail.brief} />
           </details>
         </section>
         <Bench id={chore.id} bench={chore.bench} />
@@ -261,36 +263,4 @@ function Fact({ term, children, kpi = false }: { term: string; children: ReactNo
       <dd>{children}</dd>
     </div>
   );
-}
-
-/** The brief is light markdown: paragraphs, "- " lists and **bold**. Rendered as text, never as HTML. */
-export function Brief({ text }: { text: string }) {
-  const blocks: ReactNode[] = [];
-  let list: string[] = [];
-  const flush = () => {
-    if (list.length === 0) return;
-    blocks.push(
-      <ul key={`l${blocks.length}`}>
-        {list.map((l, i) => (
-          <li key={i}>{bold(l)}</li>
-        ))}
-      </ul>,
-    );
-    list = [];
-  };
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (/^[-*] /.test(line)) {
-      list.push(line.slice(2));
-      continue;
-    }
-    flush();
-    if (line) blocks.push(<p key={`p${blocks.length}`}>{bold(line)}</p>);
-  }
-  flush();
-  return <>{blocks}</>;
-}
-
-function bold(line: string): ReactNode[] {
-  return line.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
 }

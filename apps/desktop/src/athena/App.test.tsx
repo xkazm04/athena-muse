@@ -5,7 +5,7 @@ import type { AppEvent, Card, EngineStatus, SpaceSummary, Turn, TurnEvent } from
 import { streamRun } from "../lib/daemon";
 import { SETTLE_MS } from "../theme";
 import { App } from "./App";
-import { resetHer } from "./store";
+import { resetHer, useHer } from "./store";
 import { formatCost } from "./Transcript";
 
 vi.mock("../lib/api", () => ({
@@ -66,6 +66,8 @@ const card: Card = {
 };
 
 const sealState = () => document.querySelector(".seal")!.getAttribute("data-state");
+/** Her paragraph whose whole text is `text`, however many spans the word reveal split it into. */
+const said = (text: string) => screen.getByText((_, el) => el?.tagName === "P" && el.closest(".her-say") !== null && el.textContent === text);
 const composer = () => screen.getByRole("textbox", { name: "Message Athena" }) as HTMLTextAreaElement;
 
 function type(text: string) {
@@ -135,9 +137,10 @@ describe("her window", () => {
     expect(screen.getByText("Thinking...", { selector: ".her-state" })).toBeTruthy();
     await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
     await stream.emit({ type: "text", delta: "By April" });
-    expect(screen.getByText("By April")).toBeTruthy();
+    expect(said("By April")).toBeTruthy();
     await stream.emit({ type: "text", delta: " 15." });
-    expect(screen.getByText("By April 15.")).toBeTruthy();
+    // live words arrive in their own reveal spans; the paragraph reads whole
+    expect(said("By April 15.")).toBeTruthy();
     expect(screen.getByText("Looked through memory")).toBeTruthy();
     await stream.emit({ type: "done", turn_id: "turn_1", waiting: false, cost_usd: 0.0004 });
     await stream.end();
@@ -296,6 +299,84 @@ describe("her window", () => {
     expect(signal!.aborted).toBe(true);
     await waitFor(() => expect(composer().disabled).toBe(false));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the live parts in the order they streamed: text, tool, text, card, text", async () => {
+    await boot();
+    const stream = heldStream();
+    type("Look into it");
+    await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
+    await stream.emit({ type: "text", delta: "Let me look." });
+    await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
+    await stream.emit({ type: "text", delta: "Found **two** notes." });
+    await stream.emit({ type: "tool", name: "propose_brief", label: card.label, class: "gated" });
+    await stream.emit({ type: "card", card });
+    await stream.emit({ type: "text", delta: "Sign it" });
+    await stream.emit({ type: "text", delta: " when ready." });
+
+    const parts = useHer.getState().live!.parts;
+    expect(parts.map((p) => p.kind)).toEqual(["text", "tool", "text", "card", "text"]);
+    expect(parts[4]).toEqual({ kind: "text", text: "Sign it when ready.", marks: [0, 7] });
+
+    // The screen says them in that order, and her name only once.
+    const rows = [...document.querySelectorAll(".her-transcript > *")].slice(1);
+    expect(rows.map((r) => r.className.split(" ")[0])).toEqual(["her-line", "her-tool", "her-line", "her-card", "her-line"]);
+    expect(rows.map((r) => r.textContent)).toEqual([
+      "Let me look.",
+      "Looked through memory",
+      "Found two notes.",
+      expect.stringContaining(card.label),
+      "Sign it when ready.",
+    ]);
+    expect(document.querySelectorAll(".her-say:not(.her-say--more)")).toHaveLength(1);
+    expect(document.querySelector(".her-transcript strong")!.textContent).toBe("two");
+
+    // While she writes, the newest words are their own reveal span; once done, none is left.
+    // A run a tool line or card followed is finished: only the last run is still revealing.
+    expect(rows[4]!.querySelectorAll(".prose-new").length).toBeGreaterThan(0);
+    expect(rows[0]!.querySelector(".prose-new")).toBeNull();
+    expect(rows[2]!.querySelector(".prose-new")).toBeNull();
+    await stream.emit({ type: "done", turn_id: "turn_1", waiting: true, cost_usd: 0.0004 });
+    expect(document.querySelectorAll(".prose-new")).toHaveLength(0);
+    expect(rows[4]!.textContent).toBe("Sign it when ready.est. $0.0004");
+    await stream.end();
+  });
+
+  it("shows a tool line after the words before it, with the dots while more is coming", async () => {
+    await boot();
+    const stream = heldStream();
+    type("Check");
+    await stream.emit({ type: "text", delta: "One moment." });
+    expect(document.querySelector(".her-say--pending")).toBeNull();
+    await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
+    const after = document.querySelector(".her-tool")!.nextElementSibling!;
+    expect(after.querySelector(".her-say--pending")).toBeTruthy();
+    await stream.emit({ type: "done", turn_id: "turn_1", waiting: false });
+    await stream.end();
+  });
+
+  it("renders her words as rich text, settled and live, and any HTML in them as inert text", async () => {
+    m.conversation.mockResolvedValue([
+      turn("t1", "person", "Steps?"),
+      turn("t2", "athena", "**First:**\n- open `settings`\n- sign\n\n<img src=x onerror=alert(1)><script>alert(2)</script>"),
+    ]);
+    await boot();
+    expect((await screen.findByText("First:")).tagName).toBe("STRONG");
+    expect(screen.getByText("sign").tagName).toBe("LI");
+    expect(screen.getByText("settings").tagName).toBe("CODE");
+    expect(said("<img src=x onerror=alert(1)><script>alert(2)</script>")).toBeTruthy();
+    expect(document.querySelector(".her-transcript img, .her-transcript script")).toBeNull();
+
+    const stream = heldStream();
+    type("And now?");
+    await stream.emit({ type: "text", delta: "Now *wait" });
+    // an unclosed marker mid-stream is styled as if closed at the tail; its star never shows
+    expect(document.querySelector(".her-transcript em")!.textContent).toBe("wait");
+    await stream.emit({ type: "text", delta: "* <b>here</b>" });
+    expect(said("Now wait <b>here</b>")).toBeTruthy();
+    expect(document.querySelector(".her-transcript b")).toBeNull();
+    await stream.emit({ type: "done", turn_id: "turn_2", waiting: false });
+    await stream.end();
   });
 
   it("Shift+Enter is a new line, not a send", async () => {

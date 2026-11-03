@@ -1,0 +1,92 @@
+/* The prose door's look (Prose.tsx). Tokens only, and plain on purpose: the look is decided later;
+ * these rules keep the mechanism readable and easy to restyle. Motion is opacity only. */
+
+.prose {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.prose > p,
+.prose > ul,
+.prose > ol,
+.prose > .prose-code {
+  margin: 0;
+}
+.prose > * + * {
+  margin-top: var(--sp-2);
+}
+.prose ul,
+.prose ol {
+  padding-left: var(--sp-5);
+}
+.prose li + li {
+  margin-top: var(--sp-1);
+}
+
+/* inline code stays inline and literal, wrapping only when a token is wider than the column */
+.prose-ic {
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-sm);
+  background: var(--wash);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* a link is shown, not followed: the label as words, the true address beside it */
+.prose-url {
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+/* a code block scrolls inside itself; a long line widens neither the turn nor the window */
+.prose-code {
+  min-width: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  background: var(--recess);
+}
+.prose-code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--faint);
+  font-size: var(--fs-xs);
+}
+.prose-code__copy {
+  min-height: 24px;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.prose-code pre {
+  margin: 0;
+  padding: var(--sp-2);
+  overflow-x: auto;
+  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  /* typography stops at the fence: no ligatures to paste back wrong */
+  font-variant-ligatures: none;
+}
+
+/* the word reveal: each streamed delta's words fade in once, on mount; never again */
+.prose-new {
+  animation: prose-reveal var(--dur-fast) ease-out;
+}
+@keyframes prose-reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Calm (look.css) and reduced motion: the words land at once. */
+:root[data-motion="calm"] .prose-new {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prose-new {
+    animation: none;
+  }
+}

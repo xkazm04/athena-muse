@@ -205,7 +205,8 @@ body.her #root {
 .her-say::before {
   content: "Athena";
 }
-.her-say--pending::before {
+.her-say--pending::before,
+.her-say--more::before {
   display: none;
 }
 .her-bubble,

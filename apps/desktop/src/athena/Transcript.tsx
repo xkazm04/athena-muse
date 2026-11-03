@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import * as api from "../lib/api";
 import type { Card, Turn } from "../lib/contract";
 import { CardView } from "../ui";
+import { Prose } from "../ui/Prose";
 import { useHer, type Live } from "./store";
 
 /** Muse costs are estimates; every one on screen says so. */
@@ -30,11 +31,22 @@ function PersonLine({ text }: { text: string }) {
   );
 }
 
-function AthenaLine({ text, cost, writing }: { text: string; cost?: number; writing?: boolean }) {
+interface AthenaLineProps {
+  text: string;
+  cost?: number;
+  writing?: boolean;
+  /** Still streaming: read provisionally, new words fade in (`marks` from the store). */
+  live?: boolean;
+  marks?: readonly number[];
+  /** A later text run of the same turn: her name is not said again. */
+  more?: boolean;
+}
+
+function AthenaLine({ text, cost, writing, live, marks, more }: AthenaLineProps) {
   return (
     <div className="her-line her-line--athena">
-      {text ? (
-        <p className="her-say">{text}</p>
+      {text.trim() ? (
+        <Prose className={more ? "her-say her-say--more" : "her-say"} text={text} live={live} marks={marks} />
       ) : writing ? (
         <p className="her-say her-say--pending" aria-label="Athena is replying">
           <i />
@@ -58,25 +70,56 @@ function TurnView({ turn, cards }: { turn: Turn; cards: Record<string, Card> }) 
   );
 }
 
+/** The reply as it streams: text runs, tool lines and cards in the order they arrived (a tool line
+ *  between two sentences stands between them), then the cost once the turn is done. */
 function LiveView({ live, sent, cards, streaming }: { live: Live; sent: string; cards: Record<string, Card>; streaming: boolean }) {
   const retry = useHer((s) => s.retry);
+  const { parts } = live;
+  // Only the run still being written reads provisionally and fades in; a run a tool line or a card
+  // followed is finished, and reads as settled text.
+  const reveal = streaming && !live.done;
+  const said = (n: number) => {
+    const p = parts[n];
+    return p?.kind === "text" && p.text.trim() !== "";
+  };
+  const firstText = parts.findIndex((_, n) => said(n));
+  let lastText = parts.length - 1;
+  while (lastText >= 0 && !said(lastText)) lastText--;
+  const cost = live.done ? live.cost : undefined;
+  // A turn with no words (only a card, say) still shows what it cost, on a line of its own.
+  const costAlone = lastText === -1 ? cost : undefined;
+  const tail = parts[parts.length - 1];
+  // Dots while she writes and no words are arriving yet (before the first, or after a tool line).
+  const waiting = streaming && (tail === undefined || tail.kind !== "text" || tail.text.trim() === "");
   return (
     <>
       <PersonLine text={sent} />
-      {live.items.flatMap((i, n) =>
-        i.kind === "tool"
-          ? [
-              <p key={n} className="her-tool">
-                {i.label}
-              </p>,
-            ]
-          : [],
-      )}
-      <AthenaLine text={live.text} cost={live.done ? live.cost : undefined} writing={streaming} />
-      {live.items.map((i) => {
-        const card = i.kind === "card" ? cards[i.id] : undefined;
-        return card ? <InlineCard key={card.id} card={card} /> : null;
+      {parts.map((p, n) => {
+        switch (p.kind) {
+          case "text":
+            return p.text.trim() ? (
+              <AthenaLine
+                key={`p${n}`}
+                text={p.text}
+                live={reveal && n === parts.length - 1}
+                marks={p.marks}
+                more={n !== firstText}
+                cost={n === lastText ? cost : undefined}
+              />
+            ) : null;
+          case "tool":
+            return (
+              <p key={`p${n}`} className="her-tool">
+                {p.label}
+              </p>
+            );
+          case "card": {
+            const card = cards[p.id];
+            return card ? <InlineCard key={`p${n}`} card={card} /> : null;
+          }
+        }
       })}
+      {(waiting || costAlone !== undefined) && <AthenaLine text="" writing={waiting} cost={costAlone} />}
       {live.error && (
         <div className="her-note" role="alert">
           <p>{live.error}</p>
