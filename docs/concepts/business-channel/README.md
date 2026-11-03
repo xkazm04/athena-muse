@@ -266,6 +266,7 @@ MCP server (Phase 0):
   - auto: `page_read | page_find | page_wait | page_scroll | tabs_read | page_screenshot | record_list | record_put | file_list`
   - gated: `page_click | page_fill | page_select | page_submit | page_upload | page_download | wheel_handoff`
   - peer tools arrive as `<peer>__<tool>` with the peer's annotations.
+- The report inside agent hosts ([ADR 0021](../../adr/0021-the-project-report-is-also-a-view-inside-agent-hosts.md), 2026-11-03): an outside lease on a project that keeps records gets `show_report`, the report as standalone text, computed figures and the `ui://athena/report` view; `readOnlyHint` says whether a tool writes, and every refusal is `isError`.
 
 Records (Phase 1):
 - Table: `records(id TEXT PK, space_id TEXT NOT NULL, kind TEXT NOT NULL, key TEXT, body TEXT, rev INTEGER, created TEXT)`. Append-only: a change is a new revision.

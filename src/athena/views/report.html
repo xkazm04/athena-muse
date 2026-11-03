@@ -1,0 +1,281 @@
+<!doctype html>
+<!--
+  The project's report as a view inside an agent host (ADR 0021): the MCP Apps extension, 2026-01-26.
+  Self-contained: inline style and script, no external origin, so the host's restrictive CSP holds.
+  It speaks only the standard bridge (ui/initialize, ui/notifications/initialized, then it renders the
+  structuredContent of ui/notifications/tool-result) and writes every string with textContent.
+  Inline limits: at most five figures or rows per part (the daemon trims; the view trims again), no
+  actions, no nested scroll. The look is plain on purpose: the host's standard style variables win,
+  and the fallbacks below are the desktop's own tokens (apps/desktop/src/theme/tokens.css).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Project report</title>
+    <style>
+      /* Fallbacks for the host's standard variables, light and dark; the host's values replace them. */
+      :root {
+        color-scheme: light dark;
+        --color-background-primary: light-dark(#edf1f8, #060a17);
+        --color-background-secondary: light-dark(#f8faff, #0b1430);
+        --color-text-primary: light-dark(#0a1430, #e8f1ff);
+        --color-text-secondary: light-dark(#36486c, #a3bbe0);
+        --color-border-primary: light-dark(rgba(10, 30, 80, 0.14), rgba(130, 170, 230, 0.18));
+        --color-text-danger: light-dark(#b91c1c, #f87171);
+        --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+        --font-text-sm-size: 13px;
+        --font-text-md-size: 15px;
+        --font-heading-sm-size: 18px;
+        --font-weight-semibold: 600;
+        --border-radius-md: 8px;
+        --border-width-regular: 1px;
+        --rp-gap: 12px;
+        --rp-gap-sm: 4px;
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+      }
+      /* One page, one scroll at most: no part scrolls on its own. */
+      body {
+        margin: 0;
+        padding: var(--rp-gap);
+        background: var(--color-background-primary);
+        color: var(--color-text-primary);
+        font-family: var(--font-sans);
+        font-size: var(--font-text-md-size);
+      }
+      .rv-title {
+        margin: 0 0 var(--rp-gap-sm);
+        font-size: var(--font-heading-sm-size);
+        font-weight: var(--font-weight-semibold);
+      }
+      .rv-callout,
+      .rv-note,
+      .rv-problem {
+        margin: 0 0 var(--rp-gap);
+        color: var(--color-text-secondary);
+      }
+      .rv-problem {
+        color: var(--color-text-danger);
+        white-space: pre-line;
+      }
+      .rv-blocks {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--rp-gap);
+      }
+      .rv-block {
+        padding: var(--rp-gap);
+        border: var(--border-width-regular) solid var(--color-border-primary);
+        border-radius: var(--border-radius-md);
+        background: var(--color-background-secondary);
+      }
+      .rv-block__title {
+        margin: 0 0 var(--rp-gap-sm);
+        font-size: var(--font-text-sm-size);
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-text-secondary);
+      }
+      .rv-figures,
+      .rv-rows {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .rv-figure {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--rp-gap);
+      }
+      .rv-figure__value {
+        font-weight: var(--font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+      }
+      .rv-row,
+      .rv-more,
+      .rv-empty {
+        font-size: var(--font-text-sm-size);
+      }
+      .rv-more,
+      .rv-empty {
+        color: var(--color-text-secondary);
+      }
+    </style>
+  </head>
+  <body>
+    <main id="report" aria-live="polite">
+      <p class="rv-note">Reading the report…</p>
+    </main>
+    <script>
+      (() => {
+        "use strict";
+
+        // Every word the view writes itself; the rest comes from the tool's result.
+        const WORDS = {
+          noReading: "no reading yet",
+          empty: "Nothing here yet.",
+          more: (n) => `and ${n} more in the app`,
+          counted: (at) => `Every figure is counted from the project's records (${at}).`,
+          problem: "The report could not be shown.",
+        };
+        const INLINE_MAX = 5;
+        const MODES = ["inline"];
+
+        const root = document.documentElement;
+        const main = document.getElementById("report");
+        let locale;
+        let nextId = 1;
+        const waiting = new Map();
+
+        const send = (message) => window.parent.postMessage(message, "*");
+        const notify = (method, params) => send({ jsonrpc: "2.0", method, params });
+        const request = (method, params) =>
+          new Promise((resolve, reject) => {
+            const id = nextId++;
+            waiting.set(id, { resolve, reject });
+            send({ jsonrpc: "2.0", id, method, params });
+          });
+
+        const el = (tag, className, text) => {
+          const node = document.createElement(tag);
+          if (className) node.className = className;
+          if (text !== undefined) node.textContent = String(text);
+          return node;
+        };
+
+        const figure = (v) => {
+          if (typeof v !== "number" || !Number.isFinite(v)) return WORDS.noReading;
+          try {
+            return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(v);
+          } catch {
+            return String(v);
+          }
+        };
+
+        // The host's context: its theme and its standard style variables (strings only, "--" names only).
+        const applyContext = (ctx) => {
+          if (!ctx || typeof ctx !== "object") return;
+          if (ctx.theme === "light" || ctx.theme === "dark") root.dataset.theme = ctx.theme;
+          if (typeof ctx.locale === "string") locale = ctx.locale;
+          const vars = ctx.styles && ctx.styles.variables;
+          if (vars && typeof vars === "object") {
+            for (const [name, value] of Object.entries(vars)) {
+              if (/^--[a-z0-9-]+$/.test(name) && typeof value === "string") root.style.setProperty(name, value);
+            }
+          }
+        };
+
+        const renderBlock = (block) => {
+          const part = el("section", "rv-block");
+          part.dataset.kind = String(block.kind || "");
+          part.append(el("h2", "rv-block__title", block.title || ""));
+          const figures = Array.isArray(block.figures) ? block.figures.slice(0, INLINE_MAX) : [];
+          const rows = Array.isArray(block.rows) ? block.rows.slice(0, INLINE_MAX) : [];
+          if (typeof block.text === "string" && block.text) part.append(el("p", "rv-row", block.text));
+          if (figures.length) {
+            const list = el("ul", "rv-figures");
+            for (const f of figures) {
+              const item = el("li", "rv-figure");
+              const unit = typeof f.unit === "string" && f.unit && typeof f.value === "number" ? ` ${f.unit}` : "";
+              if (f.label) item.append(el("span", "rv-figure__label", f.label));
+              item.append(el("span", "rv-figure__value", figure(f.value) + unit));
+              list.append(item);
+            }
+            part.append(list);
+          }
+          if (rows.length) {
+            const list = el("ul", "rv-rows");
+            for (const r of rows) list.append(el("li", "rv-row", r));
+            part.append(list);
+          }
+          if (!figures.length && !rows.length && !block.text) part.append(el("p", "rv-empty", WORDS.empty));
+          if (typeof block.more === "number" && block.more > 0) part.append(el("p", "rv-more", WORDS.more(block.more)));
+          return part;
+        };
+
+        const render = (report) => {
+          const blocks = el("div", "rv-blocks");
+          for (const block of Array.isArray(report.blocks) ? report.blocks : []) {
+            if (block && block.kind !== "callout") blocks.append(renderBlock(block));
+          }
+          const parts = [el("h1", "rv-title", report.title || "")];
+          if (typeof report.callout === "string" && report.callout) parts.push(el("p", "rv-callout", report.callout));
+          parts.push(blocks, el("p", "rv-note", WORDS.counted(report.rendered_at || "")));
+          main.replaceChildren(...parts);
+        };
+
+        // A result without the structured report (an error, an older server): show its own words.
+        const renderText = (result) => {
+          const said = (Array.isArray(result.content) ? result.content : [])
+            .filter((c) => c && c.type === "text" && typeof c.text === "string")
+            .map((c) => c.text)
+            .join("\n");
+          main.replaceChildren(el("p", result.isError ? "rv-problem" : "rv-note", said || WORDS.problem));
+        };
+
+        const onToolResult = (result) => {
+          if (!result || typeof result !== "object") return;
+          const report = result.structuredContent;
+          if (!result.isError && report && typeof report === "object" && Array.isArray(report.blocks)) render(report);
+          else renderText(result);
+        };
+
+        const answer = (id, result) => send({ jsonrpc: "2.0", id, result });
+
+        window.addEventListener("message", (event) => {
+          if (event.source !== window.parent) return;
+          const m = event.data;
+          if (!m || typeof m !== "object" || m.jsonrpc !== "2.0") return;
+          if (m.method === undefined) {
+            const held = waiting.get(m.id);
+            if (!held) return;
+            waiting.delete(m.id);
+            if (m.error) held.reject(m.error);
+            else held.resolve(m.result);
+            return;
+          }
+          if (m.id !== undefined) {
+            // The host's requests: teardown and ping need only an answer; the view keeps no state.
+            if (m.method === "ui/resource-teardown" || m.method === "ping") answer(m.id, {});
+            else send({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "not supported" } });
+            return;
+          }
+          if (m.method === "ui/notifications/tool-result") onToolResult(m.params);
+          else if (m.method === "ui/notifications/host-context-changed") applyContext(m.params);
+          // ui/notifications/tool-input: show_report takes no arguments, so there is nothing to show yet.
+        });
+
+        // The size the host should give the frame, so the page never scrolls inside the conversation.
+        let sent = "";
+        const sizeChanged = () => {
+          const width = Math.ceil(root.scrollWidth);
+          const height = Math.ceil(root.scrollHeight);
+          const key = `${width}x${height}`;
+          if (key === sent) return;
+          sent = key;
+          notify("ui/notifications/size-changed", { width, height });
+        };
+
+        request("ui/initialize", {
+          appCapabilities: { availableDisplayModes: MODES },
+          clientInfo: { name: "athena-report", version: "1" },
+          protocolVersion: "2026-01-26",
+        })
+          .then((result) => {
+            applyContext(result && result.hostContext);
+            notify("ui/notifications/initialized", {});
+            if (typeof ResizeObserver === "function") new ResizeObserver(sizeChanged).observe(document.body);
+            sizeChanged();
+          })
+          .catch(() => {
+            main.replaceChildren(el("p", "rv-problem", WORDS.problem));
+          });
+      })();
+    </script>
+  </body>
+</html>

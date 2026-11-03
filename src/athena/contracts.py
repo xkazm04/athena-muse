@@ -85,6 +85,7 @@ ActionName = Literal[
     "record_list",
     "record_put",
     "twin_send_web",
+    "show_report",
 ]
 AppEventType = Literal[
     "card_filed",
@@ -187,6 +188,9 @@ CATALOG: dict[ActionName, ActionClass] = {
     # A twin's message on a web channel (business Phase 2): Proton mail, a bio link or a comment, sent
     # through her browser. Always a card; never sent alone.
     "twin_send_web": "gated",
+    # A view inside an agent host (ADR 0021): the project's report as text, structured figures and a
+    # rendered view. Offered only to an outside client's lease on a project that keeps records.
+    "show_report": "auto",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------

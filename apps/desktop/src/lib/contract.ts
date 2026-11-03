@@ -69,7 +69,8 @@ export type ActionName =
   | "setup_act"
   | "record_list"
   | "record_put"
-  | "twin_send_web";
+  | "twin_send_web"
+  | "show_report";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -168,6 +169,8 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   record_put: "auto",
   // A twin's message on a web channel (business Phase 2): always a card, never sent alone.
   twin_send_web: "gated",
+  // A view inside an agent host (ADR 0021): the report as text, figures and a view; outside leases only.
+  show_report: "auto",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------
