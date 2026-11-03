@@ -49,6 +49,13 @@ const BlockView = memo(function BlockView({ block, open, starts }: { block: Bloc
       return <CodeBlock text={block.text} lang={block.lang} />;
     case "p":
       return <p>{render(parseInline(block.body, open), starts)}</p>;
+    case "h":
+      // One emphasis level for every depth, and no size scale: a chat column is not a document.
+      return (
+        <p className="prose-h">
+          <strong>{render(parseInline(block.body, open), starts)}</strong>
+        </p>
+      );
     case "list": {
       const items = block.items.map((item, n) => (
         <li key={n}>{render(parseInline(item, open && n === block.items.length - 1), starts)}</li>

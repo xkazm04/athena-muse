@@ -27,6 +27,7 @@ SITES_MAX = 24  # a project's sites (ADR 0014)
 SITE_FRESH_S = 300  # a look at a site stands this long before the overview or a hand looks again
 RECORDS_PAGE_MAX = 500  # records one list answers (business Phase 1)
 BLOCKS_MAX = 12  # blocks in one report
+CHAT_BLOCKS_MAX = 3  # report parts in one chat reply (ADR 0022)
 REPORT_TITLE_MAX = 80
 CALLOUT_MAX = 280
 RECOMPOSE_MIN_S = 3600  # a shape change recomposes at most this often
@@ -86,6 +87,7 @@ ActionName = Literal[
     "record_put",
     "twin_send_web",
     "show_report",
+    "show_blocks",
 ]
 AppEventType = Literal[
     "card_filed",
@@ -191,6 +193,9 @@ CATALOG: dict[ActionName, ActionClass] = {
     # A view inside an agent host (ADR 0021): the project's report as text, structured figures and a
     # rendered view. Offered only to an outside client's lease on a project that keeps records.
     "show_report": "auto",
+    # Report parts in a chat reply (ADR 0022): 1 to 3 parts of the same kit, bound to the project's
+    # records. Offered only to a chat turn in a project that keeps records; it reads and changes nothing.
+    "show_blocks": "auto",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -391,6 +396,38 @@ class Card(TypedDict):
     outcome: NotRequired[str]  # what a signed card's run said, in plain words
 
 
+class TextPart(TypedDict):
+    """A run of her words between two other parts of the turn."""
+
+    kind: Literal["text"]
+    text: str
+
+
+#: A tool line of the turn, as it streamed: the action, its label (the dispatch's own words for what
+#: happened, or what a filed card asks) and its class. `class` is a Python keyword, hence this form.
+ToolPart = TypedDict(
+    "ToolPart", {"kind": Literal["tool"], "name": ActionName, "label": str, "class": ActionClass}
+)
+
+
+class CardPart(TypedDict):
+    """A card the turn filed, by id; the card itself (and its outcome) comes from the gate."""
+
+    kind: Literal["card"]
+    card_id: str
+
+
+class BlocksPart(TypedDict):
+    """Report parts she showed in the reply (ADR 0022), with the figures computed when she showed them."""
+
+    kind: Literal["blocks"]
+    shown: ShownBlocks
+
+
+#: One part of a settled Athena turn, in the order the stream delivered it.
+TurnPart = TextPart | ToolPart | CardPart | BlocksPart
+
+
 class Turn(TypedDict):
     id: str
     space_id: str
@@ -399,6 +436,9 @@ class Turn(TypedDict):
     created: str
     cost_usd: NotRequired[float]
     card_id: NotRequired[str]
+    # An Athena turn's parts in emitted order. Omitted on a person's turn and on turns stored before
+    # parts were kept, which show as `text` and `card_id` alone.
+    parts: NotRequired[list[TurnPart]]
 
 
 class TurnList(TypedDict):
@@ -772,6 +812,13 @@ class ToolEvent(TypedDict):
 class CardEvent(TypedDict):
     type: Literal["card"]
     card: Card
+
+
+class BlocksEvent(TypedDict):
+    """Chat turns only (ADR 0022): report parts she chose to show, in place among her words."""
+
+    type: Literal["blocks"]
+    shown: ShownBlocks
 
 
 class DoneEvent(TypedDict):
@@ -1665,6 +1712,16 @@ class ReportView(TypedDict):
 
 class PinsBody(TypedDict):
     pinned: list[str]
+
+
+class ShownBlocks(TypedDict):
+    """Report parts shown in a chat reply (ADR 0022): the same kit and validation door as the report,
+    each part full width, every figure computed from records when it was shown, never by the model."""
+
+    blocks: list[Block]  # what survived the door, in her order; may be empty when every part was dropped
+    values: dict[str, BlockValue]  # by block id
+    dropped: int  # parts the door removed
+    reasons: list[str]  # why each was removed, plain words
 
 
 # --- routines (business Phase 2) -----------------------------------------------------------------

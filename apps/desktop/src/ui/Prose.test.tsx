@@ -26,6 +26,24 @@ describe("Prose, the one door", () => {
     expect(screen.getByText("sh").className).toBe("prose-code__lang");
   });
 
+  it("renders a # to ### heading as a bold paragraph, the same at every depth", () => {
+    const { container } = render(<Prose text={"# Where it stands\n\n### Next\nThe rest."} />);
+    expect(container.querySelector("h1, h2, h3")).toBeNull();
+    const heads = [...container.querySelectorAll("p.prose-h > strong")].map((s) => s.textContent);
+    expect(heads).toEqual(["Where it stands", "Next"]);
+    expect(container.textContent).not.toContain("#");
+  });
+
+  it("holds a bare # back while streaming and shows the heading once its words arrive", () => {
+    const { container, rerender } = render(<Prose text={"Here.\n\n#"} live marks={[0, 7]} />);
+    expect(container.textContent).toBe("Here.");
+    rerender(<Prose text={"Here.\n\n## Next"} live marks={[0, 7, 8]} />);
+    expect(container.querySelector("p.prose-h strong")!.textContent).toBe("Next");
+    // settled, a bare marker is its characters
+    rerender(<Prose text={"Here.\n\n#"} />);
+    expect(container.textContent).toBe("Here.#");
+  });
+
   it("renders HTML and script in the text as inert characters", () => {
     const evil =
       '<script>alert(1)</script> <img src=x onerror="alert(2)"> <a href="javascript:alert(3)">x</a> <style>*{display:none}</style>';

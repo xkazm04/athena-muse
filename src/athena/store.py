@@ -127,6 +127,7 @@ _ADDED = (
     ("drafts", "rubbed", "TEXT"),  # her guesses the person rubbed out (labels)
     ("cards", "outcome", "TEXT"),
     ("spaces", "kinds", "TEXT"),  # business Phase 1: the record kinds a project keeps, JSON list
+    ("turns", "parts", "TEXT"),  # an Athena turn's parts in emitted order, JSON list (her window)
 )
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.

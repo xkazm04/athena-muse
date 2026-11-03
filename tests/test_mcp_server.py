@@ -175,7 +175,11 @@ def test_every_refusal_is_an_error_and_a_card_or_a_run_is_not(client: TestClient
 
 @pytest.mark.parametrize(
     "answer",
-    [Dispatched("That action is not offered here."), ApiError("unknown_ref", "that project is gone")],
+    [
+        # ADR 0023: the dispatch flags its refusal; the door reads the flag, not the missing line
+        Dispatched("That action is not offered here.", refused=True),
+        ApiError("unknown_ref", "that project is gone"),
+    ],
 )
 def test_a_refusal_from_dispatch_is_an_error(
     client: TestClient, daemon: Daemon, monkeypatch: pytest.MonkeyPatch, answer: Dispatched | ApiError

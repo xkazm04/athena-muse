@@ -79,6 +79,7 @@ WRITES: dict[ActionName, bool] = {
     "record_put": True,
     "twin_send_web": True,
     "show_report": False,
+    "show_blocks": False,
 }
 
 
@@ -134,25 +135,30 @@ class Leases:
 
 def chat_tools(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
     """The function tools a chat turn in this space is offered: memory, the project's own changes,
-    her browser while the desktop runs it, and its records when it keeps any."""
+    her browser while the desktop runs it, and its records and their report parts when it keeps any."""
     from athena.browser import actions as browser
     from athena.records import actions as records
+    from athena.report import chat as report_parts
     from athena.turn import TOOLS
 
     names = ["recall", "remember", "forget"]
     if space_id != "":
         names += ["propose_brief", "add_app"]
     tools = [TOOLS[n] for n in names]  # type: ignore[index]
-    return tools + browser.offered(daemon, space_id) + records.offered(daemon, space_id)
+    tools += browser.offered(daemon, space_id) + records.offered(daemon, space_id)
+    return tools + report_parts.offered(daemon, space_id)
 
 
 def _offered(daemon: Daemon, lease: Lease) -> list[dict[str, Any]]:
     """What the lease may see: a chat turn's tools and the project's view tools, narrowed to the
     lease's own names when it has them (a turn's lease names its chat tools, never a view)."""
+    from athena.report import chat as report_parts
+
     tools = chat_tools(daemon, lease.space_id) + mcp_views.offered(daemon, lease.space_id)
     if lease.tools is not None:
-        tools = [t for t in tools if t["function"]["name"] in lease.tools]
-    return tools
+        return [t for t in tools if t["function"]["name"] in lease.tools]
+    # Report parts are the chat's own answer form (ADR 0022); an outside host has `show_report`.
+    return [t for t in tools if t["function"]["name"] not in report_parts.NAMES]
 
 
 def as_mcp(tool: dict[str, Any]) -> dict[str, Any]:
@@ -254,10 +260,9 @@ def call_tool(daemon: Daemon, lease: Lease, name: Any, arguments: Any) -> dict[s
     if lease.sink is not None:
         for event in done.events:
             lease.sink(event)
-    # Every action that ran streams a line (turn.dispatch's rule: no line means nothing happened) and
-    # every gated one files a card, so an answer with neither is a refusal and says so.
-    refused = not done.events and done.card is None
-    result: dict[str, Any] = {"content": [{"type": "text", "text": done.result}], "isError": refused}
+    # The dispatch says whether it refused (ADR 0023): a refusal may stream a line that says so (a site
+    # signed out, a browser call that failed), and every refusal is an error, never inferred.
+    result: dict[str, Any] = {"content": [{"type": "text", "text": done.result}], "isError": done.refused}
     if done.card is not None:
         lease.cards.append(done.card["id"])
         result["structuredContent"] = {"pending": {"card_id": done.card["id"]}}

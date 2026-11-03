@@ -224,6 +224,8 @@ export function reduce(state: StageState, event: StageEvent): StageState {
     }
     case "ask":
       return { ...state, frame: { ...frame, ask: event.ask }, replyAsked: true };
+    case "blocks":
+      return state; // report parts are a chat turn's (ADR 0022); a design turn never offers them
     case "coverage": {
       // The reply counted (drafts/shape.py `settle`): the draft keeps this reply's question, or none.
       if (!d) return state;

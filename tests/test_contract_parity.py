@@ -120,7 +120,8 @@ def test_stream_event_types_match() -> None:
     c = contracts
     turn = (c.StartEvent, c.TextEvent, c.ToolEvent, c.CardEvent, c.DoneEvent, c.ErrorEvent)
     stage = (c.SketchEvent, c.AskEvent, c.CoverageEvent)
-    assert _ts_event_types("TurnEvent") == _py_event_types(*turn, *stage)
+    # A chat turn may also show report parts (ADR 0022); the setup conversation's stream does not.
+    assert _ts_event_types("TurnEvent") == _py_event_types(*turn, c.BlocksEvent, *stage)
     author = (c.AuthorWriting, c.AuthorRepair, c.AuthorWritten, c.AuthorFailed, c.ErrorEvent)
     assert _ts_event_types("AuthorEvent") == _py_event_types(*author)
     rehearsal = (c.RehearsalPhase, c.RehearsalCard, c.RehearsalScored, c.ErrorEvent)
@@ -207,3 +208,16 @@ def test_site_shapes_match() -> None:
     for name in ("NodeSite", "SketchNode", "DraftSite", "Draft", "AccessBody", "Site", "SiteBody"):
         assert _ts_interface_keys(name) == _py_keys(name), name
     assert _ts_interface_keys("SignInStarted") == _py_keys("SignInStarted")
+
+
+def test_turn_parts_match() -> None:
+    # Her window: a settled turn's parts, key for key, and the same members in the union.
+    for name in ("Turn", "TextPart", "ToolPart", "CardPart", "BlocksPart", "ShownBlocks"):
+        assert _ts_interface_keys(name) == _py_keys(name), name
+    m = re.search(r"export const CHAT_BLOCKS_MAX = (\d+);", TS)
+    assert m and int(m.group(1)) == contracts.CHAT_BLOCKS_MAX
+    m = re.search(r"export type TurnPart = ([^;]+);", TS)
+    assert m
+    assert {s.strip() for s in m.group(1).split("|")} == {
+        c.__name__ for c in typing.get_args(contracts.TurnPart)
+    }

@@ -102,7 +102,9 @@ def _list(daemon: Daemon, space_id: str, args: dict[str, Any]) -> Dispatched:
     kind = args.get("kind") or None
     key = args.get("key") or None
     if kind is not None and kind not in KINDS:
-        return Dispatched(f"There is no record kind {str(kind)[:40]!r}; the kinds are {', '.join(KINDS)}.")
+        return Dispatched(
+            f"There is no record kind {str(kind)[:40]!r}; the kinds are {', '.join(KINDS)}.", refused=True
+        )
     found = daemon.records.latest(space_id, kind, str(key) if key is not None else None)
     lines = [_line(r) for r in found[:LIST_SHOWN]]
     if len(found) > LIST_SHOWN:
@@ -254,7 +256,7 @@ def _put(daemon: Daemon, space_id: str, args: dict[str, Any]) -> Dispatched:
         key=key_given if isinstance(key_given, str) else None,
     )
     if done.refused:
-        return Dispatched(done.refused)
+        return Dispatched(done.refused, refused=True)
     if done.item is not None:
         item = done.item
         said = done.label.removeprefix("Keep: ")
@@ -274,11 +276,11 @@ def _put(daemon: Daemon, space_id: str, args: dict[str, Any]) -> Dispatched:
 def act(daemon: Daemon, space_id: str, name: str, args: dict[str, Any]) -> Dispatched:
     """One records tool call from a model: answer, keep, file its card, or refuse in plain words."""
     if space_id == "":
-        return Dispatched("Records are kept in a project; there is none open.")
+        return Dispatched("Records are kept in a project; there is none open.", refused=True)
     try:
         daemon.spaces.get(space_id)
     except ApiError:
-        return Dispatched("That project is not there.")
+        return Dispatched("That project is not there.", refused=True)
     if name == "record_list":
         return _list(daemon, space_id, args)
     return _put(daemon, space_id, args)

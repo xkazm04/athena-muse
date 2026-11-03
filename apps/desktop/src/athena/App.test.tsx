@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../lib/api";
-import type { AppEvent, Card, EngineStatus, SpaceSummary, Turn, TurnEvent } from "../lib/contract";
+import type { AppEvent, Card, EngineStatus, ShownBlocks, SpaceSummary, Turn, TurnEvent } from "../lib/contract";
 import { streamRun } from "../lib/daemon";
 import { SETTLE_MS } from "../theme";
 import { App } from "./App";
@@ -340,6 +340,115 @@ describe("her window", () => {
     expect(document.querySelectorAll(".prose-new")).toHaveLength(0);
     expect(rows[4]!.textContent).toBe("Sign it when ready.est. $0.0004");
     await stream.end();
+  });
+
+  it("draws a settled turn from its stored parts exactly as it drew it live", async () => {
+    m.cards.mockResolvedValue([card]);
+    await boot();
+    const stream = heldStream();
+    type("Look into it");
+    await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
+    await stream.emit({ type: "text", delta: "Let me look." });
+    await stream.emit({ type: "tool", name: "recall", label: "Looked through memory", class: "auto" });
+    await stream.emit({ type: "text", delta: "Found **two** notes." });
+    await stream.emit({ type: "tool", name: "propose_brief", label: card.label, class: "gated" });
+    await stream.emit({ type: "card", card });
+    await stream.emit({ type: "text", delta: "Sign it" });
+    await stream.emit({ type: "text", delta: " when ready." });
+    await stream.emit({ type: "done", turn_id: "turn_1", waiting: true, cost_usd: 0.0004 });
+    const rowsOf = () =>
+      [...document.querySelectorAll(".her-transcript > *")].slice(1).map((r) => [r.className.split(" ")[0], r.textContent]);
+    const before = rowsOf();
+    const liveKinds = useHer.getState().live!.parts.map((p) => p.kind);
+
+    // The daemon's reload: the turn as it was stored, its parts in the order they streamed (a fixture
+    // of what `turn._Parts` keeps; tests/test_turn_parts.py holds the daemon to the same order).
+    m.conversation.mockResolvedValue([
+      turn("t1", "person", "Look into it"),
+      turn("t2", "athena", "Let me look.Found **two** notes.Sign it when ready.", {
+        cost_usd: 0.0004,
+        card_id: card.id,
+        parts: [
+          { kind: "text", text: "Let me look." },
+          { kind: "tool", name: "recall", label: "Looked through memory", class: "auto" },
+          { kind: "text", text: "Found **two** notes." },
+          { kind: "tool", name: "propose_brief", label: card.label, class: "gated" },
+          { kind: "card", card_id: card.id },
+          { kind: "text", text: "Sign it when ready." },
+        ],
+      }),
+    ]);
+    await stream.end();
+    await waitFor(() => expect(useHer.getState().live).toBeNull());
+
+    const after = [...document.querySelectorAll(".her-transcript > *")].map((r) => [r.className.split(" ")[0], r.textContent]);
+    expect(after[0]).toEqual(["her-line", "Look into it"]);
+    expect(after.slice(1)).toEqual(before);
+    expect(liveKinds).toEqual(["text", "tool", "text", "card", "text"]);
+    expect(document.querySelector(".her-transcript strong")!.textContent).toBe("two");
+  });
+
+  it("shows report parts in place among her words, with drops said, and the same after a reload", async () => {
+    const shown: ShownBlocks = {
+      blocks: [
+        {
+          id: "part-1",
+          kind: "pipeline",
+          title: "Where the tracks stand",
+          span: 12,
+          config: { stages: [{ label: "Found", binding: { kind: "track", agg: "count" } }, { label: "Kept", binding: { kind: "track", agg: "count" } }] },
+        },
+      ],
+      values: { "part-1": { stages: [{ label: "Found", count: 3 }, { label: "Kept", count: 1 }] } },
+      dropped: 1,
+      reasons: ["A queue part: a queue asks for a verdict on each track, which the project's report does."],
+    };
+    await boot();
+    const stream = heldStream();
+    type("How are the tracks doing?");
+    await stream.emit({ type: "start", turn_id: "turn_1", engine: "muse", simulated: false });
+    await stream.emit({ type: "text", delta: "Here is where they stand." });
+    await stream.emit({ type: "blocks", shown });
+    await stream.emit({ type: "text", delta: "Most still wait for you." });
+    await stream.emit({ type: "done", turn_id: "turn_1", waiting: false });
+    const rowsOf = () => [...document.querySelectorAll(".her-transcript > *")].map((r) => r.className.split(" ")[0]);
+    expect(rowsOf().slice(1)).toEqual(["her-line", "her-blocks", "her-line"]);
+    const part = document.querySelector('.her-blocks [data-role="report-block"]')!;
+    expect(part.getAttribute("data-kind")).toBe("pipeline");
+    expect(part.textContent).toContain("Where the tracks stand");
+    expect(document.querySelector('.her-blocks [data-role="pin"]')).toBeNull(); // a reply's part is not pinned
+    expect(document.querySelector('.her-blocks [data-role="dropped"] summary')!.textContent).toBe("1 part could not be shown");
+    const before = document.querySelector(".her-blocks")!.innerHTML;
+
+    m.conversation.mockResolvedValue([
+      turn("t1", "person", "How are the tracks doing?"),
+      turn("t2", "athena", "Here is where they stand.Most still wait for you.", {
+        parts: [
+          { kind: "text", text: "Here is where they stand." },
+          { kind: "blocks", shown },
+          { kind: "text", text: "Most still wait for you." },
+        ],
+      }),
+    ]);
+    await stream.end();
+    await waitFor(() => expect(useHer.getState().live).toBeNull());
+    expect(rowsOf()).toEqual(["her-line", "her-line", "her-blocks", "her-line"]);
+    expect(document.querySelector(".her-blocks")!.innerHTML).toBe(before);
+  });
+
+  it("draws a turn stored before parts were kept as its words and its card, as before", async () => {
+    m.cards.mockResolvedValue([card]);
+    m.conversation.mockResolvedValue([turn("t1", "person", "Brief?"), turn("t2", "athena", "Filed it.", { card_id: card.id })]);
+    await boot();
+    const rows = [...document.querySelectorAll(".her-transcript > *")].map((r) => r.className.split(" ")[0]);
+    expect(rows).toEqual(["her-line", "her-line", "her-card"]);
+  });
+
+  it("shows a stored part this window does not know as a plain row, never nothing", async () => {
+    const odd = { kind: "hologram", what: "x" } as unknown as NonNullable<Turn["parts"]>[number];
+    m.conversation.mockResolvedValue([turn("t1", "athena", "Here.", { parts: [{ kind: "text", text: "Here." }, odd] })]);
+    await boot();
+    expect(document.querySelector(".her-tool--unknown")!.getAttribute("data-part")).toBe("hologram");
   });
 
   it("shows a tool line after the words before it, with the dots while more is coming", async () => {

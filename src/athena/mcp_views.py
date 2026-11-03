@@ -185,6 +185,20 @@ def _shown(f: dict[str, Any]) -> str:
     return f"{_fig(f['value'])} {f['unit']}" if f.get("unit") else _fig(f["value"])
 
 
+def part_lines(block: Block, value: BlockValue) -> list[str]:
+    """One part in plain lines, every figure computed (`value`); the report's text and a chat reply's
+    tool result (ADR 0022) both read parts this way."""
+    figures, rows = _figures(block, value), _rows(block, value)
+    if block["kind"] == "stat":
+        return [f"{block['title']}: {_shown(figures[0])}"]
+    lines = [f"{block['title']}:"]
+    lines.extend(f"- {f['label']}: {_shown(f)}" for f in figures)
+    lines.extend(f"- {r}" for r in rows)
+    if not figures and not rows:
+        lines.append("- nothing yet")
+    return lines
+
+
 def as_text(view: ReportView, name: str) -> str:
     """The whole report in plain lines: what a text-only host reads, complete on its own. Record words
     are fenced as data."""
@@ -195,17 +209,8 @@ def as_text(view: ReportView, name: str) -> str:
     for b in spec["blocks"]:
         if b["kind"] == "callout":
             continue  # the callout is said once, above
-        value = view["values"].get(b["id"], {})
-        figures, rows = _figures(b, value), _rows(b, value)
         lines.append("")
-        if b["kind"] == "stat":
-            lines.append(f"{b['title']}: {_shown(figures[0])}")
-            continue
-        lines.append(f"{b['title']}:")
-        lines.extend(f"- {f['label']}: {_shown(f)}" for f in figures)
-        lines.extend(f"- {r}" for r in rows)
-        if not figures and not rows:
-            lines.append("- nothing yet")
+        lines.extend(part_lines(b, view["values"].get(b["id"], {})))
     head = "the layout Athena starts from" if view["default"] else "arranged by Athena"
     return (
         f"The report of project {name} ({head}; every figure counted from its records at "

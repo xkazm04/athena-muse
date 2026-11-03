@@ -69,9 +69,32 @@ describe("markup blocks", () => {
   });
 
   it("leaves what is not the subset as a paragraph of its own characters", () => {
-    expect(kinds("# Title\n\n> quote\n\n| a | b |\n\n---\n\n* * *")).toEqual(["p", "p", "p", "p", "p"]);
-    expect(inline("# Title")).toEqual(["# Title"]);
+    expect(kinds("#### Deep\n\n> quote\n\n| a | b |\n\n---\n\n* * *")).toEqual(["p", "p", "p", "p", "p"]);
+    expect(inline("#### Deep")).toEqual(["#### Deep"]);
+    expect(inline("#hashtag and #5")).toEqual(["#hashtag and #5"]);
     expect(inline("<script>alert(1)</script>")).toEqual(["<script>alert(1)</script>"]);
+  });
+
+  it("reads # to ### as a heading of its words, one level for every depth", () => {
+    expect(kinds("# One\n## Two\n### Three")).toEqual(["h", "h", "h"]);
+    const [h] = blocks("##  Where it stands ##") as [Extract<Block, { kind: "h" }>];
+    expect(h.body.lines).toEqual([{ text: "Where it stands", at: 4 }]);
+    // a heading ends the paragraph above it and needs words of its own
+    expect(kinds("So far:\n## Next\nmore")).toEqual(["p", "h", "p"]);
+    expect(kinds("##\n\n## ")).toEqual(["p", "p"]);
+    expect(inline("##")).toEqual(["##"]); // settled: a bare marker is its characters
+  });
+
+  it("holds a bare # back at a live tail until the next delta decides it", () => {
+    expect(inline("#", true)).toEqual([]);
+    expect(inline("Done.\n##", true)).toEqual(["Done.", "<br>"]);
+    expect(inline("Done.\n## ", true)).toEqual(["Done.", "<br>"]);
+    expect(inline("#hash", true)).toEqual(["#hash"]); // decided: not a heading
+    expect(inline("####", true)).toEqual(["####"]); // deeper than the subset: never a heading
+    // the next delta decides: a space and words make it a heading, read again from that block
+    const prev = parseProse("Done.\n\n##");
+    const next = parseProse("Done.\n\n## Ne", prev);
+    expect(next.blocks.map((b) => b.kind)).toEqual(["p", "h"]);
   });
 });
 

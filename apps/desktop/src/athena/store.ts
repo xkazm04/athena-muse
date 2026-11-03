@@ -9,9 +9,11 @@ import {
   type AppEvent,
   type Card,
   type EngineStatus,
+  type ShownBlocks,
   type SpaceSummary,
   type Turn,
   type TurnEvent,
+  type TurnPart,
 } from "../lib/contract";
 import { DaemonError, getConnection, streamRun, UNREACHABLE } from "../lib/daemon";
 import { setupConversation, streamSetup } from "../lib/setup";
@@ -32,7 +34,11 @@ async function paintLook(): Promise<void> {
 export type LivePart =
   | { kind: "text"; text: string; marks: number[] }
   | { kind: "tool"; label: string }
-  | { kind: "card"; id: string };
+  | { kind: "card"; id: string }
+  /** Report parts she showed (ADR 0022), with the figures the daemon computed then. */
+  | { kind: "blocks"; shown: ShownBlocks }
+  /** A stored part this window has no renderer for: shown as a plain row, never dropped. */
+  | { kind: "unknown"; what: string };
 
 /** A text delta extends the text run it follows; after a tool line or a card it starts a new run. */
 export function appendText(parts: LivePart[], delta: string): LivePart[] {
@@ -43,6 +49,31 @@ export function appendText(parts: LivePart[], delta: string): LivePart[] {
   }
   return [...parts, { kind: "text", text: delta, marks: [0] }];
 }
+
+/**
+ * The one reducer from a turn's parts to what the transcript draws: fed each streamed event live, and
+ * fed a settled turn's stored parts after a reload, so a turn looks the same before and after
+ * (inline-structured-rows: one dispatcher, or a kind that rendered live vanishes on reload).
+ */
+export function addPart(parts: LivePart[], p: TurnPart): LivePart[] {
+  switch (p.kind) {
+    case "text":
+      return appendText(parts, p.text);
+    case "tool":
+      // A gated action shows as its card, which follows; a line too would say it twice.
+      return p.class === "auto" ? [...parts, { kind: "tool", label: p.label }] : parts;
+    case "card":
+      return [...parts, { kind: "card", id: p.card_id }];
+    case "blocks":
+      return [...parts, { kind: "blocks", shown: p.shown }];
+    default:
+      // A part from a newer daemon: a visible row, never nothing (version skew must not edit the record).
+      return [...parts, { kind: "unknown", what: String((p as { kind?: unknown }).kind ?? "") }];
+  }
+}
+
+/** A settled turn's stored parts, read through the live reducer. */
+export const settledParts = (parts: readonly TurnPart[]): LivePart[] => parts.reduce(addPart, []);
 
 /** The reply being written right now (or the one that just failed). */
 export interface Live {
@@ -221,15 +252,17 @@ export const useHer = create<HerState>()((set, get) => {
                 set((s) => (s.engine ? { engine: { ...s.engine, engine: e.engine, simulated: e.simulated } } : {}));
                 break;
               case "text":
-                patch((l) => ({ ...l, parts: appendText(l.parts, e.delta) }));
+                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "text", text: e.delta }) }));
                 break;
               case "tool":
-                // A gated action shows as its card, which follows; a line too would say it twice.
-                if (e.class === "auto") patch((l) => ({ ...l, parts: [...l.parts, { kind: "tool", label: e.label }] }));
+                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "tool", name: e.name, label: e.label, class: e.class }) }));
                 break;
               case "card":
                 learnCard(e.card);
-                patch((l) => ({ ...l, parts: [...l.parts, { kind: "card", id: e.card.id }] }));
+                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "card", card_id: e.card.id }) }));
+                break;
+              case "blocks":
+                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "blocks", shown: e.shown }) }));
                 break;
               case "done":
                 ended = true;

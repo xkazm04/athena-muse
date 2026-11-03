@@ -267,6 +267,8 @@ MCP server (Phase 0):
   - gated: `page_click | page_fill | page_select | page_submit | page_upload | page_download | wheel_handoff`
   - peer tools arrive as `<peer>__<tool>` with the peer's annotations.
 - The report inside agent hosts ([ADR 0021](../../adr/0021-the-project-report-is-also-a-view-inside-agent-hosts.md), 2026-11-03): an outside lease on a project that keeps records gets `show_report`, the report as standalone text, computed figures and the `ui://athena/report` view; `readOnlyHint` says whether a tool writes, and every refusal is `isError`.
+- Hints and refusals ([ADR 0023](../../adr/0023-a-tools-hints-come-from-what-it-writes-and-every-refusal-is-an-error.md), 2026-11-03): the dispatch flags each refusal where it decides it (`Dispatched.refused`) and the door reads the flag, so a site signed out or a browser call that failed is `isError` even though it streams a line.
+- Report parts in her replies ([ADR 0022](../../adr/0022-her-replies-show-report-parts-from-the-same-kit.md), 2026-11-03): a chat turn's lease in a project that keeps records gets `show_blocks`, 1 to 3 parts of the report's kit through its validation door; an outside lease never lists it.
 
 Records (Phase 1):
 - Table: `records(id TEXT PK, space_id TEXT NOT NULL, kind TEXT NOT NULL, key TEXT, body TEXT, rev INTEGER, created TEXT)`. Append-only: a change is a new revision.

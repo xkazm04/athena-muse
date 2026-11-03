@@ -1,9 +1,10 @@
 // The one door model-authored prose comes through (the chat-transcript technique "one sanitizing
 // door"): a small, dependency-free reader of a markdown SUBSET - paragraphs, line breaks, **bold**,
-// *italic*, `inline code`, fenced code blocks, bulleted and numbered lists, and links. It returns a
-// plain tree; `Prose.tsx` turns the tree into React elements, so every string reaches the page as a
-// React text node and nothing is ever parsed as HTML. Whatever is not the subset (headings, tables,
-// quotes, raw HTML, images) stays literal text.
+// *italic*, `inline code`, fenced code blocks, bulleted and numbered lists, links, and `#` to `###`
+// headings (read as one bold line: a chat column is not a document, so there is no size scale). It
+// returns a plain tree; `Prose.tsx` turns the tree into React elements, so every string reaches the
+// page as a React text node and nothing is ever parsed as HTML. Whatever is not the subset (deeper
+// headings, tables, quotes, raw HTML, images) stays literal text.
 //
 // The text may be a streaming prefix. Blocks are read line by line from the top, and every block but
 // the last is final once the next one starts, so a later delta re-reads only the last block (the
@@ -28,6 +29,8 @@ export interface Span {
 
 export type Block =
   | { kind: "p"; start: number; end: number; body: Span }
+  /** A `#`, `##` or `###` line: one emphasis level whatever its depth. */
+  | { kind: "h"; start: number; end: number; body: Span }
   | { kind: "list"; start: number; end: number; ordered: boolean; first: number; items: Span[] }
   | { kind: "code"; start: number; end: number; lang: string; text: string; closed: boolean };
 
@@ -44,6 +47,19 @@ interface Line {
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const ITEM = /^( {0,3})([-*+]|\d{1,9}[.)])(?:[ \t]+(.*))?$/;
 const BLANK = /^\s*$/;
+/** `#` to `###`, a space, then words; deeper levels and `#word` are not headings. */
+const HEADING = /^( {0,3}#{1,3}[ \t]+)(.*)$/;
+
+/** The heading on `line`, as the span of its words (a closing `##` run dropped), or null. A heading
+ *  needs words: a bare `##` is a paragraph's characters (and, at a live tail, undecided). */
+function headingOf(line: Line): Span | null {
+  const m = HEADING.exec(line.text);
+  if (!m) return null;
+  const words = m[2]!.replace(/(^|[ \t]+)#+[ \t]*$/, "").trimEnd();
+  if (!words.trim()) return null;
+  const lead = m[2]!.length - m[2]!.trimStart().length;
+  return { lines: [{ text: words.trim(), at: line.at + m[1]!.length + lead }] };
+}
 
 function linesOf(text: string, from: number): Line[] {
   const out: Line[] = [];
@@ -131,6 +147,13 @@ function readBlocks(text: string, from: number): Block[] {
       continue;
     }
 
+    const heading = headingOf(line);
+    if (heading) {
+      blocks.push({ kind: "h", start: line.at, end: endOf(line), body: heading });
+      i++;
+      continue;
+    }
+
     const first = itemOf(line, i === lines.length - 1);
     if (first) {
       const items: Span[] = [{ lines: [{ text: first.text.trim(), at: first.at + (first.text.length - first.text.trimStart().length) }] }];
@@ -173,7 +196,7 @@ function readBlocks(text: string, from: number): Block[] {
     let j = i + 1;
     while (j < lines.length) {
       const next = lines[j]!;
-      if (BLANK.test(next.text) || FENCE_OPEN.test(next.text)) break;
+      if (BLANK.test(next.text) || FENCE_OPEN.test(next.text) || headingOf(next)) break;
       const item = itemOf(next, j === lines.length - 1);
       if (item && interrupts(item)) break;
       body.lines.push(trimmed(next));
@@ -279,6 +302,16 @@ function readInline(r: Reader, i: number, end: number, stack: Closer[]): { nodes
       // A trailing backslash may yet escape the next character.
       flush(i);
       return { nodes: out, at: end, closed: false };
+    }
+
+    if (c === "#" && r.open && (i === 0 || s[i - 1] === "\n")) {
+      // A bare `#` to `###` opening the last line may yet be a heading: it waits off screen until
+      // the next delta decides (a space and words make a heading; anything else, its characters).
+      const n = runAt(s, i, "#");
+      if (n <= 3 && i + n === end) {
+        flush(i);
+        return { nodes: out, at: end, closed: false };
+      }
     }
 
     if (c === "`") {

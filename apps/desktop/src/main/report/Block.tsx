@@ -18,7 +18,8 @@ export interface BlockContext {
   genres: string[];
   callout?: string;
   onVerdict: (recordId: string, body: TrackVerdictBody) => Promise<unknown>;
-  onPin: (blockId: string, on: boolean) => Promise<void>;
+  /** Absent where a part cannot be pinned (a part in her reply, ADR 0022): no pin is drawn. */
+  onPin?: (blockId: string, on: boolean) => Promise<void>;
   onDecide: (cardId: string, verdict: Verdict, edited?: DecisionEdit) => Promise<Card>;
   onResolved?: () => void;
 }
@@ -50,6 +51,7 @@ export function Block({
   const headId = `rp-h-${block.id}`;
 
   const pin = async () => {
+    if (!ctx.onPin) return;
     setPinBusy(true);
     setPinProblem("");
     try {
@@ -76,20 +78,22 @@ export function Block({
           {block.title}
         </h3>
         {stale && <span className="rp-block__stale">{stale}</span>}
-        <button
-          type="button"
-          className="rp-pin"
-          data-role="pin"
-          aria-pressed={pinned}
-          aria-label={pinned ? `Unpin ${block.title}` : `Pin ${block.title}`}
-          title={pinned ? "Pinned: it stays when Athena rearranges the page" : "Pin it so it stays when Athena rearranges the page"}
-          disabled={pinBusy}
-          onClick={() => void pin()}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 3h6l-1 6 4 4H6l4-4-1-6zM12 13v8" />
-          </svg>
-        </button>
+        {ctx.onPin && (
+          <button
+            type="button"
+            className="rp-pin"
+            data-role="pin"
+            aria-pressed={pinned}
+            aria-label={pinned ? `Unpin ${block.title}` : `Pin ${block.title}`}
+            title={pinned ? "Pinned: it stays when Athena rearranges the page" : "Pin it so it stays when Athena rearranges the page"}
+            disabled={pinBusy}
+            onClick={() => void pin()}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 3h6l-1 6 4 4H6l4-4-1-6zM12 13v8" />
+            </svg>
+          </button>
+        )}
       </header>
       <div className="rp-block__body">{body(block, value, ctx)}</div>
       {pinProblem && (

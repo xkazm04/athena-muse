@@ -56,11 +56,15 @@ OPEN_WAIT_S = 45.0
 
 @dataclass
 class Dispatched:
-    """A tool call's result for the model, the lines to stream, and the card it filed if any."""
+    """A tool call's result for the model, the lines to stream, the card it filed if any, and whether
+    it was refused: nothing ran (a bad argument, a site signed out, a browser call that failed). The
+    flag is set where the refusal is decided, never inferred from the lines (ADR 0023): a refusal may
+    still stream a line that says so."""
 
     result: str
     events: list[dict[str, Any]] = field(default_factory=list)
     card: Card | None = None
+    refused: bool = False
 
 
 def _tool(
@@ -279,7 +283,7 @@ def act(daemon: Daemon, space_id: str, raw_name: str, args: dict[str, Any]) -> D
     """One browser tool call from a model: run it, file its card, or refuse in plain words."""
     name = cast("ActionName", raw_name)
     if space_id == "":
-        return Dispatched("Her browser works inside a project; there is none open.")
+        return Dispatched("Her browser works inside a project; there is none open.", refused=True)
     if name == "file_list":
         files = daemon.files.list(space_id)
         lines = [f"{f['id']}  {f['name']}  {f['size']:,} bytes  from {_site(f['origin'])}" for f in files]
@@ -289,13 +293,17 @@ def act(daemon: Daemon, space_id: str, raw_name: str, args: dict[str, Any]) -> D
         )
     if name == "tabs_read":
         result = daemon.relay.call("tabs")
-        return Dispatched(_said(result), [tool_event("tabs_read", "Looked at her browser's tabs")])
+        return Dispatched(
+            _said(result),
+            [tool_event("tabs_read", "Looked at her browser's tabs")],
+            refused=not result.get("ok"),
+        )
     daemon.spaces.get(space_id)  # an unknown project is refused before her browser is asked
     if name == "page_open":
         url = str(args.get("url", "")).strip()
         origin = origin_of(url)
         if not origin:
-            return Dispatched("That is not a web address (http or https).")
+            return Dispatched("That is not a web address (http or https).", refused=True)
         if not daemon.sites.trusted(space_id, origin):
             label = (
                 f"Open {_short(url, 120)} in her browser ({_site(origin)} is not one of this project's sites)"
@@ -309,35 +317,41 @@ def act(daemon: Daemon, space_id: str, raw_name: str, args: dict[str, Any]) -> D
                     f"The person is not signed in to {_site(origin)} ({looked.get('reason', '')}). Nothing "
                     "was opened. Ask them to use Sign in again on the project's overview.",
                     [tool_event("page_open", f"Not signed in to {_site(origin)}")],
+                    refused=True,
                 )
         result = daemon.relay.call("open", {"url": url}, timeout=OPEN_WAIT_S)
         tab = result.get("tab") or {}
         text = f"Tab {tab.get('id', '?')}: {tab.get('title', '')} {tab.get('url', url)}".strip()
-        said = text if result.get("ok") else f"{_said(result)} ({text})"
-        return Dispatched(said, [tool_event("page_open", f"Opened {_short(url, 60)}")])
+        if not result.get("ok"):  # her browser could not open it: the line says so, and it is refused
+            return Dispatched(
+                f"{_said(result)} ({text})",
+                [tool_event("page_open", f"Could not open {_short(url, 60)}")],
+                refused=True,
+            )
+        return Dispatched(text, [tool_event("page_open", f"Opened {_short(url, 60)}")])
     tab = _tab(args)
     if tab is None:
-        return Dispatched("Name the tab by its number (tabs_read lists them).")
+        return Dispatched("Name the tab by its number (tabs_read lists them).", refused=True)
     hand = _hand_args(name, args)
     if isinstance(hand, str):
-        return Dispatched(hand)
+        return Dispatched(hand, refused=True)
     if name == "page_upload":
         try:
             daemon.files.get(space_id, hand["file_id"])
         except ApiError:
-            return Dispatched("There is no such file in this project; file_list names them.")
+            return Dispatched("There is no such file in this project; file_list names them.", refused=True)
     seen = daemon.relay.call("tab", tab=tab)
     page = seen.get("tab") or {}
     if not seen.get("ok") or not page:
-        return Dispatched(_said(seen))
+        return Dispatched(_said(seen), refused=True)
     origin = origin_of(str(page.get("url", "")))
     site = _site(origin)
     trusted = daemon.sites.trusted(space_id, origin)
     if CATALOG[name] == "auto" and trusted:
         result = daemon.relay.call(name, hand, tab=tab, load=page.get("load"), url=page.get("url"))
         line = tool_event(name, f"{name.removeprefix('page_').capitalize()} on {site}")
-        if not result.get("ok"):
-            return Dispatched(_said(result), [line])
+        if not result.get("ok"):  # the hand did not run: the line stands, and it is refused
+            return Dispatched(_said(result), [line], refused=True)
         output = _said(result)
         return Dispatched(_fence(origin, output) if name in ("page_read", "page_find") else output, [line])
     label = _label(name, hand, site, daemon, space_id)

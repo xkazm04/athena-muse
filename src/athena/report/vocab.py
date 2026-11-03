@@ -170,6 +170,31 @@ _EXAMPLE = {
 }
 
 
+#: The binding grammar, said once for the composer and for a chat reply's parts.
+BINDING_DOCS = (
+    "A binding is "
+    '`{"kind": <record kind>, "filter": {<body field>: <value>}, "agg": <agg>, "field": <field>}`. '
+    "The filter matches a body field exactly; `null` means the field is absent. `agg` is one of "
+    "`count`, `sum`, `last`, `series`; `field` is a numeric field of the kind."
+)
+
+
+def parts_docs(block_kinds: list[BlockKind], kinds: list[str]) -> str:
+    """The vocabulary of `block_kinds` over the record `kinds` a project keeps, generated from BLOCKS and
+    the kind catalog: a chat reply's parts (ADR 0022) are taught from the same registry as the report."""
+    return "\n".join(
+        [
+            BINDING_DOCS,
+            "",
+            "Parts (`kind`):",
+            *(_block_line(BLOCKS[k]) for k in block_kinds),
+            "",
+            "Record kinds this project keeps (bind only to these):",
+            *(_kind_line(k) for k in kinds if k in RECORD_KINDS),
+        ]
+    )
+
+
 def composer_docs(kinds: list[str]) -> str:
     """The composer's vocabulary, generated from BLOCKS and the record kind catalog, stamped VOCAB."""
     return "\n".join(
@@ -186,10 +211,7 @@ def composer_docs(kinds: list[str]) -> str:
             "Answer with one JSON object and nothing else, shaped like this:",
             json.dumps(_EXAMPLE, indent=2),
             "",
-            "A binding is "
-            '`{"kind": <record kind>, "filter": {<body field>: <value>}, "agg": <agg>, "field": <field>}`. '
-            "The filter matches a body field exactly; `null` means the field is absent. `agg` is one of "
-            "`count`, `sum`, `last`, `series`; `field` is a numeric field of the kind.",
+            BINDING_DOCS,
             "",
             "Ids: keep the id of every block you carry over from the current report, even when you move, "
             "resize or retitle it. Give a new block a new short id (lowercase letters and dashes). A block "

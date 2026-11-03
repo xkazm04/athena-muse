@@ -18,6 +18,8 @@ export const SITES_MAX = 24;
 export const SITE_FRESH_S = 300;
 export const RECORDS_PAGE_MAX = 500;
 export const BLOCKS_MAX = 12;
+/** Report parts in one chat reply (ADR 0022). */
+export const CHAT_BLOCKS_MAX = 3;
 export const REPORT_TITLE_MAX = 80;
 export const CALLOUT_MAX = 280;
 export const RECOMPOSE_MIN_S = 3600;
@@ -70,7 +72,8 @@ export type ActionName =
   | "record_list"
   | "record_put"
   | "twin_send_web"
-  | "show_report";
+  | "show_report"
+  | "show_blocks";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -171,6 +174,8 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   twin_send_web: "gated",
   // A view inside an agent host (ADR 0021): the report as text, figures and a view; outside leases only.
   show_report: "auto",
+  // Report parts in a chat reply (ADR 0022): 1 to 3 parts of the same kit; chat turns in a project that keeps records.
+  show_blocks: "auto",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -722,6 +727,31 @@ export interface Card {
   outcome?: string;
 }
 
+/** A run of her words between two other parts of the turn. */
+export interface TextPart {
+  kind: "text";
+  text: string;
+}
+/** A tool line as it streamed: the action, its label (the dispatch's words for what happened) and its class. */
+export interface ToolPart {
+  kind: "tool";
+  name: ActionName;
+  label: string;
+  class: ActionClass;
+}
+/** A card the turn filed, by id; the card itself (and its outcome) comes from the gate. */
+export interface CardPart {
+  kind: "card";
+  card_id: string;
+}
+/** Report parts she showed in the reply (ADR 0022), with the figures computed when she showed them. */
+export interface BlocksPart {
+  kind: "blocks";
+  shown: ShownBlocks;
+}
+/** One part of a settled Athena turn, in the order the stream delivered it. */
+export type TurnPart = TextPart | ToolPart | CardPart | BlocksPart;
+
 export interface Turn {
   id: string;
   space_id: string;
@@ -730,6 +760,9 @@ export interface Turn {
   created: string;
   cost_usd?: number;
   card_id?: string;
+  /** An Athena turn's parts in emitted order; omitted on a person's turn and on turns stored before
+   *  parts were kept, which show as `text` and `card_id` alone. */
+  parts?: TurnPart[];
 }
 
 export interface TurnList {
@@ -774,6 +807,8 @@ export type TurnEvent =
   | { type: "card"; card: Card }
   | { type: "done"; turn_id: string; waiting: boolean; cost_usd?: number }
   | { type: "error"; error: ErrorWord; reason: string }
+  // chat turns only (ADR 0022): report parts she chose to show, in place among her words
+  | { type: "blocks"; shown: ShownBlocks }
   // stage turns only (ADR 0007)
   | { type: "sketch"; ops: SketchOp[] }
   | { type: "ask"; ask: Ask }
@@ -1526,6 +1561,20 @@ export interface ReportView {
 }
 export interface PinsBody {
   pinned: string[];
+}
+/**
+ * Report parts shown in a chat reply (ADR 0022): the same kit and validation door as the report, each
+ * part full width, every figure computed from records when it was shown, never by the model.
+ */
+export interface ShownBlocks {
+  /** What survived the door, in her order; empty when every part was dropped. */
+  blocks: Block[];
+  /** By block id. */
+  values: { [blockId: string]: BlockValue };
+  /** Parts the door removed. */
+  dropped: number;
+  /** Why each was removed, plain words. */
+  reasons: string[];
 }
 
 // --- routines (business Phase 2) -----------------------------------------------------------------

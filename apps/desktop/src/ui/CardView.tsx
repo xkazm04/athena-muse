@@ -25,6 +25,8 @@ const ACTION: Record<Card["action"], string> = {
   ask: "Ask a question",
   // Read-only, offered to outside agents only (ADR 0021); never filed as a card, named for completeness.
   show_report: "Show the project's report",
+  // Read-only report parts in a chat reply (ADR 0022); never filed as a card, named for completeness.
+  show_blocks: "Show parts of the report",
   twin_send: "Send this email",
   twin_note: "Write this to Notion",
   // Her browser (ADR 0013): a read is a card only on a site that is not one of the project's apps.

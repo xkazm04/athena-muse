@@ -1,6 +1,6 @@
 # 0015 - Athena's tools reach every engine through one MCP server
 
-Status: accepted
+Status: accepted; decision 3's "`readOnlyHint` for AUTO" superseded by [0023](0023-a-tools-hints-come-from-what-it-writes-and-every-refusal-is-an-error.md) (the hint is read from what an action writes, and every refusal is an error)
 Date: 2026-10-31
 
 ## Context

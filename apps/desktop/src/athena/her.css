@@ -144,12 +144,14 @@ body.her #root {
 /* the transcript is a timeline: a thread down the left, a mark for each line, an eyebrow naming who */
 .her-line,
 .her-tool,
-.her-card {
+.her-card,
+.her-blocks {
   position: relative;
 }
 .her-line::before,
 .her-tool::after,
-.her-card::before {
+.her-card::before,
+.her-blocks::before {
   content: "";
   position: absolute;
   left: -20px;
@@ -277,6 +279,18 @@ body.her #root {
   animation: her-arrive var(--dur-base) var(--ease-settle);
 }
 .her-card .card {
+  background: var(--raised);
+}
+/* report parts in her reply (ADR 0022): the report's own blocks, one per row at the window's width;
+ * no grid and no scroller of their own, so the transcript is the one thing that scrolls */
+.her-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+  animation: her-arrive var(--dur-base) var(--ease-settle);
+}
+.her-blocks .rp-block {
   background: var(--raised);
 }
 

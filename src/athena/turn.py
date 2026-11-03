@@ -7,7 +7,7 @@ import queue
 import threading
 import time
 from collections.abc import Generator, Iterator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 from urllib.parse import urlsplit
 
 from athena.app import Daemon
@@ -26,6 +26,7 @@ from athena.contracts import (
     ActionName,
     Card,
     Surface,
+    TurnPart,
     tool_event,
 )
 from athena.engine import Engine, EngineError, McpAccess, TextDelta, ToolCall, Usage
@@ -33,6 +34,7 @@ from athena.engine.prices import estimate
 from athena.errors import ApiError
 from athena.memory import visible_spaces
 from athena.records import actions as records
+from athena.report import chat as report_parts
 from athena.spaces import normalise_origin
 
 if TYPE_CHECKING:
@@ -211,16 +213,17 @@ def dispatch(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
         return browser.act(daemon, space_id, name, call.arguments)
     if name in records.NAMES:  # a put of a non-find files a card whatever the class says
         return records.act(daemon, space_id, name, call.arguments)
+    if name in report_parts.NAMES:  # report parts in the reply (ADR 0022): reads, never a card
+        return report_parts.act(daemon, space_id, call.arguments)
     if name not in CATALOG:
-        return Dispatched("There is no such action.")
+        return Dispatched("There is no such action.", refused=True)
     if CATALOG[name] == "auto":
-        result, label = _run_auto(daemon, space_id, call)
-        return Dispatched(result, [tool_event(name, label)] if label else [])
+        return _run_auto(daemon, space_id, call)
     if name not in ("propose_brief", "add_app", "forget"):
-        return Dispatched("That action is not offered here.")
+        return Dispatched("That action is not offered here.", refused=True)
     checked = _refuse_or_label(daemon, space_id, call)
     if isinstance(checked, str):
-        return Dispatched(checked)
+        return Dispatched(checked, refused=True)
     label, args = checked
     card = daemon.gate.file(space_id, name, args, label)
     return Dispatched(
@@ -276,6 +279,50 @@ def _record(
 #: What a turn's rounds hand back: the reply's parts, the cards filed, the cost; None after an error
 #: event was streamed.
 Rounds = tuple[list[str], list[Card], float | None] | None
+
+_R = TypeVar("_R")
+
+
+class _Parts:
+    """An Athena turn's parts as they stream past: text runs, tool lines and cards, in emitted order
+    (inline-structured-rows: position is meaning). The settled turn keeps them, so her window draws it
+    after a reload exactly as it drew it live."""
+
+    def __init__(self) -> None:
+        self.parts: list[TurnPart] = []
+
+    def see(self, event: dict[str, Any]) -> None:
+        kind = event.get("type")
+        if kind == "text":
+            delta = str(event.get("delta", ""))
+            last = self.parts[-1] if self.parts else None
+            if not delta:
+                return
+            if last is not None and last["kind"] == "text":
+                last["text"] += delta
+            else:
+                self.parts.append({"kind": "text", "text": delta})
+        elif kind == "tool":
+            self.parts.append(
+                {"kind": "tool", "name": event["name"], "label": event["label"], "class": event["class"]}
+            )
+        elif kind == "card":
+            self.parts.append({"kind": "card", "card_id": event["card"]["id"]})
+        elif kind == "blocks":  # kept with the figures they showed then (ADR 0022)
+            self.parts.append({"kind": "blocks", "shown": event["shown"]})
+
+    def watch(self, stream: Generator[dict[str, Any], None, _R]) -> Generator[dict[str, Any], None, _R]:
+        """Passes `stream` through, seeing each event, and answers what it returned."""
+        try:
+            while True:
+                try:
+                    event = next(stream)
+                except StopIteration as stop:
+                    return cast("_R", stop.value)
+                self.see(event)
+                yield event
+        finally:
+            stream.close()
 
 
 def _rounds(
@@ -450,17 +497,21 @@ def _stream(
                 tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
             if portal is None:
                 tools += browser.offered(daemon, space_id) + records.offered(daemon, space_id)
+                tools += report_parts.offered(daemon, space_id)
         if portal is not None:
             tools += portal.tools()
             messages[0]["content"] += (
                 "\n\n" + portal.frame() + reads.frame(daemon, space_id) + _waiting(daemon, space_id)
             )
 
+        seen = _Parts()
         agentic = design is None and portal is None and daemon.mcp_url is not None
         if agentic and getattr(engine, "tools_on", False):
-            outcome = yield from _agent(daemon, engine, messages, tools, space_id, surface)
+            outcome = yield from seen.watch(_agent(daemon, engine, messages, tools, space_id, surface))
         else:
-            outcome = yield from _rounds(daemon, engine, messages, tools, space_id, surface, portal, design)
+            outcome = yield from seen.watch(
+                _rounds(daemon, engine, messages, tools, space_id, surface, portal, design)
+            )
         if outcome is None:
             return
         reply_parts, cards, cost_total = outcome
@@ -488,13 +539,18 @@ def _stream(
                 reply = f"I filed a card for you to sign: {cards[0]['label']}"
             else:
                 reply = "I have nothing to add."
-            yield {"type": "text", "delta": reply}
+            said: dict[str, Any] = {"type": "text", "delta": reply}
+            seen.see(said)
+            yield said
         daemon.conversation.append(
             space_id,
             "athena",
             reply,
             cost_usd=cost_total,
             card_id=cards[0]["id"] if cards else None,
+            # A design turn's words are re-recorded by the stage (`design.record`); its frames are not
+            # chat parts, so it keeps the plain text.
+            parts=seen.parts if design is None else None,
         )
         daemon.memory.append_episode(
             space_id, f"Person: {text[:EPISODE_PART_MAX]}\nAthena: {reply[:EPISODE_PART_MAX]}"
@@ -546,19 +602,19 @@ def _waiting(daemon: Daemon, space_id: str) -> str:
     return "\n".join(lines)
 
 
-def _run_auto(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str, str]:
-    """(tool result, on-screen label). An empty label means nothing happened worth a line."""
+def _run_auto(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
+    """One of the turn's own AUTO actions: it runs and streams its line, or it is refused."""
     if call.name == "recall":
         rows = daemon.memory.recall(space_id, str(call.arguments.get("query", "")))
         result = "\n".join(f"- {r['line']}" for r in rows) or "Nothing found."
-        return result, "Looked through memory"
+        return Dispatched(result, [tool_event("recall", "Looked through memory")])
     if call.name != "remember":  # an AUTO action this turn did not offer (the stage's sketch, ask)
-        return "That action is not offered here.", ""
+        return Dispatched("That action is not offered here.", refused=True)
     fact = str(call.arguments.get("text", "")).strip()
     if not fact:
-        return "Nothing to remember.", ""
+        return Dispatched("Nothing to remember.", refused=True)
     daemon.memory.write_fact(space_id, fact)
-    return "Kept.", f"Remembered: {_short(fact)}"
+    return Dispatched("Kept.", [tool_event("remember", f"Remembered: {_short(fact)}")])
 
 
 def _run_portal(
