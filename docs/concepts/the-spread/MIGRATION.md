@@ -182,3 +182,27 @@ Each lands as one commit with its tests, gated green.
 - **"Write a new page" settles into the book.** When a written page is done, the conversation reloads
   and the window turns to the page it became; the settled page is drawn from stored parts exactly as it
   was written.
+
+### Decided while building
+
+- **The new page's draft lives in the store** (`useHer.draft`), not in the composer. Turning the page
+  keeps what the person was writing, and words the surface hands over while she writes wait in it; a
+  page that settles while words wait stays on the new page instead of turning.
+- **The page being written is a three-state table** (`spread/phase.ts`: ask, writing, failed). A page that
+  ended and is reloading still reads as written, so the composer never flashes between the two.
+- **Another project is another book:** a project switch opens its newest page. The project named at boot
+  is not a switch, so `#athena/<page>` opens that page.
+- **A card signed on the waiting page stays there, signed,** while the person is on it; the page would
+  otherwise vanish under their hand.
+- **A chore's open question is answered on the stage.** Inking and rubbing out act on the draft from the
+  book; answering is a stage turn with its own stream and view count (ADR 0010), so the book shows the
+  question and its suggestions and opens the stage.
+- **The elsewhere page has one action, "Read it as text".** "Open in Athena" is dropped: inside Athena it
+  goes nowhere, and a host has no way to open the app yet (ADR 0021).
+- **"Write a new page" links from the newest page.** The prototype put its replay footnote there; the app
+  has nothing to replay, and at 400 px the composer is otherwise only in the page list.
+- **The honest label is the engine's.** "Simulated" sits where the prototype put "Invented example";
+  the preview harness, which shows a fixture, puts "Invented example" there.
+- **The preview harness** (`/preview.html?spread=open|shell|folded`) draws the real components from a
+  fixture generated through the daemon's turn loop (`scripts/spread_fixture.py`), so the fidelity check
+  measures the product's CSS, not a copy. The stand-in engine moves the daemon's clock by an authored pace.
