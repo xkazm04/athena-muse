@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from athena import engine as engine_mod
-from athena import routes_turn
+from athena import mcp_views, routes_turn
 from athena.app import Daemon
 from athena.contracts import ROUTES, PinsBody, RecordKind
 from athena.engine import Engine, EngineError
@@ -51,6 +51,10 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     async def report(request: Request) -> Response:
         return JSONResponse(await run_in_threadpool(compose.view, daemon, request.path_params["id"]))
 
+    async def elsewhere(request: Request) -> Response:
+        # ADR 0024: what `show_report` answers another assistant, for the app's own page about it.
+        return JSONResponse(await run_in_threadpool(mcp_views.host_report, daemon, request.path_params["id"]))
+
     async def compose_now(request: Request) -> Response:
         space_id = request.path_params["id"]
         await run_in_threadpool(compose.kinds_of, daemon, space_id)  # refusals come before the engine
@@ -68,5 +72,6 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     return [
         Route(ROUTES["space_report"], report, methods=["GET"]),
         Route(ROUTES["space_report_compose"], compose_now, methods=["POST"]),
+        Route(ROUTES["space_report_elsewhere"], elsewhere, methods=["GET"]),
         Route(ROUTES["space_report_pins"], pins, methods=["PUT"]),
     ]

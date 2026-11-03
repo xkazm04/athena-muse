@@ -10,6 +10,7 @@ from collections.abc import Generator, Iterator
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 from urllib.parse import urlsplit
 
+from athena import clock
 from athena.app import Daemon
 from athena.browser import actions as browser
 from athena.browser.actions import Dispatched
@@ -164,7 +165,7 @@ def _frame(daemon: Daemon, space_id: str, text: str) -> str:
 def _messages(daemon: Daemon, space_id: str, text: str) -> list[dict[str, Any]]:
     # The person turn is already stored, so it closes the history.
     system = _frame(daemon, space_id, text)
-    history = daemon.conversation.list(space_id, HISTORY_TURNS)
+    history = daemon.conversation.said(space_id, HISTORY_TURNS)
     out: list[dict[str, Any]] = [{"role": "system", "content": system}]
     for t in history:
         out.append({"role": "user" if t["role"] == "person" else "assistant", "content": t["text"]})
@@ -286,10 +287,16 @@ _R = TypeVar("_R")
 class _Parts:
     """An Athena turn's parts as they stream past: text runs, tool lines and cards, in emitted order
     (inline-structured-rows: position is meaning). The settled turn keeps them, so her window draws it
-    after a reload exactly as it drew it live."""
+    after a reload exactly as it drew it live. Each part keeps its moment, `at_ms` from the turn's start
+    (ADR 0024), and an error's reason is kept as `stopped`."""
 
     def __init__(self) -> None:
         self.parts: list[TurnPart] = []
+        self.started = clock.monotonic_ms()
+        self.stopped: str | None = None
+
+    def elapsed(self) -> int:
+        return max(0, clock.monotonic_ms() - self.started)
 
     def see(self, event: dict[str, Any]) -> None:
         kind = event.get("type")
@@ -301,15 +308,23 @@ class _Parts:
             if last is not None and last["kind"] == "text":
                 last["text"] += delta
             else:
-                self.parts.append({"kind": "text", "text": delta})
+                self.parts.append({"kind": "text", "text": delta, "at_ms": self.elapsed()})
         elif kind == "tool":
             self.parts.append(
-                {"kind": "tool", "name": event["name"], "label": event["label"], "class": event["class"]}
+                {
+                    "kind": "tool",
+                    "name": event["name"],
+                    "label": event["label"],
+                    "class": event["class"],
+                    "at_ms": self.elapsed(),
+                }
             )
         elif kind == "card":
-            self.parts.append({"kind": "card", "card_id": event["card"]["id"]})
+            self.parts.append({"kind": "card", "card_id": event["card"]["id"], "at_ms": self.elapsed()})
         elif kind == "blocks":  # kept with the figures they showed then (ADR 0022)
-            self.parts.append({"kind": "blocks", "shown": event["shown"]})
+            self.parts.append({"kind": "blocks", "shown": event["shown"], "at_ms": self.elapsed()})
+        elif kind == "error":
+            self.stopped = str(event.get("reason", "")) or "The reply stopped before it finished"
 
     def watch(self, stream: Generator[dict[str, Any], None, _R]) -> Generator[dict[str, Any], None, _R]:
         """Passes `stream` through, seeing each event, and answers what it returned."""
@@ -485,6 +500,7 @@ def _stream(
     surface: Surface = design.surface if design is not None else "turn"
     with daemon.busy.turn(space_id), daemon.busy.chat(space_id):
         turn_id = mint("turn_")
+        seen = _Parts()  # the turn's clock starts here
         yield {"type": "start", "turn_id": turn_id, "engine": engine.id, "simulated": engine.simulated}
         daemon.conversation.append(space_id, "person", text)
         messages = _messages(daemon, space_id, text)
@@ -504,7 +520,6 @@ def _stream(
                 "\n\n" + portal.frame() + reads.frame(daemon, space_id) + _waiting(daemon, space_id)
             )
 
-        seen = _Parts()
         agentic = design is None and portal is None and daemon.mcp_url is not None
         if agentic and getattr(engine, "tools_on", False):
             outcome = yield from seen.watch(_agent(daemon, engine, messages, tools, space_id, surface))
@@ -513,6 +528,18 @@ def _stream(
                 _rounds(daemon, engine, messages, tools, space_id, surface, portal, design)
             )
         if outcome is None:
+            if design is None and portal is None and seen.stopped is not None:
+                # ADR 0024: the stopped turn is kept, with what streamed before it and why it stopped,
+                # so a reload shows the try and its reason instead of a question standing alone.
+                daemon.conversation.append(
+                    space_id,
+                    "athena",
+                    "",
+                    parts=seen.parts,
+                    duration_ms=seen.elapsed(),
+                    stopped=seen.stopped,
+                )
+                daemon.events.publish({"type": "turn_done", "space_id": space_id, "turn_id": turn_id})
             return
         reply_parts, cards, cost_total = outcome
 
@@ -551,6 +578,7 @@ def _stream(
             # A design turn's words are re-recorded by the stage (`design.record`); its frames are not
             # chat parts, so it keeps the plain text.
             parts=seen.parts if design is None else None,
+            duration_ms=seen.elapsed() if design is None else None,
         )
         daemon.memory.append_episode(
             space_id, f"Person: {text[:EPISODE_PART_MAX]}\nAthena: {reply[:EPISODE_PART_MAX]}"

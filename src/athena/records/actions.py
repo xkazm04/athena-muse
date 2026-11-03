@@ -112,8 +112,22 @@ def _list(daemon: Daemon, space_id: str, args: dict[str, Any]) -> Dispatched:
     what = f"{kind} records" if kind else "records"
     return Dispatched(
         _fence("\n".join(lines) or f"No {what} yet."),
-        [tool_event("record_list", f"Looked at the project's {what}")],
+        [tool_event("record_list", LOOKED.get(kind, LOOKED_ALL) if kind else LOOKED_ALL)],
     )
+
+
+#: The tool line of a look at one kind, in the person's words (ADR 0024: no record kinds on screen).
+LOOKED: dict[str, str] = {
+    "creator": "Looked through the creators",
+    "track": "Looked through the songs",
+    "thread": "Looked through the conversations with creators",
+    "agreement": "Looked through the licence offers",
+    "file": "Looked through the files",
+    "render": "Looked through the videos",
+    "release": "Looked through the releases",
+    "stat": "Looked through the channel's readings",
+}
+LOOKED_ALL = "Looked through what the project keeps"
 
 
 def _name_of(daemon: Daemon, space_id: str, kind: RecordKind, key: str, field: str) -> str:
@@ -130,7 +144,7 @@ def label_of(daemon: Daemon, space_id: str, kind: RecordKind, key: str, body: di
     if kind == "creator":
         what = f"creator {body['name']}"
     elif kind == "track":
-        what = f'track "{body["title"]}"'
+        what = f'the song "{body["title"]}"'
     elif kind == "thread":
         creator = _name_of(daemon, space_id, "creator", body["creator_key"], "name")
         channel = {"mail_web": "mail", "bio": "bio message", "comment": "comment"}[body["channel"]]
@@ -268,7 +282,8 @@ def _put(daemon: Daemon, space_id: str, args: dict[str, Any]) -> Dispatched:
     card = done.card
     return Dispatched(
         f"Filed card {card['id']} for the person to sign. Nothing is kept until they sign it.",
-        [tool_event("record_put", done.label), {"type": "card", "card": card}],
+        # The keep waits on the card, so its line is gated: the card that follows says it once.
+        [{**tool_event("record_put", done.label), "class": "gated"}, {"type": "card", "card": card}],
         card,
     )
 

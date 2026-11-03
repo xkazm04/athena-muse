@@ -52,6 +52,9 @@ def test_a_settled_turn_keeps_its_parts_in_the_order_they_streamed(daemon: Daemo
 
     person, athena = daemon.conversation.list(space)
     assert "parts" not in person
+    # each part keeps its moment (ADR 0024, timed in test_turn_moments.py); the shape is the rest
+    moments = [p.pop("at_ms") for p in athena["parts"]]
+    assert all(isinstance(m, int) for m in moments) and moments == sorted(moments)
     assert athena["parts"] == [
         {"kind": "text", "text": "Let me note it."},
         {"kind": "tool", "name": "remember", "label": "Remembered: Taxes are due in April", "class": "auto"},
@@ -76,7 +79,9 @@ def test_a_turn_with_no_words_keeps_the_line_it_said(daemon: Daemon) -> None:
     space = daemon.spaces.create({"name": "Taxes"})["id"]
     list(run_turn(daemon, Quiet(), "anything?", space))  # type: ignore[arg-type]
     athena = daemon.conversation.list(space)[-1]
-    assert athena["parts"] == [{"kind": "text", "text": "I have nothing to add."}]
+    assert [{k: v for k, v in p.items() if k != "at_ms"} for p in athena["parts"]] == [
+        {"kind": "text", "text": "I have nothing to add."}
+    ]
 
 
 def test_turns_stored_before_parts_read_back_as_before(tmp_path: Path) -> None:

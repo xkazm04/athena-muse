@@ -13,9 +13,9 @@ the same lease check as every other tool; a turn's own lease never names it."""
 from __future__ import annotations
 
 from importlib import resources
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from athena.contracts import Block, BlockValue, RecordItem, ReportView
+from athena.contracts import Block, BlockValue, HostReport, HostView, RecordItem, ReportView
 from athena.errors import ApiError
 
 if TYPE_CHECKING:
@@ -237,6 +237,16 @@ def call(daemon: Daemon, space_id: str, name: str) -> dict[str, Any]:
         "structuredContent": project(view, project_name, space_id),
         "isError": False,
     }
+
+
+def host_report(daemon: Daemon, space_id: str) -> HostReport:
+    """The same projection and text `show_report` answers, for the app's page about it (ADR 0024).
+    Raises the ApiError the report raises (no project, no records)."""
+    from athena.report import compose
+
+    name = daemon.spaces.get(space_id)["name"]
+    view = compose.view(daemon, space_id)
+    return {"view": cast("HostView", project(view, name, space_id)), "text": as_text(view, name)}
 
 
 # --- the resource ---------------------------------------------------------------------------------

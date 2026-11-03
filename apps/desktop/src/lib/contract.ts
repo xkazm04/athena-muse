@@ -727,10 +727,14 @@ export interface Card {
   outcome?: string;
 }
 
+// Every stored part carries `at_ms` (ADR 0024): milliseconds from the turn's start to the part's first
+// event, timed by the daemon. Omitted on parts stored before moments were kept.
+
 /** A run of her words between two other parts of the turn. */
 export interface TextPart {
   kind: "text";
   text: string;
+  at_ms?: number;
 }
 /** A tool line as it streamed: the action, its label (the dispatch's words for what happened) and its class. */
 export interface ToolPart {
@@ -738,16 +742,19 @@ export interface ToolPart {
   name: ActionName;
   label: string;
   class: ActionClass;
+  at_ms?: number;
 }
 /** A card the turn filed, by id; the card itself (and its outcome) comes from the gate. */
 export interface CardPart {
   kind: "card";
   card_id: string;
+  at_ms?: number;
 }
 /** Report parts she showed in the reply (ADR 0022), with the figures computed when she showed them. */
 export interface BlocksPart {
   kind: "blocks";
   shown: ShownBlocks;
+  at_ms?: number;
 }
 /** One part of a settled Athena turn, in the order the stream delivered it. */
 export type TurnPart = TextPart | ToolPart | CardPart | BlocksPart;
@@ -763,6 +770,12 @@ export interface Turn {
   /** An Athena turn's parts in emitted order; omitted on a person's turn and on turns stored before
    *  parts were kept, which show as `text` and `card_id` alone. */
   parts?: TurnPart[];
+  /** ADR 0024: how long an Athena turn took, from its start to the moment it was stored (the daemon's
+   *  steady clock). Omitted on a person's turn and on turns stored before it was kept. */
+  duration_ms?: number;
+  /** ADR 0024: the engine stopped this Athena turn, in plain words; its parts are what streamed first.
+   *  Omitted on a turn that finished. */
+  stopped?: string;
 }
 
 export interface TurnList {
@@ -1577,6 +1590,52 @@ export interface ShownBlocks {
   reasons: string[];
 }
 
+// --- the report as other assistants see it (ADR 0021, ADR 0024) ---------------------------------
+
+/** One computed figure of a part. A stat's one figure has an empty label (the title names it). */
+export interface HostFigure {
+  label: string;
+  /** null: no reading yet. */
+  value: number | null;
+  unit?: string;
+}
+
+export interface HostBlock {
+  id: string;
+  kind: BlockKind;
+  title: string;
+  /** At most five. */
+  figures: HostFigure[];
+  /** At most five, one plain line per record. */
+  rows: string[];
+  /** Figures and rows past five. */
+  more: number;
+  /** A callout part's sentence. */
+  text?: string;
+}
+
+export interface HostProject {
+  id: string;
+  name: string;
+}
+
+/** What the `show_report` view renders (its structuredContent). */
+export interface HostView {
+  project: HostProject;
+  title: string;
+  callout?: string;
+  default: boolean;
+  rendered_at: string;
+  blocks: HostBlock[];
+}
+
+/** GET /spaces/{id}/report/elsewhere: what `show_report` answers another assistant, read by the app
+ *  behind its own token. `text` is the fallback a host that renders nothing reads, word for word. */
+export interface HostReport {
+  view: HostView;
+  text: string;
+}
+
 // --- routines (business Phase 2) -----------------------------------------------------------------
 
 export interface RoutineRun {
@@ -1704,6 +1763,7 @@ export const ROUTES = {
   space_report: "/spaces/{id}/report",
   space_report_compose: "/spaces/{id}/report/compose",
   space_report_pins: "/spaces/{id}/report/pins",
+  space_report_elsewhere: "/spaces/{id}/report/elsewhere",
   space_routines: "/spaces/{id}/routines",
   routine: "/routines/{id}",
   routine_run: "/routines/{id}/run",

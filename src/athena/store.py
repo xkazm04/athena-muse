@@ -128,6 +128,8 @@ _ADDED = (
     ("cards", "outcome", "TEXT"),
     ("spaces", "kinds", "TEXT"),  # business Phase 1: the record kinds a project keeps, JSON list
     ("turns", "parts", "TEXT"),  # an Athena turn's parts in emitted order, JSON list (her window)
+    ("turns", "duration_ms", "INTEGER"),  # ADR 0024: how long an Athena turn took, start to stored
+    ("turns", "stopped", "TEXT"),  # ADR 0024: why the engine stopped the turn, in plain words
 )
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.

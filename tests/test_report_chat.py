@@ -165,7 +165,9 @@ def test_the_parts_stream_in_place_and_are_kept_with_the_settled_turn(daemon: Da
     streamed = next(e["shown"] for e in events if e["type"] == "blocks")
     athena = daemon.conversation.list(sid)[-1]
     assert [p["kind"] for p in athena["parts"]] == ["text", "blocks", "text"]
-    assert athena["parts"][1] == {"kind": "blocks", "shown": streamed}
+    kept = athena["parts"][1]
+    assert isinstance(kept.pop("at_ms"), int)  # ADR 0024: its moment
+    assert kept == {"kind": "blocks", "shown": streamed}
     # the turn's words carry no figure of the model's: the figures live in the parts
     assert athena["text"] == "Here is where they stand.Most tracks still wait for you."
 

@@ -396,17 +396,29 @@ class Card(TypedDict):
     outcome: NotRequired[str]  # what a signed card's run said, in plain words
 
 
+# Every stored part carries `at_ms` (ADR 0024): milliseconds from the turn's start to the part's first
+# event, timed by the daemon. Omitted on parts stored before moments were kept.
+
+
 class TextPart(TypedDict):
     """A run of her words between two other parts of the turn."""
 
     kind: Literal["text"]
     text: str
+    at_ms: NotRequired[int]
 
 
 #: A tool line of the turn, as it streamed: the action, its label (the dispatch's own words for what
 #: happened, or what a filed card asks) and its class. `class` is a Python keyword, hence this form.
 ToolPart = TypedDict(
-    "ToolPart", {"kind": Literal["tool"], "name": ActionName, "label": str, "class": ActionClass}
+    "ToolPart",
+    {
+        "kind": Literal["tool"],
+        "name": ActionName,
+        "label": str,
+        "class": ActionClass,
+        "at_ms": NotRequired[int],
+    },
 )
 
 
@@ -415,6 +427,7 @@ class CardPart(TypedDict):
 
     kind: Literal["card"]
     card_id: str
+    at_ms: NotRequired[int]
 
 
 class BlocksPart(TypedDict):
@@ -422,6 +435,7 @@ class BlocksPart(TypedDict):
 
     kind: Literal["blocks"]
     shown: ShownBlocks
+    at_ms: NotRequired[int]
 
 
 #: One part of a settled Athena turn, in the order the stream delivered it.
@@ -439,6 +453,12 @@ class Turn(TypedDict):
     # An Athena turn's parts in emitted order. Omitted on a person's turn and on turns stored before
     # parts were kept, which show as `text` and `card_id` alone.
     parts: NotRequired[list[TurnPart]]
+    # ADR 0024: how long an Athena turn took, from its start to the moment it was stored (the daemon's
+    # steady clock). Omitted on a person's turn and on turns stored before it was kept.
+    duration_ms: NotRequired[int]
+    # ADR 0024: the engine stopped this Athena turn, in plain words; its parts are what streamed first.
+    # Omitted on a turn that finished.
+    stopped: NotRequired[str]
 
 
 class TurnList(TypedDict):
@@ -1724,6 +1744,51 @@ class ShownBlocks(TypedDict):
     reasons: list[str]  # why each was removed, plain words
 
 
+# --- the report as other assistants see it (ADR 0021, ADR 0024) ---------------------------------
+
+
+class HostFigure(TypedDict):
+    """One computed figure of a part. A stat's one figure has an empty label (the title names it)."""
+
+    label: str
+    value: float | None  # None: no reading yet
+    unit: NotRequired[str]
+
+
+class HostBlock(TypedDict):
+    id: str
+    kind: BlockKind
+    title: str
+    figures: list[HostFigure]  # at most INLINE_MAX
+    rows: list[str]  # at most INLINE_MAX, one plain line per record
+    more: int  # figures and rows past INLINE_MAX
+    text: NotRequired[str]  # a callout part's sentence
+
+
+class HostProject(TypedDict):
+    id: str
+    name: str
+
+
+class HostView(TypedDict):
+    """What the `show_report` view renders (its structuredContent)."""
+
+    project: HostProject
+    title: str
+    callout: NotRequired[str]
+    default: bool
+    rendered_at: str
+    blocks: list[HostBlock]
+
+
+class HostReport(TypedDict):
+    """GET /spaces/{id}/report/elsewhere: what `show_report` answers another assistant, read by the app
+    behind its own token. `text` is the fallback a host that renders nothing reads, word for word."""
+
+    view: HostView
+    text: str
+
+
 # --- routines (business Phase 2) -----------------------------------------------------------------
 
 
@@ -1854,6 +1919,7 @@ ROUTES = {
     "space_report": "/spaces/{id}/report",
     "space_report_compose": "/spaces/{id}/report/compose",
     "space_report_pins": "/spaces/{id}/report/pins",
+    "space_report_elsewhere": "/spaces/{id}/report/elsewhere",
     "space_routines": "/spaces/{id}/routines",
     "routine": "/routines/{id}",
     "routine_run": "/routines/{id}/run",

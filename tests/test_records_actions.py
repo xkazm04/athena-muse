@@ -75,6 +75,8 @@ def test_any_other_kind_files_a_card_that_the_signature_writes_once(signing: Dae
     done = call(signing, space, "record_put", kind="agreement", body=AGREEMENT)
     assert done.card is not None and done.card["action"] == "record_put"
     assert done.card["label"] == "Keep: agreement with Lumen (agreed, plan pro)"
+    # its line streams as gated, so the window shows the keep once, as its card (ADR 0024)
+    assert [e["class"] for e in done.events if e["type"] == "tool"] == ["gated"]
     assert "Nothing is kept until they sign it" in done.result
     assert [e["type"] for e in done.events] == ["tool", "card"]
     assert signing.records.latest(space, "agreement") == []  # nothing until the signature

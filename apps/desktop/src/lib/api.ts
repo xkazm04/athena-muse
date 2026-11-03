@@ -56,6 +56,7 @@ import {
   type RecordList,
   type RehearsalEvent,
   type RehearseBody,
+  type HostReport,
   type ReportView,
   type Routine,
   type RoutineBody,
@@ -200,6 +201,7 @@ export const siteSignIn = (id: string, origin: string) =>
 // the daemon; a verdict answers the track's new revision.
 export const spaceReport = (id: string) => request<ReportView>("GET", path(ROUTES.space_report, { id }));
 export const composeReport = (id: string) => request<ReportView>("POST", path(ROUTES.space_report_compose, { id }));
+export const reportElsewhere = (id: string) => request<HostReport>("GET", path(ROUTES.space_report_elsewhere, { id }));
 export const setReportPins = (id: string, pinned: string[]) =>
   request<ReportView>("PUT", path(ROUTES.space_report_pins, { id }), { pinned } satisfies PinsBody);
 export const trackVerdict = (recordId: string, body: TrackVerdictBody) =>

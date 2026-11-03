@@ -128,7 +128,10 @@ def test_engine_error_mid_turn(client: TestClient, daemon: Daemon) -> None:
     client.post("/engine/key", json={"key": "sk-live-abc"}, headers=H)
     events = run(client, "hi")
     assert events[-1] == {"type": "error", "error": "engine_unavailable", "reason": "Meta refused the key"}
-    assert [t["role"] for t in daemon.conversation.list("")] == ["person"]
+    # ADR 0024: the stopped try is kept with its reason, and the model's history leaves it out
+    person, athena = daemon.conversation.list("")
+    assert (person["role"], athena["role"], athena["stopped"]) == ("person", "athena", "Meta refused the key")
+    assert [t["role"] for t in daemon.conversation.said("", 10)] == ["person"]
     assert daemon.ledger.page(10)["rows"][0]["ok"] is False
 
 

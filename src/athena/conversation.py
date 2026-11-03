@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import json
 import sqlite3
 
@@ -37,6 +38,10 @@ def _turn(r: sqlite3.Row) -> Turn:
     parts = _parts(r["parts"])
     if parts is not None:
         t["parts"] = parts
+    if r["duration_ms"] is not None:
+        t["duration_ms"] = int(r["duration_ms"])
+    if r["stopped"] is not None:
+        t["stopped"] = r["stopped"]
     return t
 
 
@@ -53,15 +58,18 @@ class Conversation:
         cost_usd: float | None = None,
         card_id: str | None = None,
         parts: list[TurnPart] | None = None,
+        duration_ms: int | None = None,
+        stopped: str | None = None,
     ) -> Turn:
         """`parts` is an Athena turn's text runs, tool lines and cards in the order they streamed;
-        `text` stays the whole reply, which the next turn's history reads."""
+        `text` stays the whole reply, which the next turn's history reads. `duration_ms` is how long
+        the turn took; `stopped` is why the engine ended it early (ADR 0024)."""
         turn_id = mint("turn_")
         stored = json.dumps(parts, ensure_ascii=False) if parts is not None else None
         self._store.run(
-            "INSERT INTO turns(id, space_id, role, text, created, cost_usd, card_id, parts)"
-            " VALUES (?,?,?,?,?,?,?,?)",
-            (turn_id, space_id, role, text, now_iso(), cost_usd, card_id, stored),
+            "INSERT INTO turns(id, space_id, role, text, created, cost_usd, card_id, parts, duration_ms,"
+            " stopped) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (turn_id, space_id, role, text, now_iso(), cost_usd, card_id, stored, duration_ms, stopped),
         )
         return _turn(self._store.query("SELECT * FROM turns WHERE id = ?", (turn_id,))[0])
 
@@ -71,6 +79,11 @@ class Conversation:
             "SELECT * FROM turns WHERE space_id = ? ORDER BY rowid DESC LIMIT ?", (space_id, limit)
         )
         return [_turn(r) for r in reversed(rows)]
+
+    def said(self, space_id: str, limit: int) -> builtins.list[Turn]:
+        """What was said, oldest first, for a model's history: the last `limit` turns without the ones
+        the engine stopped (they hold no reply of hers, and an empty assistant line misleads a model)."""
+        return [t for t in self.list(space_id, limit) if "stopped" not in t]
 
     def erase_space(self, space_id: str) -> int:
         return self._store.run("DELETE FROM turns WHERE space_id = ?", (space_id,))

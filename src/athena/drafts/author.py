@@ -592,7 +592,7 @@ def _messages(daemon: Daemon, draft: Draft) -> list[dict[str, Any]]:
     if example is not None:
         system.append("## An example chore from Athena's library (its answer key is never shown)")
         system.append(_exemplar(example))
-    turns = daemon.conversation.list(draft["space_id"], CONVERSATION_TURNS)
+    turns = daemon.conversation.said(draft["space_id"], CONVERSATION_TURNS)
     said = "\n".join(f"{'Person' if t['role'] == 'person' else 'Athena'}: {t['text']}" for t in turns)
     user = [
         f"## The person's need, in their words\n{draft['need']}",
