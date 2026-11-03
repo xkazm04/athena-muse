@@ -30,24 +30,28 @@ async function paintLook(): Promise<void> {
 }
 
 /** One piece of the reply, in the order the stream delivered it. `marks` are where each text delta
- *  began in `text`, so the transcript can fade in only the words that just arrived. */
+ *  began in `text`, so the page can fade in only the words that just arrived. `at` is the part's moment
+ *  in ms from the turn's start (ADR 0024): the daemon's figure on a settled turn, this window's own
+ *  count while the turn streams, absent on parts stored before moments were kept. */
 export type LivePart =
-  | { kind: "text"; text: string; marks: number[] }
-  | { kind: "tool"; label: string }
-  | { kind: "card"; id: string }
+  | { kind: "text"; text: string; marks: number[]; at?: number }
+  | { kind: "tool"; name: string; label: string; at?: number }
+  | { kind: "card"; id: string; at?: number }
   /** Report parts she showed (ADR 0022), with the figures the daemon computed then. */
-  | { kind: "blocks"; shown: ShownBlocks }
+  | { kind: "blocks"; shown: ShownBlocks; at?: number }
   /** A stored part this window has no renderer for: shown as a plain row, never dropped. */
   | { kind: "unknown"; what: string };
 
+const moment = (at: number | undefined): { at?: number } => (at === undefined ? {} : { at });
+
 /** A text delta extends the text run it follows; after a tool line or a card it starts a new run. */
-export function appendText(parts: LivePart[], delta: string): LivePart[] {
+export function appendText(parts: LivePart[], delta: string, at?: number): LivePart[] {
   if (!delta) return parts;
   const last = parts[parts.length - 1];
   if (last?.kind === "text") {
-    return [...parts.slice(0, -1), { kind: "text", text: last.text + delta, marks: [...last.marks, last.text.length] }];
+    return [...parts.slice(0, -1), { ...last, text: last.text + delta, marks: [...last.marks, last.text.length] }];
   }
-  return [...parts, { kind: "text", text: delta, marks: [0] }];
+  return [...parts, { kind: "text", text: delta, marks: [0], ...moment(at) }];
 }
 
 /**
@@ -58,14 +62,14 @@ export function appendText(parts: LivePart[], delta: string): LivePart[] {
 export function addPart(parts: LivePart[], p: TurnPart): LivePart[] {
   switch (p.kind) {
     case "text":
-      return appendText(parts, p.text);
+      return appendText(parts, p.text, p.at_ms);
     case "tool":
       // A gated action shows as its card, which follows; a line too would say it twice.
-      return p.class === "auto" ? [...parts, { kind: "tool", label: p.label }] : parts;
+      return p.class === "auto" ? [...parts, { kind: "tool", name: p.name, label: p.label, ...moment(p.at_ms) }] : parts;
     case "card":
-      return [...parts, { kind: "card", id: p.card_id }];
+      return [...parts, { kind: "card", id: p.card_id, ...moment(p.at_ms) }];
     case "blocks":
-      return [...parts, { kind: "blocks", shown: p.shown }];
+      return [...parts, { kind: "blocks", shown: p.shown, ...moment(p.at_ms) }];
     default:
       // A part from a newer daemon: a visible row, never nothing (version skew must not edit the record).
       return [...parts, { kind: "unknown", what: String((p as { kind?: unknown }).kind ?? "") }];
@@ -75,11 +79,13 @@ export function addPart(parts: LivePart[], p: TurnPart): LivePart[] {
 /** A settled turn's stored parts, read through the live reducer. */
 export const settledParts = (parts: readonly TurnPart[]): LivePart[] => parts.reduce(addPart, []);
 
-/** The reply being written right now (or the one that just failed). */
+/** The reply being written right now (or the one that failed and could not be read back). */
 export interface Live {
   /** Text runs, tool lines and cards, interleaved as they streamed (inline-structured-rows: position is meaning). */
   parts: LivePart[];
   done: boolean;
+  /** When the person sent it, on this window's steady clock (`performance.now()`); parts are timed from it. */
+  started: number;
   cost?: number;
   error?: string;
 }
@@ -106,6 +112,8 @@ export interface HerState {
 
   /** Words the surface handed over while a reply was still being written; the composer takes them. */
   handed: string;
+  /** The words of the turn the person stopped in this window, so its page can say so. */
+  stoppedByYou: string;
 
   boot(): Promise<void>;
   send(text: string, opts?: { start?: boolean }): Promise<void>;
@@ -117,6 +125,8 @@ export interface HerState {
   /** The composer took the handed words. */
   takeHanded(): void;
   retry(): Promise<void>;
+  /** A failed page that could not be read back is put away; the composer comes back. */
+  dismiss(): void;
   stop(): void;
   select(spaceId: string): Promise<void>;
   decided(card: Card): void;
@@ -139,6 +149,7 @@ const initial = {
   signed: false,
   setup: false,
   handed: "",
+  stoppedByYou: "",
 };
 
 const reason = (e: unknown, fallback: string): string => (e instanceof DaemonError ? e.reason : fallback);
@@ -238,8 +249,11 @@ export const useHer = create<HerState>()((set, get) => {
       const ctrl = new AbortController();
       controller = ctrl;
       const spaceId = get().activeId;
-      set({ streaming: true, sent: text, live: { parts: [], done: false }, problem: "" });
+      const started = performance.now();
+      set({ streaming: true, sent: text, live: { parts: [], done: false, started }, problem: "", stoppedByYou: "" });
       const patch = (fn: (l: Live) => Live) => set((s) => (s.live ? { live: fn(s.live) } : {}));
+      // While it streams, a part's moment is this window's own count; the reload brings the daemon's.
+      const at = () => Math.max(0, Math.round(performance.now() - started));
       let ended = false;
       try {
         const run = get().setup
@@ -252,17 +266,20 @@ export const useHer = create<HerState>()((set, get) => {
                 set((s) => (s.engine ? { engine: { ...s.engine, engine: e.engine, simulated: e.simulated } } : {}));
                 break;
               case "text":
-                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "text", text: e.delta }) }));
+                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "text", text: e.delta, at_ms: at() }) }));
                 break;
               case "tool":
-                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "tool", name: e.name, label: e.label, class: e.class }) }));
+                patch((l) => ({
+                  ...l,
+                  parts: addPart(l.parts, { kind: "tool", name: e.name, label: e.label, class: e.class, at_ms: at() }),
+                }));
                 break;
               case "card":
                 learnCard(e.card);
-                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "card", card_id: e.card.id }) }));
+                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "card", card_id: e.card.id, at_ms: at() }) }));
                 break;
               case "blocks":
-                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "blocks", shown: e.shown }) }));
+                patch((l) => ({ ...l, parts: addPart(l.parts, { kind: "blocks", shown: e.shown, at_ms: at() }) }));
                 break;
               case "done":
                 ended = true;
@@ -322,7 +339,12 @@ export const useHer = create<HerState>()((set, get) => {
       await get().send("", { start: true });
     },
 
+    dismiss() {
+      if (!get().streaming) set({ live: null, sent: "" });
+    },
+
     stop() {
+      if (get().streaming) set({ stoppedByYou: get().sent });
       controller?.abort();
     },
 

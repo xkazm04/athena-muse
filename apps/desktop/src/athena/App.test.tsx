@@ -316,7 +316,7 @@ describe("her window", () => {
 
     const parts = useHer.getState().live!.parts;
     expect(parts.map((p) => p.kind)).toEqual(["text", "tool", "text", "card", "text"]);
-    expect(parts[4]).toEqual({ kind: "text", text: "Sign it when ready.", marks: [0, 7] });
+    expect(parts[4]).toMatchObject({ kind: "text", text: "Sign it when ready.", marks: [0, 7] });
 
     // The screen says them in that order, and her name only once.
     const rows = [...document.querySelectorAll(".her-transcript > *")].slice(1);

@@ -13,7 +13,8 @@ export interface CardViewProps {
   where?: string;
 }
 
-const ACTION: Record<Card["action"], string> = {
+/** Each action's heading on its card, in plain words (the book's receipts say them too). */
+export const ACTION_WORDS: Record<Card["action"], string> = {
   recall: "Look through memory",
   remember: "Remember",
   propose_brief: "Change the brief",
@@ -108,7 +109,7 @@ export function CardView({ card, onDecide, onResolved, where }: CardViewProps) {
         <span className="badge" data-tone={waiting ? "human" : card.state === "approved" ? "success" : undefined}>
           {waiting ? "Needs your signature" : card.state === "approved" ? "Signed, ran once" : "Declined"}
         </span>
-        <span className="card-action">{ACTION[card.action]}</span>
+        <span className="card-action">{ACTION_WORDS[card.action]}</span>
         {where && <span className="card-where">{where}</span>}
       </header>
       <p className="card-label">{card.label}</p>

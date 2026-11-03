@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from "react";
 import type { DraftStep, Mark } from "../../lib/contract";
+import { typingIn, type KeyLike } from "../../ui/keys";
 
 export type StageKey =
   | { type: "pick"; index: number }
@@ -20,23 +21,6 @@ export interface KeyContext {
   asking: boolean;
   /** How many suggestions there are (keys past it do nothing). */
   suggestions: number;
-}
-
-/** The part of a KeyboardEvent the map reads. */
-export interface KeyLike {
-  key: string;
-  ctrlKey?: boolean;
-  metaKey?: boolean;
-  altKey?: boolean;
-  isComposing?: boolean;
-  keyCode?: number;
-  target: EventTarget | null;
-}
-
-/** Whether the key lands in a place the person types: a field, a text area, a select or editable text. */
-export function typingIn(target: EventTarget | null): boolean {
-  if (!target || !(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
 /** What a key means on the stage now, or null. Pure. */
