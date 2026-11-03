@@ -47,10 +47,11 @@ put it.
 
 ## 4. Freedoms
 
-Everything visual and spatial: layout of both windows, how the conversation and the screen
-relate, typography, palette (the current "Loop Tide" tokens are a starting point, not a
-requirement), motion, how her presence reads, how a composed view arrives. Any framework or
-none.
+Everything spatial and behavioural: layout of both windows, how the conversation and the
+screen relate, motion, how her presence reads, how a composed view arrives, what the
+in-assistant view looks like. The visual language is built on the current Loop Tide design
+(staged under `data/loop-tide/`) at app quality, not a mock - extend it where an idea needs
+something it lacks, and say what you added. Any framework or none.
 
 ## 5. Hard constraints
 
@@ -59,5 +60,8 @@ none.
   engine is labelled on screen; designed imagery is labelled as stylised.
 - Calm and reduced motion are honoured: every motion has a still form that carries the same
   content.
+- One frame at a time, no page scroll (a long conversation scrolls inside its transcript, never
+  the page); a 12 px type floor.
+- Plain words for non-developers; no machinery words on screen.
 - Text never placed in a way a person cannot select and read; every action reachable by
   keyboard.
