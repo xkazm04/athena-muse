@@ -14,7 +14,7 @@ function when(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-export function ElsewherePage({ spaceId }: { spaceId: string }) {
+export function ElsewherePage({ spaceId, read = api.reportElsewhere }: { spaceId: string; read?: (spaceId: string) => Promise<HostReport> }) {
   const [got, setGot] = useState<HostReport | null>(null);
   const [problem, setProblem] = useState("");
   const [asText, setAsText] = useState(false);
@@ -22,14 +22,14 @@ export function ElsewherePage({ spaceId }: { spaceId: string }) {
     let live = true;
     setGot(null);
     setProblem("");
-    api.reportElsewhere(spaceId).then(
+    read(spaceId).then(
       (r) => live && setGot(r),
       (e: unknown) => live && setProblem(e instanceof DaemonError ? e.reason : "The report cannot be read."),
     );
     return () => {
       live = false;
     };
-  }, [spaceId]);
+  }, [spaceId, read]);
 
   const view = got?.view;
   return (

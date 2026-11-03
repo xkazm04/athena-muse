@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useHer } from "../../athena/store";
 import * as api from "../../lib/api";
-import type { Draft } from "../../lib/contract";
+import type { Draft, HostReport, ReportView } from "../../lib/contract";
 import { Spread } from "../../spread/Spread";
 import type { BackPage } from "../../spread/pages";
 import { useAppEvents } from "../../ui";
@@ -36,6 +36,71 @@ function useDrawing(draftId: string | undefined, step: string | undefined): [Dra
   return [draft, setDraft];
 }
 
+interface BackPageData {
+  spaceId: string;
+  /** The active project's report, when it keeps records and has been read. */
+  view: ReportView | null;
+  /** Its open draft while it is still being drawn. */
+  draft: Draft | null;
+  setDraft: (d: Draft) => void;
+  ledgerTotal: number | undefined;
+  /** How the report seen elsewhere is read (the preview passes its fixture). */
+  readElsewhere?: (spaceId: string) => Promise<HostReport>;
+}
+
+/** The back pages this window adds after the conversation, each only when its data exists. */
+export function backPages({ spaceId, view, draft, setDraft, ledgerTotal, readElsewhere }: BackPageData): BackPage[] {
+  const back: BackPage[] = [];
+  if (view) {
+    back.push({
+      key: "report",
+      glyph: "≡",
+      label: "The project's report",
+      sub: view.default ? "the first layout" : "her arrangement",
+      left: <ReportLeft spaceId={spaceId} view={view} />,
+      right: <ReportRight spaceId={spaceId} view={view} />,
+      leftLabel: "Left page: what the report is, and your standing rules",
+      rightLabel: "Right page: the report",
+    });
+  }
+  if (draft) {
+    back.push({
+      key: "chore",
+      glyph: "✎",
+      label: "A chore being drawn",
+      sub: draft.agreed ? "agreed" : "not agreed yet",
+      left: <ChoreLeft draft={draft} />,
+      right: <ChoreRight draft={draft} onChange={setDraft} />,
+      leftLabel: "Left page: the chore in your words",
+      rightLabel: "Right page: the sketch, place by place",
+    });
+  }
+  if (view) {
+    back.push({
+      key: "elsewhere",
+      glyph: "↗",
+      label: "Seen in another assistant",
+      sub: "stylised",
+      single: true,
+      left: <ElsewherePage spaceId={spaceId} {...(readElsewhere ? { read: readElsewhere } : {})} />,
+      right: null,
+      leftLabel: "Seen in another assistant",
+      rightLabel: "",
+    });
+  }
+  back.push({
+    key: "costs",
+    glyph: "$",
+    label: "What it cost",
+    sub: ledgerTotal === undefined ? "" : `est. ${money(ledgerTotal)}`,
+    left: <CostsLeft />,
+    right: <CostsRight />,
+    leftLabel: "Left page: what running her cost",
+    rightLabel: "Right page: every call",
+  });
+  return back;
+}
+
 export function AthenaBook({ page }: { page?: string | undefined }) {
   const boot = useHer((s) => s.boot);
   const onEvent = useHer((s) => s.onEvent);
@@ -60,55 +125,7 @@ export function AthenaBook({ page }: { page?: string | undefined }) {
     void loadLedger();
   }, [loadLedger]);
 
-  const back: BackPage[] = [];
-  if (view) {
-    back.push({
-      key: "report",
-      glyph: "≡",
-      label: "The project's report",
-      sub: view.default ? "the first layout" : "her arrangement",
-      left: <ReportLeft spaceId={activeId} view={view} />,
-      right: <ReportRight spaceId={activeId} view={view} />,
-      leftLabel: "Left page: what the report is, and your standing rules",
-      rightLabel: "Right page: the report",
-    });
-  }
-  if (draft) {
-    back.push({
-      key: "chore",
-      glyph: "✎",
-      label: "A chore being drawn",
-      sub: draft.agreed ? "agreed" : "not agreed yet",
-      left: <ChoreLeft draft={draft} />,
-      right: <ChoreRight draft={draft} onChange={setDraft} />,
-      leftLabel: "Left page: the chore in your words",
-      rightLabel: "Right page: the sketch, place by place",
-    });
-  }
-  if (view) {
-    back.push({
-      key: "elsewhere",
-      glyph: "↗",
-      label: "Seen in another assistant",
-      sub: "stylised",
-      single: true,
-      left: <ElsewherePage spaceId={activeId} />,
-      right: null,
-      leftLabel: "Seen in another assistant",
-      rightLabel: "",
-    });
-  }
-  back.push({
-    key: "costs",
-    glyph: "$",
-    label: "What it cost",
-    sub: ledger ? `est. ${money(ledger.totals.cost_usd)}` : "",
-    left: <CostsLeft />,
-    right: <CostsRight />,
-    leftLabel: "Left page: what running her cost",
-    rightLabel: "Right page: every call",
-  });
-
+  const back = backPages({ spaceId: activeId, view, draft, setDraft, ledgerTotal: ledger?.totals.cost_usd });
   const open = useMemo(() => (page ? { key: page } : null), [page]);
   return <Spread layout="open" back={back} open={open} />;
 }

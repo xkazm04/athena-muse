@@ -227,3 +227,10 @@
   border-radius: var(--r-card);
   background: var(--background);
 }
+
+/* the book's harness (ADR 0024): the main window's body, full size, no page scroll */
+.pv-spread {
+  position: fixed;
+  inset: 0;
+  padding-top: var(--sp-1);
+}

@@ -387,6 +387,9 @@
   font-size: var(--fs-read);
   line-height: 1.65;
 }
+[data-spread] .sp-answer .prose > * + * {
+  margin-top: 0.6em;
+}
 [data-spread] .sp-answer .prose-h {
   font-size: var(--fs-read-head);
   margin-top: 0.2em;

@@ -144,7 +144,7 @@ def label_of(daemon: Daemon, space_id: str, kind: RecordKind, key: str, body: di
     if kind == "creator":
         what = f"creator {body['name']}"
     elif kind == "track":
-        what = f'the song "{body["title"]}"'
+        what = f"the song “{body['title']}”"
     elif kind == "thread":
         creator = _name_of(daemon, space_id, "creator", body["creator_key"], "name")
         channel = {"mail_web": "mail", "bio": "bio message", "comment": "comment"}[body["channel"]]

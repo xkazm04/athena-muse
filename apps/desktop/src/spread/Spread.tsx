@@ -23,13 +23,15 @@ export interface SpreadProps {
   pill?: boolean;
   /** Controls the window adds at the end of the head (her window's Hide). */
   chrome?: ReactNode;
+  /** An honest label the window adds before the look's switches (the preview's "Invented example"). */
+  note?: ReactNode;
   /** Her window drags by its head. */
   onHeadMouseDown?: (e: MouseEvent<HTMLElement>) => void;
   /** Ask the window to show this page (the bookmark or a link elsewhere); changes when it changes. */
   open?: { key: string } | null;
 }
 
-export function Spread({ layout, back = [], pill = false, chrome, onHeadMouseDown, open }: SpreadProps) {
+export function Spread({ layout, back = [], pill = false, chrome, note, onHeadMouseDown, open }: SpreadProps) {
   const turns = useHer((s) => s.turns);
   const cards = useHer((s) => s.cards);
   const live = useHer((s) => s.live);
@@ -185,7 +187,7 @@ export function Spread({ layout, back = [], pill = false, chrome, onHeadMouseDow
 
   return (
     <div className="sp" data-spread="" data-layout={layout}>
-      <Head pill={pill} chrome={chrome} onMouseDown={onHeadMouseDown} waiting={waiting} onBookmark={openBookmark} />
+      <Head pill={pill} chrome={chrome} note={note} onMouseDown={onHeadMouseDown} waiting={waiting} onBookmark={openBookmark} />
       <main
         ref={book}
         className={`sp-book${page.single ? " is-single" : ""}${leaf ? ` turn-${leaf} turned` : ""}`}
@@ -271,12 +273,13 @@ function Tab({ page, current, sep, onClick, refFn }: { page: Page; current: bool
 interface HeadProps {
   pill: boolean;
   chrome?: ReactNode;
+  note?: ReactNode;
   onMouseDown?: ((e: MouseEvent<HTMLElement>) => void) | undefined;
   waiting: number;
   onBookmark: () => void;
 }
 
-function Head({ pill, chrome, onMouseDown, waiting, onBookmark }: HeadProps) {
+function Head({ pill, chrome, note, onMouseDown, waiting, onBookmark }: HeadProps) {
   const seal = useHer(sealOf);
   const settle = useHer((s) => s.settle);
   const spaces = useHer((s) => s.spaces);
@@ -321,6 +324,7 @@ function Head({ pill, chrome, onMouseDown, waiting, onBookmark }: HeadProps) {
             Simulated
           </span>
         )}
+        {note}
         <LookSwitches />
         {chrome}
       </div>
