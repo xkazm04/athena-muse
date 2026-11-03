@@ -319,13 +319,13 @@ export function NowRight() {
 
 // --- cards waiting on no page of this book ------------------------------------------------------
 
-export function WaitingLeft({ stray }: { stray: readonly Card[] }) {
+export function WaitingLeft({ count }: { count: number }) {
   return (
     <div>
       <p className="sp-kicker">
         <span className="eyebrow">Waiting for your signature</span>
       </p>
-      <h2 className="sp-ask">{waitsWords(stray.length)}</h2>
+      <h2 className="sp-ask">{count > 0 ? waitsWords(count) : "Nothing more waits for your signature"}</h2>
       <p className="sp-when">On no page of this conversation: in another project, or filed by a routine.</p>
       <p className="sp-foot">Nothing she asks for here happens until you sign it.</p>
     </div>

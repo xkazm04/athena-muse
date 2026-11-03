@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
-const SHEETS = { "spread/spread.css": read("./spread.css"), "athena/her.css": read("../athena/her.css") };
+const SHEETS = {
+  "spread/spread.css": read("./spread.css"),
+  "athena/her.css": read("../athena/her.css"),
+  "main/athena/book.css": read("../main/athena/book.css"),
+};
 const tokens = read("../theme/tokens.css");
 
 /** The px a size token resolves to: its number, or for a clamp() each px in it. */

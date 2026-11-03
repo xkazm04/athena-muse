@@ -605,46 +605,7 @@ p.m-muted {
   grid-column: 1 / -1;
 }
 
-/* ---- the Athena page, after the variant's mind page (ADR 0016): the head and its figures, then the
- * cards at the left and the core and the costs at the right, each column scrolling on its own ---- */
-.m-athena {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: var(--sp-5);
-  max-width: 1240px;
-  height: calc(100vh - var(--bar-h) - var(--dock-h) - 2 * var(--sp-5) - var(--sp-2));
-  margin: 0 auto;
-}
-.m-athena__head {
-  display: grid;
-  gap: var(--sp-2);
-}
-.m-athena__head .eyebrow[data-tone="human"],
-.m-kpi[data-tone="human"] dd {
-  color: var(--role-human);
-}
-.m-athena__kpis {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: var(--sp-3);
-}
-.m-athena__cols {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--sp-6);
-  min-height: 0;
-}
-.m-athena__col {
-  display: grid;
-  align-content: start;
-  gap: var(--sp-5);
-  min-height: 0;
-  overflow: hidden auto;
-  padding-right: var(--sp-2);
-}
-.m-cards {
-  display: grid;
-  gap: var(--sp-3);
-}
+/* ---- the costs table (her book's costs page, ADR 0024) ---- */
 .m-totals {
   font-size: var(--fs-lg);
   font-weight: 600;
@@ -662,18 +623,6 @@ p.m-muted {
   height: 40px;
   font-size: var(--fs-sm);
 }
-@media (max-height: 740px) {
-  .m-athena {
-    gap: var(--sp-3);
-  }
-  .m-athena .marquee {
-    font-size: var(--fs-2xl);
-  }
-  .m-athena__kpis {
-    margin-top: var(--sp-1);
-  }
-}
-
 /* ---- chores: the variant's table (ADR 0016; the parts are in shell/idiom.css) ---- */
 .m-chores {
   max-width: 1240px;

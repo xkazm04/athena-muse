@@ -450,7 +450,8 @@ export const useMain = create<MainState>()((set, get) => ({
 
 /** The project whose page is open, when its report has been read (only projects that keep records). */
 function openReport(s: MainState): string | undefined {
-  const id = s.route.view === "project" ? routeSpace(s.route) : undefined;
+  // a project's page shows its report; her book shows the active project's (ADR 0024)
+  const id = s.route.view === "project" ? routeSpace(s.route) : s.route.view === "athena" ? s.active : undefined;
   return id && s.reports[id] ? id : undefined;
 }
 

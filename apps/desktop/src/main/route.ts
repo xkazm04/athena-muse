@@ -10,7 +10,9 @@ export type Route =
   | { view: "project"; id: string }
   | { view: "core" }
   | { view: "memory"; id: string }
-  | { view: "athena" }
+  /** Her place (ADR 0024): the conversation as an open book; `page` opens one page by its key ("p3", "now",
+   *  "report", ...). */
+  | { view: "athena"; page?: string }
   | { view: "chores" }
   | { view: "chore"; id: string }
   /** The stage (onboarding v2): a draft by id, or `null` for `#stage/new`, the describe step. */
@@ -32,7 +34,7 @@ export type Route =
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
   if (parts.length === 0 || parts[0] === "home") return { view: "home" };
-  if (parts[0] === "athena") return { view: "athena" };
+  if (parts[0] === "athena") return parts[1] ? { view: "athena", page: parts[1] } : { view: "athena" };
   if (parts[0] === "chores") return parts[1] ? { view: "chore", id: parts[1] } : { view: "chores" };
   if (parts[0] === "stage") return { view: "stage", id: parts[1] && parts[1] !== STAGE_NEW ? parts[1] : null };
   if (parts[0] === "twins") return { view: "twins" };
@@ -71,7 +73,7 @@ export function toHash(route: Route): string {
     case "home":
       return "#home";
     case "athena":
-      return "#athena";
+      return route.page ? `#athena/${encodeURIComponent(route.page)}` : "#athena";
     case "chores":
       return "#chores";
     case "chore":

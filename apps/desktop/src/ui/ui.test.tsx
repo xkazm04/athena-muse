@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Card, LedgerRow, SpaceSummary } from "../lib/contract";
 import { DaemonError } from "../lib/daemon";
-import { COST_COLUMNS } from "../main/athena/AthenaView";
+import { COST_COLUMNS } from "../main/athena/CostsPage";
 import { CardView } from "./CardView";
 import { Ledger } from "./Ledger";
 import { ProjectPill } from "./ProjectPill";

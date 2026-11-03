@@ -3,7 +3,7 @@ import * as api from "../lib/api";
 import { getConnection, UNREACHABLE } from "../lib/daemon";
 import { Backdrop, Seal } from "../theme";
 import { useAppEvents } from "../ui";
-import { AthenaView } from "./athena/AthenaView";
+import { AthenaBook } from "./athena/AthenaBook";
 import { ChoreScene } from "./chores/ChoreScene";
 import { Chores } from "./chores/Chores";
 import { FirstRun, readSkipped } from "./onboarding/FirstRun";
@@ -115,6 +115,15 @@ export function Shell() {
     );
   }
 
+  if (route.view === "athena") {
+    // Her place is the open book (ADR 0024): it keeps its own frame, like the stage, with no dock.
+    return (
+      <DepthFrame route={route}>
+        <AthenaBook page={route.page} />
+      </DepthFrame>
+    );
+  }
+
   if (isTwinRoute(route)) {
     // The twins page fills the body; a twin's setup keeps its own header, like the stage.
     return (
@@ -132,7 +141,6 @@ export function Shell() {
         {route.view === "project" && <Level id={route.id} />}
         {route.view === "core" && <CoreLevel />}
         {route.view === "memory" && <Memory id={route.id} />}
-        {route.view === "athena" && <AthenaView />}
         {route.view === "chores" && <Chores />}
         {route.view === "chore" && <ChoreScene id={route.id} />}
         {route.view === "settings" && <SettingsView item={route.item} />}

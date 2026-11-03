@@ -40,8 +40,18 @@ export function Spread({ layout, back = [], pill = false, chrome, onHeadMouseDow
   const composer = useRef<HTMLTextAreaElement>(null);
   const xs = useMemo(() => exchangesOf(turns), [turns]);
   const liveParts = useMemo(() => live?.parts ?? [], [live]);
-  const stray = useMemo(() => strayWaiting(xs, cards, liveParts), [xs, cards, liveParts]);
   const [at, setAt] = useState<string | null>(null);
+  // The cards waiting on no page of this book. While the person is on their page, a card they just
+  // signed stays on it (signed), so the page does not vanish under their hand.
+  const waitingNow = useMemo(() => strayWaiting(xs, cards, liveParts).map((c) => c.id), [xs, cards, liveParts]);
+  const [seen, setSeen] = useState<string[]>([]);
+  useEffect(() => {
+    setSeen((was) => (at === WAITING ? [...new Set([...was, ...waitingNow])] : []));
+  }, [at, waitingNow]);
+  const stray = useMemo(
+    () => [...new Set([...seen, ...waitingNow])].flatMap((id) => (cards[id] ? [cards[id]] : [])),
+    [seen, waitingNow, cards],
+  );
 
   const go = (key: string) => setAt(key);
   const pages: Page[] = [
@@ -66,9 +76,9 @@ export function Spread({ layout, back = [], pill = false, chrome, onHeadMouseDow
             kind: "back" as const,
             num: "◆",
             label: "Waiting for your signature",
-            sub: waitsWords(stray.length).replace(" for your signature", ""),
-            waiting: true,
-            left: <WaitingLeft stray={stray} />,
+            sub: waitingNow.length > 0 ? waitsWords(waitingNow.length).replace(" for your signature", "") : "signed",
+            waiting: waitingNow.length > 0,
+            left: <WaitingLeft count={waitingNow.length} />,
             right: <WaitingRight stray={stray} />,
             leftLabel: "Left page: cards waiting elsewhere",
             rightLabel: "Right page: the cards",
@@ -100,8 +110,14 @@ export function Spread({ layout, back = [], pill = false, chrome, onHeadMouseDow
 
 
   // Another project is another book: it opens on its newest page.
+  // (the project named at boot is the first book, not a switch: a page asked for stays asked for)
   const activeId = useHer((s) => s.activeId);
-  useEffect(() => setAt(null), [activeId]);
+  const shownBook = useRef<string | null>(null);
+  useEffect(() => {
+    if (status !== "ready") return;
+    if (shownBook.current !== null && shownBook.current !== activeId) setAt(null);
+    shownBook.current = activeId;
+  }, [activeId, status]);
 
   // A page asked for by the window (the main window's route).
   useEffect(() => {

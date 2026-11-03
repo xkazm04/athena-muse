@@ -1,0 +1,261 @@
+/* The main window's back pages of the book (ADR 0024), from the prototype's stylesheet: the report's
+ * grid at a page's width, a chore's places in ink and pencil, and the page torn out for another
+ * assistant. Scoped under the book's root; tokens only. */
+
+/* the Athena place is the book, filling the body under the bar */
+.m-depth > [data-spread] {
+  height: 100%;
+}
+.m-depth:has(> [data-spread]) {
+  overflow: hidden;
+}
+
+/* ---- the report on the right page: its own grid, stacked where the page is narrow ---- */
+[data-spread] .sp-rgrid {
+  overflow: visible;
+  container-type: inline-size;
+}
+@container (max-width: 760px) {
+  [data-spread] .sp-rgrid > .rp-block {
+    grid-column: span 12 !important;
+  }
+  [data-spread] .sp-rgrid > .rp-block[data-kind="stat"] {
+    grid-column: span 6 !important;
+  }
+}
+
+/* ---- a chore being drawn ---- */
+[data-spread] .sp-place {
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--border-subtle);
+}
+[data-spread] .sp-place:first-of-type {
+  border-top: 0;
+}
+[data-spread] .sp-place-h {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+}
+[data-spread] .sp-place-h h4 {
+  margin: 0;
+  font-size: var(--fs-md);
+  flex: 1;
+}
+[data-spread] .sp-cov {
+  font-size: var(--fs-xs);
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-default);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-cov[data-c="1"] {
+  color: var(--status-success);
+  border-color: currentColor;
+}
+[data-spread] .sp-cov[data-c="0.5"] {
+  border-style: dashed;
+}
+[data-spread] .sp-cov[data-c="0"] {
+  color: var(--role-human);
+  border-color: currentColor;
+}
+[data-spread] .sp-nds {
+  display: grid;
+  gap: 6px;
+}
+[data-spread] .sp-nd {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--foreground);
+  background: color-mix(in srgb, var(--card-raised) 50%, transparent);
+  font-size: var(--fs-sm);
+}
+[data-spread] .sp-nd.is-you {
+  border-color: var(--role-human);
+}
+[data-spread] .sp-nd.is-pencil {
+  border: 1.5px dashed var(--muted);
+  color: var(--muted-foreground);
+  background: transparent;
+}
+[data-spread] .sp-nd strong {
+  display: block;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--foreground);
+}
+[data-spread] .sp-nd.is-pencil strong {
+  font-weight: 500;
+  font-style: italic;
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-nd p {
+  margin: 2px 0 0;
+}
+[data-spread] .sp-nd-meta {
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-nd-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+[data-spread] .sp-ask-box {
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--r-card);
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+[data-spread] .sp-ask-box p {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-size: var(--fs-read);
+}
+[data-spread] .sp-sugg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 var(--sp-2);
+}
+[data-spread] .sp-chip {
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-default);
+  font-size: var(--fs-xs);
+}
+
+/* ---- seen in another assistant: one page torn out of the book ---- */
+[data-spread] .sp-torn {
+  width: min(640px, 100%);
+  margin: var(--sp-2) auto var(--sp-5);
+}
+[data-spread] .sp-torn-label {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-host {
+  position: relative;
+  padding: 22px 22px 18px;
+  border-radius: 0 0 var(--r-card) var(--r-card);
+  background: var(--card-bg);
+  border: 1px solid var(--border-default);
+  border-top: 0;
+  box-shadow: var(--shadow-1);
+}
+[data-spread] .sp-host::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -10px;
+  height: 11px;
+  background: radial-gradient(circle at 7px 11px, var(--card-bg) 7px, transparent 7.5px) 0 0 / 14px 11px repeat-x;
+}
+[data-spread] .sp-hv-proj {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-spread] .sp-hv-title {
+  margin: 2px 0 6px;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+[data-spread] .sp-hv-callout {
+  margin: 0 0 var(--sp-3);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
+}
+[data-spread] .sp-hv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+[data-spread] .sp-hv-b {
+  padding: 10px var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--recessed);
+  min-width: 0;
+}
+[data-spread] .sp-hv-b h4 {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-hv-big {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+[data-spread] .sp-hv-big small {
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  margin-left: var(--sp-1);
+}
+[data-spread] .sp-hv-fig {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+[data-spread] .sp-hv-fig b {
+  font-variant-numeric: tabular-nums;
+}
+[data-spread] .sp-hv-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+[data-spread] .sp-hv-rows li {
+  padding: 2px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+[data-spread] .sp-hv-rows li:first-child {
+  border-top: 0;
+}
+[data-spread] .sp-hv-more {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+[data-spread] .sp-hv-foot {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
+}
+[data-spread] .sp-hv-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  flex-wrap: wrap;
+}
+[data-spread] .sp-hv-text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--recessed);
+}
+
+/* nothing here moves; the block is here because every sheet carries one */
+@media (prefers-reduced-motion: reduce) {
+  [data-spread] .sp-host {
+    transition: none;
+  }
+}
