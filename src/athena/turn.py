@@ -12,6 +12,8 @@ from urllib.parse import urlsplit
 
 from athena import clock
 from athena.app import Daemon
+from athena.apps import tools as apps_tools
+from athena.apps.client import is_loopback_url
 from athena.browser import actions as browser
 from athena.browser.actions import Dispatched
 from athena.chores import reads
@@ -19,12 +21,14 @@ from athena.chores.portal import SEPARATOR, Portal
 from athena.chores.spec import ChoreError, find_chore, load_chore
 from athena.clock import mint
 from athena.contracts import (
+    APP_LABEL_MAX,
     APPS_MAX,
     BRIEF_MAX,
     CATALOG,
     TEXT_MAX,
     TOOL_ROUNDS_MAX,
     ActionName,
+    AppNew,
     Card,
     Surface,
     TurnPart,
@@ -92,15 +96,43 @@ TOOLS: dict[ActionName, dict[str, Any]] = {
         {"brief": "The full new brief"},
         ["brief"],
     ),
-    "add_app": _tool(
-        "add_app",
-        "Name a web app this project is about, by its address. It describes the project only: her "
-        "browser trusts a site only once a chore's onboarding signs the person in there. Needs the "
-        "person's signature.",
-        {"origin": "The app's address, like https://example.com"},
-        ["origin"],
-    ),
+    "add_app": {
+        "type": "function",
+        "function": {
+            "name": "add_app",
+            "description": "Add an app to this project. website: a public site, by its address; it "
+            "describes the project only, her browser trusts a site only once a chore's onboarding signs "
+            "the person in there. local_page: a page on this computer (localhost). mcp_http: an app on "
+            "this computer whose tools answer at a localhost address. mcp_stdio: a tool started from a "
+            "command; the command you propose is shown to the person word for word, since signing it "
+            "lets it run. Needs the person's signature.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": ["website", "local_page", "mcp_http", "mcp_stdio"],
+                        "description": "What kind of app it is",
+                    },
+                    "address": {
+                        "type": "string",
+                        "description": "website/local_page: the address, like https://example.com; "
+                        "mcp_http: the address its tools answer at, like http://127.0.0.1:8080/mcp",
+                    },
+                    "argv": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "mcp_stdio only: the command and its arguments, one per item",
+                    },
+                    "label": {"type": "string", "description": "Optional: a short name for the app"},
+                },
+                "required": ["kind"],
+            },
+        },
+    },
 }
+#: The kinds `add_app` names (ADR 0025).
+APP_KINDS = ("website", "local_page", "mcp_http", "mcp_stdio")
 
 
 def _short(text: str, n: int = 60) -> str:
@@ -183,16 +215,7 @@ def _refuse_or_label(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str
             return f"A brief must be between 1 and {BRIEF_MAX} characters."
         return f"Change this project's brief to: {_short(brief, 100)}", {"brief": brief}
     if call.name == "add_app":
-        try:
-            origin = normalise_origin(str(args.get("origin", "")))
-        except ApiError as e:
-            return f"That is not an app address: {e.reason}"
-        apps = daemon.spaces.get(space_id)["apps"]
-        if origin in apps:
-            return "That app is already in this project."
-        if len(apps) >= APPS_MAX:
-            return "This project has as many apps as it can hold."
-        return f"Add {origin} to this project", {"origin": origin}
+        return _add_app(daemon, space_id, args)
     mem_id = str(args.get("id", ""))
     try:
         row = daemon.memory.get(mem_id)
@@ -201,6 +224,58 @@ def _refuse_or_label(daemon: Daemon, space_id: str, call: ToolCall) -> tuple[str
     if row["space_id"] not in visible_spaces(space_id):
         return "There is no such memory."
     return f"Forget: {_short(row['line'], 100)}", {"id": mem_id}
+
+
+def _command(argv: list[str]) -> str:
+    """A command as the card shows it, word for word: a part with a space or a quote is quoted."""
+    plain = [a if a and not any(c.isspace() or c in "\"'" for c in a) else json.dumps(a) for a in argv]
+    return " ".join(plain)
+
+
+def _add_app(daemon: Daemon, space_id: str, args: dict[str, Any]) -> tuple[str, dict[str, Any]] | str:
+    """An app she proposes, by kind (ADR 0025); the old `{origin}` form is a website or a local page
+    by its host. The signed card adds it through `daemon.apps.add`, which checks it all again."""
+    kind = args.get("kind")
+    address = args.get("origin") if kind is None and "origin" in args else args.get("address")
+    label = args.get("label")
+    if label is not None and (not isinstance(label, str) or len(label) > APP_LABEL_MAX):
+        return f"A name for the app is text of at most {APP_LABEL_MAX} characters."
+    clean: dict[str, Any]
+    if kind is None or kind in ("website", "local_page"):
+        try:
+            origin = normalise_origin(str(address or ""))
+        except ApiError as e:
+            return f"That is not an app address: {e.reason}"
+        local = is_loopback_url(origin)
+        if kind == "website" and local:
+            return "That address is a page on this computer: propose it as a local_page."
+        if kind == "local_page" and not local:
+            return "A page on this computer has an address on localhost or 127.0.0.1."
+        apps = daemon.spaces.get(space_id)["apps"]
+        if origin in apps:
+            return "That app is already in this project."
+        if len(apps) >= APPS_MAX:
+            return "This project has as many apps as it can hold."
+        clean = {"kind": kind or ("local_page" if local else "website"), "address": origin}
+        said = f"Add {origin} to this project"
+    elif kind == "mcp_http":
+        if not isinstance(address, str) or not is_loopback_url(address.strip()):
+            return "An app's tools are reached only at an address on this computer (localhost)."
+        clean = {"kind": kind, "address": address.strip()}
+        said = f"Add the app answering at {address.strip()} to this project"
+    elif kind == "mcp_stdio":
+        argv = args.get("argv")
+        if not isinstance(argv, list) or not argv or not all(isinstance(a, str) for a in argv):
+            return "A tool she starts needs its command, as a list of its parts."
+        if not argv[0].strip():
+            return "A tool she starts needs its command, as a list of its parts."
+        clean = {"kind": kind, "argv": list(argv)}
+        said = f"Let this project start a tool with the command: {_command(argv)}"
+    else:
+        return f"Choose what kind of app it is: {', '.join(APP_KINDS)}."
+    if isinstance(label, str) and label.strip():
+        clean["label"] = label.strip()
+    return said, clean
 
 
 NOT_OFFERED = "That action is not offered here."
@@ -216,6 +291,8 @@ def dispatch(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
         return records.act(daemon, space_id, name, call.arguments)
     if name in report_parts.NAMES:  # report parts in the reply (ADR 0022): reads, never a card
         return report_parts.act(daemon, space_id, call.arguments)
+    if (name not in CATALOG or name == apps_tools.FETCH) and apps_tools.owns(daemon, space_id, name):
+        return apps_tools.act(daemon, space_id, name, call.arguments)  # a project's app tools (ADR 0025)
     if name not in CATALOG:
         return Dispatched("There is no such action.", refused=True)
     if CATALOG[name] == "auto":
@@ -513,7 +590,7 @@ def _stream(
                 tools += [TOOLS["propose_brief"], TOOLS["add_app"]]
             if portal is None:
                 tools += browser.offered(daemon, space_id) + records.offered(daemon, space_id)
-                tools += report_parts.offered(daemon, space_id)
+                tools += report_parts.offered(daemon, space_id) + apps_tools.offered(daemon, space_id)
         if portal is not None:
             tools += portal.tools()
             messages[0]["content"] += (
@@ -630,6 +707,27 @@ def _waiting(daemon: Daemon, space_id: str) -> str:
     return "\n".join(lines)
 
 
+def _sign_add_app(daemon: Daemon, space_id: str, args: dict[str, Any]) -> str:
+    """A signed `add_app`: `daemon.apps.add` checks and writes it (raising returns the card to
+    waiting). A card filed in the old `{origin}` form is a website or a local page by its host."""
+    if "kind" not in args and "origin" in args:
+        origin = str(args["origin"])
+        if origin in daemon.spaces.get(space_id)["apps"]:
+            return f"Added {origin} to the project."
+        args = {"kind": "local_page" if is_loopback_url(origin) else "website", "address": origin}
+    body: AppNew = {"kind": args["kind"]}
+    if "address" in args:
+        body["address"] = args["address"]
+    if "argv" in args:
+        body["argv"] = args["argv"]
+    if "label" in args:
+        body["label"] = args["label"]
+    app = daemon.apps.add(space_id, body)
+    if app["kind"] in ("website", "local_page"):
+        return f"Added {app['address']} to the project."
+    return f"Added {app['label']} to the project."
+
+
 def _run_auto(daemon: Daemon, space_id: str, call: ToolCall) -> Dispatched:
     """One of the turn's own AUTO actions: it runs and streams its line, or it is refused."""
     if call.name == "recall":
@@ -672,11 +770,9 @@ def execute(daemon: Daemon, card: Card) -> str:
         daemon.spaces.update(space_id, {"brief": args["brief"]})
         return "The project's brief is changed."
     if card["action"] == "add_app":
-        existing = list(daemon.spaces.get(space_id)["apps"])
-        if args["origin"] not in existing:
-            existing.append(args["origin"])
-            daemon.spaces.update(space_id, {"apps": existing})
-        return f"Added {args['origin']} to the project."
+        return _sign_add_app(daemon, space_id, args)
+    if card["action"] == "app_act":
+        return apps_tools.execute(daemon, card)
     if card["action"] == "forget":
         daemon.memory.forget(args["id"])
         return "Forgotten."

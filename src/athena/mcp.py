@@ -20,7 +20,7 @@ from __future__ import annotations
 import secrets
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -139,6 +139,7 @@ class Leases:
 def chat_tools(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
     """The function tools a chat turn in this space is offered: memory, the project's own changes,
     her browser while the desktop runs it, and its records and their report parts when it keeps any."""
+    from athena.apps import tools as apps_tools
     from athena.browser import actions as browser
     from athena.records import actions as records
     from athena.report import chat as report_parts
@@ -149,7 +150,8 @@ def chat_tools(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
         names += ["propose_brief", "add_app"]
     tools = [TOOLS[n] for n in names]  # type: ignore[index]
     tools += browser.offered(daemon, space_id) + records.offered(daemon, space_id)
-    return tools + report_parts.offered(daemon, space_id)
+    # A project's app tools (ADR 0025): named for the app, classed by the app's own annotations.
+    return tools + report_parts.offered(daemon, space_id) + apps_tools.offered(daemon, space_id)
 
 
 def _offered(daemon: Daemon, lease: Lease) -> list[dict[str, Any]]:
@@ -164,16 +166,22 @@ def _offered(daemon: Daemon, lease: Lease) -> list[dict[str, Any]]:
     return [t for t in tools if t["function"]["name"] not in report_parts.NAMES]
 
 
-def as_mcp(tool: dict[str, Any]) -> dict[str, Any]:
+def as_mcp(tool: dict[str, Any], apps: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """One tool as MCP lists it. `apps` is the access of each of the project's app tools
+    (`apps.tools.classes`): an auto app tool reads (its own annotations said so), any other writes."""
     fn = tool["function"]
-    auto = CATALOG.get(fn["name"]) == "auto"
+    access = (apps or {}).get(fn["name"])
+    auto = access == "auto" if access is not None else CATALOG.get(fn["name"]) == "auto"
+    writes = not auto if access is not None else WRITES.get(fn["name"], True)
+    if fn["name"] == "app_fetch":
+        writes = WRITES["app_fetch"]  # it reads nothing an app guards, but it adds a file
     out: dict[str, Any] = {
         "name": fn["name"],
         "description": fn["description"],
         "inputSchema": fn["parameters"],
         "annotations": {
-            # A name outside the catalog is never called read-only.
-            "readOnlyHint": WRITES.get(fn["name"], True) is False,
+            # A name outside the catalog (and not a project's app tool) is never called read-only.
+            "readOnlyHint": writes is False,
             "destructiveHint": not auto,
             "openWorldHint": fn["name"].startswith("page_"),
         },
@@ -230,7 +238,10 @@ def handle(daemon: Daemon, lease: Lease, message: Any) -> dict[str, Any] | None:
     if method == "ping":
         return _ok(msg_id, {})
     if method == "tools/list":
-        return _ok(msg_id, {"tools": [as_mcp(t) for t in _offered(daemon, lease)]})
+        from athena.apps import tools as apps_tools
+
+        apps = apps_tools.classes(daemon, lease.space_id)
+        return _ok(msg_id, {"tools": [as_mcp(t, apps) for t in _offered(daemon, lease)]})
     if method == "tools/call":
         return _ok(msg_id, call_tool(daemon, lease, params.get("name"), params.get("arguments")))
     if method == "resources/list":
