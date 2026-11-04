@@ -22,6 +22,8 @@ A stream route's contract names its protocol, not just its event types: event or
 
 A live run that holds ports and writes for hours checks first: its ports free (a foreign process held 8791; a crashed daemon held 8795 after the disk filled) and free disk (a full disk surfaced in the app as "Her answer stopped before the end"). Seen 2026-10-29 and 2026-11-02.
 
+A fake of an external app or page is built from a captured real answer (its tools/list, its page text), never hand-written: a stand-in fed what the real thing does not return let every test pass twice (business-phase-2: page_read with no links; app-kinds: Gravitone's top-level oneOf, which engines refuse). Seen 2026-11-01 and 2026-11-04.
+
 Status lines in a shared design doc belong to the Director: builders put theirs in the final report, and the Director writes the line at commit. Three parallel packages writing "done" lines into one README conflicted at every rebase (twin-module).
 
 ## Wave defaults
@@ -33,6 +35,7 @@ default
 
 - A visual the design proposes as a source of truth: offer "a sketch for understanding, the real artefact written once after agreement" as an option; the owner chose it via Other on chore-onboarding-v2.
 
+- A first target for a new mechanism: the owner picks the real app (Gravitone) over a bundled demo, and builds the future half now (devices) rather than designing it only (app-kinds). Recommend the real target, with its setup cost named.
 - Reaching another app (YouTube, mail, Gravitone): the owner wants it reached through the app's own surface (the internal browser, the peer's MCP), not a connector or wrapper, even at higher engineering cost; lead with that option (business-channel, three overrides in one direction).
 - A capability the owner names that lives only in a sibling repo ("the app's connectors" = athena-portable's Gmail/Notion): ask where it lives in wave 1, and include a repo-native mechanism (chores, ADR 0005) as an option for any new tool use; the owner chose "preset chores, catalogue grows" via Other on twin-module.
 - The owner leans toward full scope and real behaviour when a tested rule holds the risk: Auto in v1 over "Auto locked", any recipient over a recipients list, "Everything, in order" over a foundation-only fire (twin-module). Recommend the bolder option when its safety is a tested rule, and name that rule in the option.
@@ -58,4 +61,5 @@ default
 - 2026-11-02 (onboarding-jobs): keeping every unusable model answer on disk turned an "unreproducible" writing failure (seen twice) into a one-line parser fix on the first smoke run. Keep the raw artefact of any model failure by default; a re-run is not a diagnosis.
 - 2026-11-02: drafts store each optional field in its own column; a new Draft field vanished on put until the column was added. For a new persisted field, the scout names the writer that serialises it.
 - 2026-11-02: on Windows a killed daemon's port is freed a moment after taskkill returns; the parity runner lost six cases to a 1 s gap. A runner that reuses ports waits for them to free.
-
+- 2026-11-04 (app-kinds): wave 1 recommended replacing `spaces.apps` with a table before counting its consumers (17 py + 8 ts); the Director re-cut it at build. Before recommending "replace X", the scout's consumer count goes into the option text.
+- 2026-11-04: three contract gaps came back from builders, all missing lifecycle or failure verbs (no update/detach for a created resource; a call that could not tell "unreachable" from "the app said error"; a listener reply that could not stream). The contract names, for every resource it creates, its read/update/delete verbs and each call's failure split.
