@@ -46,3 +46,7 @@ A paired computer's drawer has a box: type a message and that computer's Athena 
 ## Set up with Athena
 
 The bottom of the Devices level has one button. It opens a conversation in her window that speaks first, says what it found (is Tailscale installed and signed in, this computer's address, the other devices), explains what Tailscale is before it proposes installing it, and walks the steps. Every step that changes this computer (install Tailscale, sign in to it, the firewall rule for the peer port, opening a pairing window) is a card you sign; nothing runs before. While the conversation is open the peer listener stays up for 30 minutes so the other computer finds Athena, and `GET /peer/hello` reports `setup_phase`. The conversation has its own history under the space id `setup` and no project, memory or page context. Tests: `tests/test_peer_setup.py`, `lib/setup.test.ts`, `athena/setup.test.tsx`, `devices/setup.test.tsx`. See ADR 0017 "Setup conversation".
+
+## Apps
+
+A fourth permission, **use the apps this computer offers** (`apps`), lets a paired computer use the programs this one offers in Settings > Devices > Apps this computer offers; a phone never asks for it. A computer paired before it existed is paired again to give it. See [Apps](apps.md) and ADR 0026.
