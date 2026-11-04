@@ -82,7 +82,7 @@ class Daemon:
             sites=Sites(store),
             records=Records(store, events),
             routines=Routines(store, events),
-            apps=Apps(store, data_dir),
+            apps=Apps(store, data_dir, events),
             mcp=Leases(),
             peers=_peer_host(data_dir, peer_port) if peers and data_dir is not None else None,
         )

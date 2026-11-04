@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import hmac
 import json
 import os
@@ -31,6 +32,7 @@ from starlette.routing import BaseRoute, Route
 from athena import engine as engine_mod
 from athena import routes_mcp, routes_state, routes_turn
 from athena.app import Daemon
+from athena.apps import routes as routes_apps
 from athena.browser import routes as routes_browser
 from athena.chores import routes_chores
 from athena.connectors import routes as routes_connectors
@@ -65,6 +67,19 @@ OPEN_PATHS = frozenset({"/health", routes_mcp.LEASE_PATH})
 QUERY_TOKEN_PATHS = frozenset({"/events", peer_devices.EVENTS_PATH})
 
 
+#: Seconds between looks for a tool she started that has gone unused (ADR 0025).
+REAP_EVERY_S = 60.0
+
+
+async def reap_apps(daemon: Daemon, every_s: float = REAP_EVERY_S) -> None:
+    """Stops the app children unused for APP_IDLE_S, once a minute, until cancelled. A failed sweep
+    is tried again on the next one."""
+    while True:
+        await asyncio.sleep(every_s)
+        with contextlib.suppress(Exception):
+            await asyncio.to_thread(daemon.app_clients.reap_idle)
+
+
 async def health(_: Request) -> Response:
     return JSONResponse({"ok": True, "version": VERSION})
 
@@ -83,6 +98,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_records.routes(daemon),
         *routes_report.routes(daemon),
         *routes_routines.routes(daemon),
+        *routes_apps.routes(daemon),
         *peer_wiring.install(daemon),
     ]
 
@@ -110,9 +126,11 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
         """The routine host (the daemon's only background host, the twins' missions folded in) ticks
         while the app runs, unless ATHENA_TWIN_POLL is 0 (the tests); the peer host's tick and presence
-        probe run while it does, when the daemon has one."""
+        probe run while it does, when the daemon has one. The app children are reaped while it runs and
+        all stopped when it ends (ADR 0025)."""
         if daemon.peers is not None:
             await asyncio.to_thread(daemon.peers.start)
+        reaper = asyncio.create_task(reap_apps(daemon))
         try:
             seconds = poller.interval()
             if seconds is None:
@@ -132,6 +150,12 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
             finally:
                 await running.stop()
         finally:
+            reaper.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await reaper
+            # The rest of the shutdown runs even when stopping the app children fails.
+            with contextlib.suppress(Exception):
+                await asyncio.to_thread(daemon.app_clients.shutdown)
             if daemon.peers is not None:
                 await asyncio.to_thread(daemon.peers.close)
 

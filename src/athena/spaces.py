@@ -28,7 +28,7 @@ from athena.contracts import (
 from athena.drafts.store import remove_folder
 from athena.errors import ApiError
 from athena.settings import ACTIVE_SPACE_KEY
-from athena.store import RECORD_TABLES, TWIN_TABLES, Store
+from athena.store import APP_TABLES, RECORD_TABLES, TWIN_TABLES, Store
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 
@@ -192,6 +192,10 @@ class Spaces:
         name = _name(patch["name"]) if "name" in patch else current["name"]
         brief = _brief(patch["brief"]) if "brief" in patch else current["brief"]
         apps = _apps(patch["apps"]) if "apps" in patch else current["apps"]
+        if "apps" in patch and len(apps) > len(current["apps"]):  # ADR 0025: process apps share the cap
+            wired = self._store.query("SELECT COUNT(*) AS n FROM apps WHERE space_id = ?", (space_id,))
+            if len(apps) + wired[0]["n"] > APPS_MAX:
+                raise _bad(f"a project holds at most {APPS_MAX} apps")
         hue = _hue(patch["hue"]) if "hue" in patch else current["hue"]
         self._store.run(
             "UPDATE spaces SET name = ?, brief = ?, apps = ?, hue = ?, updated = ? WHERE id = ?",
@@ -202,7 +206,8 @@ class Spaces:
     def erase(self, space_id: str) -> SpaceErased:
         """Under `busy.closing`: deletes stamped memory, the conversation, cards, drafts (rows, then
         their folders once the rows are gone), files, sites (ADR 0014), records and the report
-        (business Phase 1), every twin and its parts, then the space."""
+        (business Phase 1), every twin and its parts, its apps and their sealed tokens (ADR 0025),
+        then the space."""
         if space_id == "" or not self.exists(space_id):
             raise ApiError("unknown_ref", "no such project")
         with self._busy.closing(space_id), self._store.tx() as db:
@@ -214,8 +219,14 @@ class Spaces:
             }
             turns = db.execute("SELECT COUNT(*) FROM turns WHERE space_id = ?", (space_id,)).fetchone()[0]
             drafts = [r[0] for r in db.execute("SELECT id FROM drafts WHERE space_id = ?", (space_id,))]
+            sealed = [
+                r[0]
+                for r in db.execute(
+                    "SELECT app_id FROM apps WHERE space_id = ? AND token_sealed IS NOT NULL", (space_id,)
+                )
+            ]
             kept = ("memory", "turns", "cards", "page_reads", "drafts", "files", "sites")
-            for table in (*kept, *RECORD_TABLES, *TWIN_TABLES):
+            for table in (*kept, *RECORD_TABLES, *TWIN_TABLES, *APP_TABLES):
                 db.execute(f"DELETE FROM {table} WHERE space_id = ?", (space_id,))
             db.execute("DELETE FROM spaces WHERE id = ?", (space_id,))
             db.execute(
@@ -223,6 +234,9 @@ class Spaces:
             )
         for draft_id in drafts:
             remove_folder(self._data_dir, draft_id)
+        from athena.apps.store import forget_tokens  # imported here: the apps store reads this module
+
+        forget_tokens(self._data_dir, sealed)
         files = space_dir(self._data_dir, space_id)
         if files is not None and files.is_dir():
             shutil.rmtree(files)

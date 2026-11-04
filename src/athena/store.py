@@ -1,5 +1,5 @@
 """One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards, settings, drafts,
-twins, files and sites."""
+twins, files, sites and apps."""
 
 from __future__ import annotations
 
@@ -74,6 +74,17 @@ CREATE TABLE IF NOT EXISTS routine_runs (
   id TEXT PRIMARY KEY, space_id TEXT NOT NULL, routine_id TEXT NOT NULL, started TEXT NOT NULL, ended TEXT,
   outcome TEXT NOT NULL, body TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS routine_runs_routine ON routine_runs (routine_id, started DESC);
+CREATE TABLE IF NOT EXISTS apps (
+  app_id TEXT PRIMARY KEY, space_id TEXT NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL,
+  slug TEXT NOT NULL, address TEXT NOT NULL, argv TEXT, token_sealed TEXT, offered INTEGER NOT NULL DEFAULT 0,
+  output_dir TEXT, tools TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL, checked_at TEXT, reason TEXT,
+  created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS apps_space ON apps (space_id);
+CREATE TABLE IF NOT EXISTS app_remotes (
+  space_id TEXT NOT NULL, app_id TEXT NOT NULL, peer_id TEXT NOT NULL, device TEXT NOT NULL,
+  remote_app_id TEXT NOT NULL, status TEXT NOT NULL, tools TEXT NOT NULL DEFAULT '[]', checked_at TEXT,
+  reason TEXT, created TEXT NOT NULL, PRIMARY KEY (app_id, peer_id));
+CREATE INDEX IF NOT EXISTS app_remotes_space ON app_remotes (space_id);
 """ + "".join(
     # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON;
     # a preview's id is the hash of the voice it was written for.
@@ -98,6 +109,9 @@ CREATE INDEX IF NOT EXISTS {t}_space ON {t} (space_id);
 
 #: A project's records and its report (business Phase 1), each with `space_id`: erased with the space.
 RECORD_TABLES = ("records", "reports", "report_pins", "routines", "routine_runs")
+
+#: A project's process apps and their instances on paired devices (ADR 0025, 0026): erased with the space.
+APP_TABLES = ("apps", "app_remotes")
 
 #: Every table a twin keeps, each with `space_id`: erasing a space empties them (spaces.erase).
 TWIN_TABLES = (
