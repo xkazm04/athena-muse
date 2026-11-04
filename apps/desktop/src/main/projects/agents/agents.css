@@ -1,0 +1,177 @@
+/* ---- outside agents in a project (spark agent-leases): tokens only, nothing wider than its plane ---- */
+.m-agents {
+  display: grid;
+  gap: var(--sp-3);
+  max-height: 420px; /* a long list scrolls inside its plane, never the page */
+  margin: 0;
+  padding: 0 var(--sp-1) 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.m-agent {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--recessed);
+}
+.m-agent__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--sp-2);
+}
+.m-agent__name {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.m-agent__name p {
+  margin: 0;
+}
+.m-agent__standing {
+  margin: 0;
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.m-agent__standing[data-tone="success"] {
+  color: var(--status-success);
+}
+.m-agent__standing[data-tone="warning"] {
+  color: var(--status-warning);
+}
+.m-agent__standing[data-tone="info"] {
+  color: var(--muted-foreground);
+}
+.m-agent-wrap {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.m-agent-notes {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+  min-width: 0;
+}
+.m-agent-notes__list {
+  display: grid;
+  gap: var(--sp-2);
+  width: 100%;
+  max-height: 320px; /* long notes scroll inside the row */
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.m-agent-note {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid var(--border-default);
+}
+.m-agent-note__text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* the connect panel: inline in the section, keeping the keyboard while open */
+.m-agent-connect {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-emphasis);
+  border-radius: var(--r-card);
+  background: var(--card-raised);
+}
+.m-agent-connect__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.m-agent-connect__title:focus {
+  outline: none;
+}
+.m-agent-form,
+.m-agent-shown {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.m-agent-fieldset {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.m-agent-free {
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--recessed);
+}
+.m-agent-ticks {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.m-agent-tick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+.m-agent-tick__words {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.m-agent-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  cursor: pointer;
+}
+.m-agent-limits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  align-items: end;
+  gap: var(--sp-2);
+}
+.m-agent-limits label {
+  font-size: var(--fs-sm);
+}
+.m-agent-config {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+  margin: 0;
+}
+.m-agent-config__text {
+  max-width: 100%;
+  max-height: 280px;
+  margin: 0;
+  padding: var(--sp-3);
+  overflow: auto; /* a long line scrolls inside the block, never the page */
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  background: var(--recessed);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  white-space: pre;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-agent-connect,
+  .m-agent-notes__list {
+    scroll-behavior: auto;
+  }
+}

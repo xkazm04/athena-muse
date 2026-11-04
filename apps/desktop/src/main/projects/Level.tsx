@@ -5,6 +5,7 @@ import { hueColor } from "../../ui";
 import { Report } from "../report/Report";
 import { Routines } from "../report/Routines";
 import { reasonOf, useMain } from "../store";
+import { AgentsSection } from "./agents/AgentsSection";
 import { AppsSection } from "./apps/AppsSection";
 import { DraftBadge } from "./DraftBadge";
 import { SiteBlockers, SitesSection, useSites } from "./Sites";
@@ -163,6 +164,7 @@ function LevelBody({ space }: { space: SpaceSummary }) {
       </section>
       <SitesSection spaceId={space.id} sites={sites.sites} problem={sites.problem} />
       <AppsSection spaceId={space.id} />
+      <AgentsSection spaceId={space.id} />
       <section className="plane m-section">
         <h2 className="m-h2">Memory</h2>
         <p>

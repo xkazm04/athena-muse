@@ -8,6 +8,10 @@ import {
   ROUTES,
   type AccessBody,
   type ActiveSpace,
+  type AgentConnect,
+  type AgentLeaseNew,
+  type AgentList,
+  type AgentNoteList,
   type App,
   type AppList,
   type AppNew,
@@ -216,6 +220,13 @@ export const attachRemote = (id: string, appId: string, body: AppRemoteNew) =>
 /** Stop using a paired computer's copy of a project app; answers the project's apps. */
 export const detachRemote = async (id: string, appId: string, peerId: string) =>
   (await request<AppList>("DELETE", path(ROUTES.space_app_remote, { id, app_id: appId, peer_id: peerId }))).apps;
+// Outside agents a person lets into a project (spark agent-leases): listed, connected (the answer is
+// the only time the config is shown), revoked at once; the notes they leave, newest first.
+export const listAgents = async (id: string) => (await request<AgentList>("GET", path(ROUTES.space_agents, { id }))).agents;
+export const connectAgent = (id: string, body: AgentLeaseNew) => request<AgentConnect>("POST", path(ROUTES.space_agents, { id }), body);
+export const revokeAgent = (id: string, leaseId: string) =>
+  request<unknown>("DELETE", path(ROUTES.space_agent, { id, lease_id: leaseId }));
+export const listAgentNotes = async (id: string) => (await request<AgentNoteList>("GET", path(ROUTES.space_agent_notes, { id }))).notes;
 // This computer's own apps, outside every project, and the ones it offers paired computers (ADR 0026).
 export const deviceApps = async () => (await request<AppList>("GET", ROUTES.device_apps)).apps;
 export const addDeviceApp = (body: AppNew) => request<App>("POST", ROUTES.device_apps, body);
