@@ -11,6 +11,7 @@ import { MOTION_CHOICES, THEME_CHOICES, TYPE_SCALES, applyLook } from "../../ui/
 import { toggleAthena } from "../../lib/windows";
 import { SettingGlyph } from "../shell/glyphs";
 import { DevicesPanel } from "./devices/Devices";
+import { OfferedApps } from "./devices/OfferedApps";
 import { useDevices } from "./devices/store";
 import { MuseKey } from "./MuseKey";
 import { reasonOf, useMain } from "../store";
@@ -239,7 +240,12 @@ function Level({
           {item === "look" && <LookLevel view={view} writes={writes} />}
           {item === "accounts" && <AccountsLevel accounts={accounts} />}
           {item === "data" && <DataLevel view={view} />}
-          {item === "devices" && <DevicesPanel />}
+          {item === "devices" && (
+            <>
+              <DevicesPanel />
+              <OfferedApps />
+            </>
+          )}
         </div>
       </div>
     </>

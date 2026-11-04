@@ -8,6 +8,10 @@ import {
   ROUTES,
   type AccessBody,
   type ActiveSpace,
+  type App,
+  type AppList,
+  type AppNew,
+  type AppRemoteNew,
   type AuthorEvent,
   type AutonomyBody,
   type Card,
@@ -35,6 +39,7 @@ import {
   type JobEvent,
   type KeyBody,
   type NotesBody,
+  type OfferedList,
   type LedgerPage,
   type LookBody,
   type MarkBody,
@@ -196,6 +201,25 @@ export const siteCheck = (id: string, origin: string) =>
   request<Site>("POST", path(ROUTES.space_site_check, { id }), { origin } satisfies SiteBody);
 export const siteSignIn = (id: string, origin: string) =>
   request<SignInStarted>("POST", path(ROUTES.space_site_sign_in, { id }), { origin } satisfies SiteBody);
+
+// A project's apps by kind (ADR 0025): listed, wired (kind first), looked at now, removed; a paired
+// computer's copy is attached as another instance (ADR 0026). Changes arrive as `app` events.
+export const spaceApps = async (id: string) => (await request<AppList>("GET", path(ROUTES.space_apps, { id }))).apps;
+export const addSpaceApp = (id: string, body: AppNew) => request<App>("POST", path(ROUTES.space_apps, { id }), body);
+export const removeSpaceApp = (id: string, appId: string) =>
+  request<unknown>("DELETE", path(ROUTES.space_app, { id, app_id: appId }));
+export const probeSpaceApp = (id: string, appId: string) =>
+  request<App>("POST", path(ROUTES.space_app_probe, { id, app_id: appId }));
+export const attachRemote = (id: string, appId: string, body: AppRemoteNew) =>
+  request<App>("POST", path(ROUTES.space_app_remotes, { id, app_id: appId }), body);
+// This computer's own apps, outside every project, and the ones it offers paired computers (ADR 0026).
+export const deviceApps = async () => (await request<AppList>("GET", ROUTES.device_apps)).apps;
+export const addDeviceApp = (body: AppNew) => request<App>("POST", ROUTES.device_apps, body);
+export const removeDeviceApp = (appId: string) => request<unknown>("DELETE", path(ROUTES.device_app, { app_id: appId }));
+export const probeDeviceApp = (appId: string) => request<App>("POST", path(ROUTES.device_app_probe, { app_id: appId }));
+/** What a paired computer offers this one, asked of it now. */
+export const peerOffers = async (peerId: string) =>
+  (await request<OfferedList>("GET", path(ROUTES.peer_offers, { peer_id: peerId }))).offered;
 
 // Records and the report (business Phase 1): the report answers whole, with every number computed by
 // the daemon; a verdict answers the track's new revision.

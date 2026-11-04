@@ -124,23 +124,18 @@ describe("project level", () => {
     expect(screen.getByText("Athena reads this every time she works in this project.")).toBeTruthy();
   });
 
-  it("adds and removes apps, and shows a refusal verbatim", async () => {
+  it("lists the project's apps by kind from the daemon, and adds one kind first", async () => {
+    vi.mocked(api.spaceApps).mockResolvedValue([
+      { app_id: "web_aaaaaaaaaa", kind: "website", label: "example.com", slug: "example_com", address: "https://example.com", status: "unchecked", tools: [], remotes: [], sealed: false },
+    ]);
     level();
-    vi.mocked(api.updateSpace).mockResolvedValueOnce(space({ apps: ["https://example.com"] }));
-    fireEvent.change(screen.getByLabelText("App address"), { target: { value: "example.com" } });
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Add app" })));
-    expect(api.updateSpace).toHaveBeenCalledWith("spc_a1", { apps: ["example.com"] });
-    expect(screen.getByText("https://example.com")).toBeTruthy();
-
-    vi.mocked(api.updateSpace).mockRejectedValueOnce(new DaemonError(400, "bad_request", "not a web address: nope"));
-    fireEvent.change(screen.getByLabelText("App address"), { target: { value: "nope" } });
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Add app" })));
-    expect(screen.getByText("not a web address: nope")).toBeTruthy();
-
-    vi.mocked(api.updateSpace).mockResolvedValueOnce(space({ apps: [] }));
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Remove https://example.com" })));
-    expect(api.updateSpace).toHaveBeenLastCalledWith("spc_a1", { apps: [] });
-    expect(screen.queryByText("https://example.com")).toBeNull();
+    await act(async () => undefined);
+    expect(api.spaceApps).toHaveBeenCalledWith("spc_a1");
+    const apps = document.querySelector('[data-role="apps"]')!;
+    expect(apps.textContent).toContain("A website");
+    expect(apps.textContent).toContain("https://example.com");
+    fireEvent.click(screen.getByRole("button", { name: "Add app" }));
+    expect(screen.getByRole("group", { name: "What kind of app is it?" })).toBeTruthy();
   });
 
   it("erases after a second confirm that states the counts, then goes back to the field", async () => {

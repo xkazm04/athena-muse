@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { APPS_MAX, BRIEF_MAX, NAME_MAX, type SpaceSummary } from "../../lib/contract";
+import { BRIEF_MAX, NAME_MAX, type SpaceSummary } from "../../lib/contract";
 import { DaemonError } from "../../lib/daemon";
 import { hueColor } from "../../ui";
 import { Report } from "../report/Report";
 import { Routines } from "../report/Routines";
 import { reasonOf, useMain } from "../store";
+import { AppsSection } from "./apps/AppsSection";
 import { DraftBadge } from "./DraftBadge";
 import { SiteBlockers, SitesSection, useSites } from "./Sites";
 
@@ -161,7 +162,7 @@ function LevelBody({ space }: { space: SpaceSummary }) {
         )}
       </section>
       <SitesSection spaceId={space.id} sites={sites.sites} problem={sites.problem} />
-      <Apps space={space} />
+      <AppsSection spaceId={space.id} />
       <section className="plane m-section">
         <h2 className="m-h2">Memory</h2>
         <p>
@@ -173,89 +174,6 @@ function LevelBody({ space }: { space: SpaceSummary }) {
       </section>
       <Erase space={space} />
     </div>
-  );
-}
-
-function Apps({ space }: { space: SpaceSummary }) {
-  const updateSpace = useMain((s) => s.updateSpace);
-  const [origin, setOrigin] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState("");
-  const full = space.apps.length >= APPS_MAX;
-
-  const put = async (apps: string[]) => {
-    setBusy(true);
-    setProblem("");
-    try {
-      await updateSpace(space.id, { apps });
-      return true;
-    } catch (e) {
-      setProblem(reasonOf(e, "Could not change the apps"));
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const add = async () => {
-    const clean = origin.trim();
-    if (!clean) return;
-    if (await put([...space.apps, clean])) setOrigin("");
-  };
-
-  return (
-    <section className="plane m-section">
-      <h2 className="m-h2">Apps</h2>
-      <p className="m-muted">The web apps this project is about. Naming one here does not let her browser in: that happens when a chore is onboarded.</p>
-      {space.apps.length > 0 ? (
-        <ul className="m-chips">
-          {space.apps.map((a) => (
-            <li key={a} className="m-chip">
-              <span className="m-mono">{a}</span>
-              <button
-                type="button"
-                className="m-chip__x"
-                aria-label={`Remove ${a}`}
-                disabled={busy}
-                onClick={() => void put(space.apps.filter((x) => x !== a))}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="m-muted">No apps yet.</p>
-      )}
-      <form
-        className="m-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void add();
-        }}
-      >
-        <label className="m-sr" htmlFor="level-app">
-          App address
-        </label>
-        <input
-          id="level-app"
-          className="field"
-          placeholder="https://example.com"
-          value={origin}
-          disabled={busy || full}
-          onChange={(e) => setOrigin(e.target.value)}
-        />
-        <button type="submit" className="btn" disabled={busy || full || !origin.trim()}>
-          Add app
-        </button>
-      </form>
-      {full && <p className="m-muted">A project holds at most {APPS_MAX} apps.</p>}
-      {problem && (
-        <p className="m-error" role="alert">
-          {problem}
-        </p>
-      )}
-    </section>
   );
 }
 
