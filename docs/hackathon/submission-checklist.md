@@ -3,8 +3,8 @@
 | Requirement | Status | Evidence | Owner |
 |---|---|---|---|
 | Meta model called at runtime | built, not yet measured (no key) | engine `muse`, ledger rows | Director |
-| Working demo or test build | to do | | operator |
-| Description of features | to do | | Director |
+| Working demo or test build | to do | [demo scenario](demo-scenario.md); the film is rendered locally | operator |
+| Description of features | done | [README](../../README.md), [features](../features/README.md) | Director |
 | Public repository and licence | to do | Apache-2.0 | operator |
 | README with setup | done | [README](../../README.md) | Director |
 | Video | to do | | operator |

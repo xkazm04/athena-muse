@@ -28,3 +28,7 @@ runs/
 playbooks/*/senses/render/
 playbooks/*/senses/media/
 *.stackdump
+# the submission film (script, audio, take and renders; local only)
+film/
+# the hackathon form answers (local only)
+submission.md
