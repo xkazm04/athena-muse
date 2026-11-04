@@ -7,8 +7,8 @@
 import { getConnection } from "./daemon";
 import type { Room, Vitals } from "./vitals";
 
-export type Grant = "chat" | "approve" | "memory";
-export const GRANTS: readonly Grant[] = ["chat", "approve", "memory"];
+export type Grant = "chat" | "approve" | "memory" | "apps";
+export const GRANTS: readonly Grant[] = ["chat", "approve", "memory", "apps"];
 export type DeviceKind = "pc" | "phone";
 
 /** The presence probe's verdict. Online: Athena there answered. Asleep: the network sees it, Athena does not. */

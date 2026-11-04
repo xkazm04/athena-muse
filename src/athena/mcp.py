@@ -80,6 +80,9 @@ WRITES: dict[ActionName, bool] = {
     "twin_send_web": True,
     "show_report": False,
     "show_blocks": False,
+    "app_read": False,
+    "app_act": True,
+    "app_fetch": True,
 }
 
 

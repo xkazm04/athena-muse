@@ -55,7 +55,7 @@ __all__ = [
 
 PEERS_FILENAME = "peers.json"
 #: The grants ladder: talk to this device's panel, answer its approval cards, replicate memory.
-GRANTS: tuple[str, ...] = ("chat", "approve", "memory")
+GRANTS: tuple[str, ...] = ("chat", "approve", "memory", "apps")
 KINDS: tuple[str, ...] = ("pc", "phone")
 PeerKind = Literal["pc", "phone"]
 TOUCH_EVERY_S = 60.0

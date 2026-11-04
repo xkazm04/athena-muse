@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from athena.apps.client import AppClients
+from athena.apps.store import Apps
 from athena.browser.files import Files
 from athena.browser.relay import Relay
 from athena.browser.sites import Sites
@@ -47,9 +49,11 @@ class Daemon:
     sites: Sites  # a project's sites: the browser's trust list, set up by onboarding (ADR 0014)
     records: Records  # a project's records, append-only revisions (business Phase 1)
     routines: Routines  # a project's routines and their runs; the host's claims (business Phase 2)
+    apps: Apps  # a project's apps by kind, and this device's offered apps (ADR 0025, 0026)
     mcp: Leases  # who may call the MCP server, and for which project (ADR 0015)
     peers: PeerHost | None = None  # other devices (ADR 0017); None = off (tests, --no-peer, no data dir)
     mcp_url: str | None = None  # set once the server knows its port; None = no MCP (tests, unless set)
+    app_clients: AppClients = field(default_factory=AppClients)  # live app connections (ADR 0025)
     jobs: Jobs = field(default_factory=Jobs)  # each draft's last background job (ADR 0020)
 
     @classmethod
@@ -78,6 +82,7 @@ class Daemon:
             sites=Sites(store),
             records=Records(store, events),
             routines=Routines(store, events),
+            apps=Apps(store, data_dir),
             mcp=Leases(),
             peers=_peer_host(data_dir, peer_port) if peers and data_dir is not None else None,
         )

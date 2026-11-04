@@ -221,3 +221,18 @@ def test_turn_parts_match() -> None:
     assert {s.strip() for s in m.group(1).split("|")} == {
         c.__name__ for c in typing.get_args(contracts.TurnPart)
     }
+
+
+def test_app_shapes_match() -> None:
+    # Apps by kind (ADR 0025, 0026): every shape on both sides, optional on one exactly when on the other.
+    shapes = ("AppTool", "AppRemote", "App", "AppList", "AppNew", "AppRemoteNew", "OfferedApp", "OfferedList")
+    for name in (*shapes, "PeerAppCall", "AppAnswer"):
+        assert _ts_interface_keys(name) == _py_keys(name), name
+    for enum in ("AppKind", "AppStatus"):
+        assert _ts_union(enum) == set(typing.get_args(getattr(contracts, enum))), enum
+    for cap in ("APP_LABEL_MAX", "APP_TOOLS_MAX", "APP_TOOL_NAME_MAX", "APP_CALL_TIMEOUT_S", "APP_IDLE_S"):
+        m = re.search(rf"export const {cap} = (\d+);", TS)
+        assert m and int(m.group(1)) == getattr(contracts, cap), cap
+    for cap in ("APP_FILE_MAX_BYTES", "DEVICE_APPS_MAX"):
+        m = re.search(rf"export const {cap} = (\d+);", TS)
+        assert m and int(m.group(1)) == getattr(contracts, cap), cap

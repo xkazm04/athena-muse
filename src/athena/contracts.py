@@ -25,6 +25,14 @@ BRIEF_MAX = 1600
 APPS_MAX = 24
 SITES_MAX = 24  # a project's sites (ADR 0014)
 SITE_FRESH_S = 300  # a look at a site stands this long before the overview or a hand looks again
+# Apps by kind (ADR 0025) and apps offered to paired devices (ADR 0026).
+APP_LABEL_MAX = 60
+APP_TOOLS_MAX = 64  # tools one app lists; the rest are dropped with a reason
+APP_TOOL_NAME_MAX = 64  # a tool name she is offered, `<slug>__<tool>` included; longer is dropped
+APP_CALL_TIMEOUT_S = 20  # one call to an app; a long job detaches and is read on a later call
+APP_IDLE_S = 600  # a tool she starts (stdio) is stopped after this long unused, and at shutdown
+APP_FILE_MAX_BYTES = 1073741824  # one file pulled from an app's output folder (1 GiB)
+DEVICE_APPS_MAX = 24  # apps wired on this device outside every project
 RECORDS_PAGE_MAX = 500  # records one list answers (business Phase 1)
 BLOCKS_MAX = 12  # blocks in one report
 CHAT_BLOCKS_MAX = 3  # report parts in one chat reply (ADR 0022)
@@ -88,6 +96,9 @@ ActionName = Literal[
     "twin_send_web",
     "show_report",
     "show_blocks",
+    "app_read",
+    "app_act",
+    "app_fetch",
 ]
 AppEventType = Literal[
     "card_filed",
@@ -102,6 +113,7 @@ AppEventType = Literal[
     "report",
     "routine",
     "draft_job",
+    "app",
 ]
 #: Her browser's answer when a hand did not run (ADR 0013).
 HandReason = Literal["no_browser", "no_tab", "moved", "refused", "timeout", "failed", "unknown_ref"]
@@ -196,6 +208,12 @@ CATALOG: dict[ActionName, ActionClass] = {
     # Report parts in a chat reply (ADR 0022): 1 to 3 parts of the same kit, bound to the project's
     # records. Offered only to a chat turn in a project that keeps records; it reads and changes nothing.
     "show_blocks": "auto",
+    # Apps by kind (ADR 0025): a tool whose annotations say it only reads answers at once, any other
+    # files a card; on a paired device's instance the card is filed here (ADR 0026). app_fetch pulls a
+    # file from an app's output folder into the project's files.
+    "app_read": "auto",
+    "app_act": "gated",
+    "app_fetch": "auto",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -967,6 +985,110 @@ class Site(TypedDict):
 
 class SiteList(TypedDict):
     sites: list[Site]
+
+
+# --- apps by kind (ADR 0025) and offered across paired devices (ADR 0026) --------------------------
+
+#: website / local_page: an origin her browser drives (kept in `spaces.apps`, the kind is derived:
+#: a loopback host is local_page). mcp_http: an app on this computer answering MCP on a loopback URL.
+#: mcp_stdio: a tool she starts as a child process (argv). The screen never says "MCP".
+AppKind = Literal["website", "mcp_http", "mcp_stdio", "local_page"]
+#: What the last probe found. `unchecked` = never probed (or could not be), never "fine".
+AppStatus = Literal["unchecked", "ok", "unreachable", "refused"]
+
+
+class AppTool(TypedDict):
+    """One tool an app lists. `access` comes from its annotations: readOnlyHint, or not destructive
+    and not open-world, is auto; anything else is gated."""
+
+    name: str  # the app's own tool name
+    description: str
+    access: ActionClass
+
+
+class AppRemote(TypedDict):
+    """The same app wired on a paired device and offered to this one; attached to a project app."""
+
+    peer_id: str
+    device: str  # the peer's name, as Devices shows it
+    remote_app_id: str  # its app_id on that device
+    status: AppStatus
+    tools: list[AppTool]  # as that device listed them at the last look
+    checked_at: NotRequired[str]
+    reason: NotRequired[str]
+
+
+class App(TypedDict):
+    """One app of a project (space_id) or of this device outside every project (space ""). For
+    website/local_page `app_id` is `web_` + 10 hex of sha1(origin), `address` the origin; for
+    mcp_http the URL; for mcp_stdio the command line as shown (argv joined by spaces)."""
+
+    app_id: str  # app_<hex> | web_<hex>
+    kind: AppKind
+    label: str
+    slug: str  # the prefix of her tool names: lowercase [a-z0-9_], unique in its space
+    address: str
+    status: AppStatus
+    tools: list[AppTool]  # [] for website/local_page
+    remotes: list[AppRemote]  # [] when none; always [] for a device-level app
+    sealed: bool  # a token is kept for it (never sent back)
+    argv: NotRequired[list[str]]  # mcp_stdio only
+    offered: NotRequired[bool]  # device-level only: paired devices with the `apps` grant may use it
+    output_dir: NotRequired[str]  # the only folder files may be pulled from; omitted = none
+    checked_at: NotRequired[str]
+    reason: NotRequired[str]
+
+
+class AppList(TypedDict):
+    apps: list[App]
+
+
+class AppNew(TypedDict):
+    """POST body. website/local_page: address is an origin (local_page: a loopback one); mcp_http:
+    a loopback http(s) URL; mcp_stdio: argv, address omitted. token is sealed and never returned."""
+
+    kind: AppKind
+    label: NotRequired[str]  # defaults to the host or the command's name
+    address: NotRequired[str]
+    argv: NotRequired[list[str]]
+    token: NotRequired[str]
+    output_dir: NotRequired[str]
+    offered: NotRequired[bool]  # device-level only
+
+
+class AppRemoteNew(TypedDict):
+    peer_id: str
+    remote_app_id: str
+
+
+class OfferedApp(TypedDict):
+    """What a device offers its paired devices (`GET /peer/apps`): never an address, argv or token."""
+
+    app_id: str
+    kind: AppKind  # mcp_http or mcp_stdio only
+    label: str
+    tools: list[AppTool]
+    has_output: bool  # it names an output folder files may be pulled from
+
+
+class OfferedList(TypedDict):
+    offered: list[OfferedApp]
+
+
+class PeerAppCall(TypedDict):
+    """`POST /peer/apps/{app_id}/call`. A gated tool without `approval_id` is refused 403
+    `approval_missing`; the id is A's card, recorded in the offering device's audit, not verified."""
+
+    tool: str
+    arguments: dict[str, Any]
+    approval_id: NotRequired[str]
+
+
+class AppAnswer(TypedDict):
+    """One call's answer, local or remote: the tool's text content joined, and whether it was an error."""
+
+    text: str
+    is_error: bool
 
 
 class SiteBody(TypedDict):
@@ -1904,6 +2026,14 @@ ROUTES = {
     "connector_probe": "/connectors/{kind}/probe",
     "space_files": "/spaces/{id}/files",
     "space_sites": "/spaces/{id}/sites",
+    "space_apps": "/spaces/{id}/apps",
+    "space_app": "/spaces/{id}/apps/{app_id}",
+    "space_app_probe": "/spaces/{id}/apps/{app_id}/probe",
+    "space_app_remotes": "/spaces/{id}/apps/{app_id}/remotes",
+    "device_apps": "/apps",
+    "device_app": "/apps/{app_id}",
+    "device_app_probe": "/apps/{app_id}/probe",
+    "peer_offers": "/devices/{peer_id}/apps",
     "space_site_check": "/spaces/{id}/sites/check",
     "space_site_sign_in": "/spaces/{id}/sites/sign_in",
     "draft_access": "/drafts/{id}/access",

@@ -51,6 +51,10 @@ export const ACTION_WORDS: Record<Card["action"], string> = {
   record_list: "Look through what the project keeps",
   record_put: "Keep this in the project",
   twin_send_web: "Send this message",
+  // Apps by kind (ADR 0025, 0026): a read answers at once; anything else an app does waits here.
+  app_read: "Look in an app",
+  app_act: "Have an app do this",
+  app_fetch: "Bring a file from an app",
 };
 
 /** A twin's draft (ADR 0009) carries its text, which the person may rewrite before signing. */

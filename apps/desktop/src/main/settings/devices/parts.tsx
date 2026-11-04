@@ -23,6 +23,7 @@ export const GRANT_WORDS: Readonly<Record<Grant, string>> = {
   chat: "talk to Athena here",
   approve: "answer approvals",
   memory: "share memory",
+  apps: "use the apps this computer offers",
 };
 
 export const KIND_WORD = { pc: "Computer", phone: "Phone" } as const;

@@ -16,6 +16,14 @@ export const APPS_MAX = 24;
 export const SITES_MAX = 24;
 /** A look at a site stands this long (seconds) before the overview or a hand looks again. */
 export const SITE_FRESH_S = 300;
+// Apps by kind (ADR 0025) and apps offered to paired devices (ADR 0026).
+export const APP_LABEL_MAX = 60;
+export const APP_TOOLS_MAX = 64;
+export const APP_TOOL_NAME_MAX = 64;
+export const APP_CALL_TIMEOUT_S = 20;
+export const APP_IDLE_S = 600;
+export const APP_FILE_MAX_BYTES = 1073741824;
+export const DEVICE_APPS_MAX = 24;
 export const RECORDS_PAGE_MAX = 500;
 export const BLOCKS_MAX = 12;
 /** Report parts in one chat reply (ADR 0022). */
@@ -73,7 +81,10 @@ export type ActionName =
   | "record_put"
   | "twin_send_web"
   | "show_report"
-  | "show_blocks";
+  | "show_blocks"
+  | "app_read"
+  | "app_act"
+  | "app_fetch";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -86,7 +97,8 @@ export type AppEventType =
   | "site"
   | "report"
   | "routine"
-  | "draft_job";
+  | "draft_job"
+  | "app";
 /** Her browser's answer when a hand did not run (ADR 0013). */
 export type HandReason = "no_browser" | "no_tab" | "moved" | "refused" | "timeout" | "failed" | "unknown_ref";
 export type WheelState = "back" | "closed" | "timeout";
@@ -176,6 +188,11 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   show_report: "auto",
   // Report parts in a chat reply (ADR 0022): 1 to 3 parts of the same kit; chat turns in a project that keeps records.
   show_blocks: "auto",
+  // Apps by kind (ADR 0025): a read-only tool answers at once, any other files a card (here, also for a
+  // paired device's instance, ADR 0026); app_fetch pulls a file from an app's output folder into the project.
+  app_read: "auto",
+  app_act: "gated",
+  app_fetch: "auto",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -862,6 +879,89 @@ export interface Site {
 
 export interface SiteList {
   sites: Site[];
+}
+
+// --- apps by kind (ADR 0025) and offered across paired devices (ADR 0026) ---
+
+/** website / local_page: an origin her browser drives (local_page = a loopback host); mcp_http: an app on
+ *  this computer at a loopback URL; mcp_stdio: a tool she starts (argv). The screen never says "MCP". */
+export type AppKind = "website" | "mcp_http" | "mcp_stdio" | "local_page";
+/** What the last probe found; `unchecked` is never "fine". */
+export type AppStatus = "unchecked" | "ok" | "unreachable" | "refused";
+
+export interface AppTool {
+  name: string;
+  description: string;
+  access: ActionClass;
+}
+
+export interface AppRemote {
+  peer_id: string;
+  device: string;
+  remote_app_id: string;
+  status: AppStatus;
+  tools: AppTool[];
+  checked_at?: string;
+  reason?: string;
+}
+
+export interface App {
+  app_id: string; // app_<hex> | web_<hex>
+  kind: AppKind;
+  label: string;
+  slug: string;
+  address: string;
+  status: AppStatus;
+  tools: AppTool[];
+  remotes: AppRemote[];
+  sealed: boolean;
+  argv?: string[];
+  offered?: boolean;
+  output_dir?: string;
+  checked_at?: string;
+  reason?: string;
+}
+
+export interface AppList {
+  apps: App[];
+}
+
+export interface AppNew {
+  kind: AppKind;
+  label?: string;
+  address?: string;
+  argv?: string[];
+  token?: string;
+  output_dir?: string;
+  offered?: boolean;
+}
+
+export interface AppRemoteNew {
+  peer_id: string;
+  remote_app_id: string;
+}
+
+export interface OfferedApp {
+  app_id: string;
+  kind: AppKind;
+  label: string;
+  tools: AppTool[];
+  has_output: boolean;
+}
+
+export interface OfferedList {
+  offered: OfferedApp[];
+}
+
+export interface PeerAppCall {
+  tool: string;
+  arguments: Record<string, unknown>;
+  approval_id?: string;
+}
+
+export interface AppAnswer {
+  text: string;
+  is_error: boolean;
 }
 
 export interface SiteBody {
@@ -1748,6 +1848,14 @@ export const ROUTES = {
   connector_probe: "/connectors/{kind}/probe",
   space_files: "/spaces/{id}/files",
   space_sites: "/spaces/{id}/sites",
+  space_apps: "/spaces/{id}/apps",
+  space_app: "/spaces/{id}/apps/{app_id}",
+  space_app_probe: "/spaces/{id}/apps/{app_id}/probe",
+  space_app_remotes: "/spaces/{id}/apps/{app_id}/remotes",
+  device_apps: "/apps",
+  device_app: "/apps/{app_id}",
+  device_app_probe: "/apps/{app_id}/probe",
+  peer_offers: "/devices/{peer_id}/apps",
   space_site_check: "/spaces/{id}/sites/check",
   space_site_sign_in: "/spaces/{id}/sites/sign_in",
   draft_access: "/drafts/{id}/access",
