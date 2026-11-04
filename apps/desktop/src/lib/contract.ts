@@ -23,6 +23,15 @@ export const APP_TOOL_NAME_MAX = 64;
 export const APP_CALL_TIMEOUT_S = 20;
 export const APP_IDLE_S = 600;
 export const APP_FILE_MAX_BYTES = 1073741824;
+export const AGENTS_MAX = 8;
+export const AGENT_LABEL_MAX = 40;
+export const AGENT_MINUTES_DEFAULT = 30;
+export const AGENT_MINUTES_MAX = 240;
+export const AGENT_CALLS_MAX = 200;
+export const AGENT_FILE_MB_MAX = 1024;
+export const AGENT_NOTE_MAX = 2000;
+export const AGENT_NOTES_LIST_MAX = 50;
+export const CARD_WAIT_MAX_S = 20;
 export const DEVICE_APPS_MAX = 24;
 export const RECORDS_PAGE_MAX = 500;
 export const BLOCKS_MAX = 12;
@@ -940,6 +949,78 @@ export interface AppNew {
 export interface AppRemoteNew {
   peer_id: string;
   remote_app_id: string;
+}
+
+// --- outside agents (spark agent-leases) ---
+
+/** `waiting` = the ceiling card is not signed yet; `connected` = live; `ended` = expired or revoked. */
+export type AgentState = "waiting" | "connected" | "ended";
+export type CardWord = "waiting" | "approved" | "declined" | "unknown";
+
+export interface AgentCeilingNew {
+  tools: string[];
+  max_calls: number;
+  minutes: number;
+  file_mb?: number;
+}
+
+export interface AgentCeiling {
+  tools: string[];
+  max_calls: number;
+  used: number;
+  deadline: string;
+  signed: boolean;
+  file_bytes?: number;
+  card_id?: string;
+}
+
+/** `POST /spaces/{id}/agents`. */
+export interface AgentLeaseNew {
+  label: string;
+  minutes?: number;
+  tools?: string[];
+  ceiling?: AgentCeilingNew;
+}
+
+export interface AgentLease {
+  id: string;
+  space_id: string;
+  label: string;
+  state: AgentState;
+  created: string;
+  expires: string;
+  tools: string[];
+  notes: number;
+  client?: string;
+  ceiling?: AgentCeiling;
+}
+
+/** The answer to a mint; the only time `token` is shown. `config` is the MCP config text for a host. */
+export interface AgentConnect {
+  lease: AgentLease;
+  url: string;
+  token: string;
+  config: string;
+}
+
+export interface AgentList {
+  agents: AgentLease[];
+}
+
+export interface AgentNote {
+  id: string;
+  label: string;
+  text: string;
+  created: string;
+}
+
+export interface AgentNoteList {
+  notes: AgentNote[];
+}
+
+export interface CardStatus {
+  state: CardWord;
+  outcome?: string;
 }
 
 /** `POST /apps/{app_id}` (device level): change the offer or the output folder ("" clears it); answers App. */
@@ -1860,6 +1941,9 @@ export const ROUTES = {
   space_app_probe: "/spaces/{id}/apps/{app_id}/probe",
   space_app_remotes: "/spaces/{id}/apps/{app_id}/remotes",
   space_app_remote: "/spaces/{id}/apps/{app_id}/remotes/{peer_id}",
+  space_agents: "/spaces/{id}/agents",
+  space_agent: "/spaces/{id}/agents/{lease_id}",
+  space_agent_notes: "/spaces/{id}/agent-notes",
   device_apps: "/apps",
   device_app: "/apps/{app_id}",
   device_app_probe: "/apps/{app_id}/probe",

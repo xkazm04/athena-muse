@@ -43,6 +43,15 @@ def test_caps_match() -> None:
         "SITES_MAX",
         "SITE_FRESH_S",
         "SPACES_MAX",
+        "AGENTS_MAX",
+        "AGENT_LABEL_MAX",
+        "AGENT_MINUTES_DEFAULT",
+        "AGENT_MINUTES_MAX",
+        "AGENT_CALLS_MAX",
+        "AGENT_FILE_MB_MAX",
+        "AGENT_NOTE_MAX",
+        "AGENT_NOTES_LIST_MAX",
+        "CARD_WAIT_MAX_S",
         "HUE_MAX",
         "TEXT_MAX",
         *drafts,
@@ -77,6 +86,7 @@ def test_enums_match() -> None:
     )
     twins += ("TwinMessageKind", "PieceOpName", "SetupPanel", "FactSuggest", "ConnectState", "MissionSource")
     browser = ("HandReason", "WheelState", "SiteAccess", "AccessState", "AccessAct")
+    browser += ("AgentState", "CardWord")
     for name in (
         *names,
         "Verdict",
@@ -101,6 +111,7 @@ def test_list_envelopes_match() -> None:
     envelopes = (("SpaceList", "spaces"), ("TurnList", "turns"), ("CardList", "cards"))
     twins = (("ConnectionList", "connections"), ("ThreadList", "threads"), ("GoalList", "goals"))
     envelopes += (("FileList", "files"), ("SiteList", "sites"))
+    envelopes += (("AgentList", "agents"), ("AgentNoteList", "notes"))
     for name, key in (*envelopes, ("ChoreList", "chores"), ("ExpectedList", "expected"), *twins):
         assert list(getattr(contracts, name).__annotations__) == [key], name
         assert re.search(rf"export interface {name} \{{\s*{key}: \w+\[\];\s*\}}", TS), name

@@ -32,6 +32,16 @@ APP_TOOL_NAME_MAX = 64  # a tool name she is offered, `<slug>__<tool>` included;
 APP_CALL_TIMEOUT_S = 20  # one call to an app; a long job detaches and is read on a later call
 APP_IDLE_S = 600  # a tool she starts (stdio) is stopped after this long unused, and at shutdown
 APP_FILE_MAX_BYTES = 1073741824  # one file pulled from an app's output folder (1 GiB)
+# Outside agents (spark agent-leases): a lease the person connects to one project, its ceiling and notes.
+AGENTS_MAX = 8  # live leases per project
+AGENT_LABEL_MAX = 40
+AGENT_MINUTES_DEFAULT = 30
+AGENT_MINUTES_MAX = 240  # the lease ceiling in mcp.py (4 h)
+AGENT_CALLS_MAX = 200  # unattended calls a ceiling may allow
+AGENT_FILE_MB_MAX = 1024  # a ceiling's file budget, in MB (one file is still APP_FILE_MAX_BYTES)
+AGENT_NOTE_MAX = 2000
+AGENT_NOTES_LIST_MAX = 50
+CARD_WAIT_MAX_S = 20  # card_status may wait this long for a signature
 DEVICE_APPS_MAX = 24  # apps wired on this device outside every project
 RECORDS_PAGE_MAX = 500  # records one list answers (business Phase 1)
 BLOCKS_MAX = 12  # blocks in one report
@@ -1099,6 +1109,90 @@ class AppAnswer(TypedDict):
     is_error: bool
 
 
+# --- outside agents (spark agent-leases) ---------------------------------------------------------
+#: A lease's standing: `waiting` = its ceiling card is not signed yet (the lease works, with cards),
+#: `connected` = live, `ended` = expired or revoked. Never "unknown".
+AgentState = Literal["waiting", "connected", "ended"]
+#: What `card_status` answers for a card this lease filed. `unknown` = not a card of this lease.
+CardWord = Literal["waiting", "approved", "declined", "unknown"]
+
+
+class AgentCeilingNew(TypedDict):
+    """The person's limits for unattended app calls. Only app tools can be named (the daemon refuses
+    any other name). `file_mb` omitted = no unattended `app_fetch`."""
+
+    tools: list[str]
+    max_calls: int
+    minutes: int
+    file_mb: NotRequired[int]
+
+
+class AgentCeiling(TypedDict):
+    tools: list[str]
+    max_calls: int
+    used: int
+    deadline: str  # ISO
+    signed: bool  # false until the `agent_grant` card is approved; nothing runs unattended before
+    file_bytes: NotRequired[int]
+    card_id: NotRequired[str]
+
+
+class AgentLeaseNew(TypedDict):
+    """POST /spaces/{id}/agents. `label` is typed by the person; `tools` omitted = the collaboration
+    set (the project's app tools, app_fetch, file_list, show_report, card_status, note_add,
+    note_list); `ceiling` omitted = every gated call files a card."""
+
+    label: str
+    minutes: NotRequired[int]
+    tools: NotRequired[list[str]]
+    ceiling: NotRequired[AgentCeilingNew]
+
+
+class AgentLease(TypedDict):
+    id: str
+    space_id: str
+    label: str
+    state: AgentState
+    created: str
+    expires: str
+    tools: list[str]
+    notes: int
+    client: NotRequired[str]  # the MCP clientInfo name the agent announced; never the label
+    ceiling: NotRequired[AgentCeiling]
+
+
+class AgentConnect(TypedDict):
+    """The answer to a mint, and the only time the token is shown: `config` is the ready MCP config
+    text for an agent host (url + bearer header)."""
+
+    lease: AgentLease
+    url: str
+    token: str
+    config: str
+
+
+class AgentList(TypedDict):
+    agents: list[AgentLease]
+
+
+class AgentNote(TypedDict):
+    id: str
+    label: str
+    text: str
+    created: str
+
+
+class AgentNoteList(TypedDict):
+    notes: list[AgentNote]
+
+
+class CardStatus(TypedDict):
+    """`card_status` structuredContent."""
+
+    state: CardWord
+    outcome: NotRequired[str]
+
+
 class SiteBody(TypedDict):
     origin: str
 
@@ -2039,6 +2133,9 @@ ROUTES = {
     "space_app_probe": "/spaces/{id}/apps/{app_id}/probe",
     "space_app_remotes": "/spaces/{id}/apps/{app_id}/remotes",
     "space_app_remote": "/spaces/{id}/apps/{app_id}/remotes/{peer_id}",
+    "space_agents": "/spaces/{id}/agents",
+    "space_agent": "/spaces/{id}/agents/{lease_id}",
+    "space_agent_notes": "/spaces/{id}/agent-notes",
     "device_apps": "/apps",
     "device_app": "/apps/{app_id}",
     "device_app_probe": "/apps/{app_id}/probe",
