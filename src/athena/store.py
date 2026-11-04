@@ -1,5 +1,6 @@
 """One SQLite file (WAL) is the truth for spaces, memory, conversations, ledger, cards, settings, drafts,
-twins, files, sites and apps."""
+twins, files, sites, apps and
+the outside agents a project connected."""
 
 from __future__ import annotations
 
@@ -85,6 +86,14 @@ CREATE TABLE IF NOT EXISTS app_remotes (
   remote_app_id TEXT NOT NULL, status TEXT NOT NULL, tools TEXT NOT NULL DEFAULT '[]', checked_at TEXT,
   reason TEXT, created TEXT NOT NULL, PRIMARY KEY (app_id, peer_id));
 CREATE INDEX IF NOT EXISTS app_remotes_space ON app_remotes (space_id);
+CREATE TABLE IF NOT EXISTS agent_leases (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, label TEXT NOT NULL, client TEXT, tools TEXT NOT NULL,
+  ceiling_json TEXT, card_id TEXT, created TEXT NOT NULL, expires TEXT NOT NULL, revoked TEXT);
+CREATE INDEX IF NOT EXISTS agent_leases_space ON agent_leases (space_id);
+CREATE TABLE IF NOT EXISTS agent_notes (
+  id TEXT PRIMARY KEY, space_id TEXT NOT NULL, lease_id TEXT NOT NULL, label TEXT NOT NULL,
+  text TEXT NOT NULL, created TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS agent_notes_space ON agent_notes (space_id);
 """ + "".join(
     # A twin's parts, one table each: `owner` is the twin (a turn's is its mission), `body` the row's JSON;
     # a preview's id is the hash of the voice it was written for.
@@ -112,6 +121,10 @@ RECORD_TABLES = ("records", "reports", "report_pins", "routines", "routine_runs"
 
 #: A project's process apps and their instances on paired devices (ADR 0025, 0026): erased with the space.
 APP_TABLES = ("apps", "app_remotes")
+
+#: The outside agents a project connected and the notes they left (spark agent-leases): erased with
+#: the space. Only the rows are kept; a token lives in memory and ends with the daemon.
+AGENT_TABLES = ("agent_leases", "agent_notes")
 
 #: Every table a twin keeps, each with `space_id`: erasing a space empties them (spaces.erase).
 TWIN_TABLES = (

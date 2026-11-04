@@ -21,9 +21,11 @@ from athena.chores.portal import SEPARATOR, Portal
 from athena.chores.spec import ChoreError, find_chore, load_chore
 from athena.clock import mint
 from athena.contracts import (
+    AGENT_NOTE_MAX,
     APP_LABEL_MAX,
     APPS_MAX,
     BRIEF_MAX,
+    CARD_WAIT_MAX_S,
     CATALOG,
     TEXT_MAX,
     TOOL_ROUNDS_MAX,
@@ -130,6 +132,36 @@ TOOLS: dict[ActionName, dict[str, Any]] = {
             },
         },
     },
+    # An outside agent's own tools (spark agent-leases): offered only on an agent's lease (mcp.py).
+    "card_status": {
+        "type": "function",
+        "function": {
+            "name": "card_status",
+            "description": "Whether the person signed a card you filed: waiting, approved (with what it "
+            "did) or declined. Only your own cards; any other id answers unknown. Can wait a little for "
+            "the signature.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "card_id": {"type": "string", "description": "The card id a pending call answered"},
+                    "wait_seconds": {
+                        "type": "number",
+                        "description": f"Optional: wait up to this many seconds (at most {CARD_WAIT_MAX_S}) "
+                        "for the person to decide",
+                    },
+                },
+                "required": ["card_id"],
+            },
+        },
+    },
+    "note_add": _tool(
+        "note_add",
+        "Leave a short note in this project for the person and for the next agent. Notes are kept; "
+        "none can be changed or removed.",
+        {"text": f"The note, at most {AGENT_NOTE_MAX} characters"},
+        ["text"],
+    ),
+    "note_list": _tool("note_list", "Read the notes agents left in this project, newest first.", {}, []),
 }
 #: The kinds `add_app` names (ADR 0025).
 APP_KINDS = ("website", "local_page", "mcp_http", "mcp_stdio")
@@ -773,6 +805,8 @@ def execute(daemon: Daemon, card: Card) -> str:
         return _sign_add_app(daemon, space_id, args)
     if card["action"] == "app_act":
         return apps_tools.execute(daemon, card)
+    if card["action"] == "agent_grant":  # an outside agent's unattended calls (spark agent-leases)
+        return daemon.agents.sign(card)
     if card["action"] == "forget":
         daemon.memory.forget(args["id"])
         return "Forgotten."

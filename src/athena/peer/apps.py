@@ -9,7 +9,9 @@
   :class:`~athena.contracts.AppAnswer`. The app must be offered (404 ``not_offered``), the tool in B's
   own listing (404 ``no_such_tool``), and a tool B's listing marks gated must carry the approving
   card's id (403 ``approval_missing``), which B records and cannot verify. An app that did not answer
-  is 502 ``app_unreachable``. Every call and every refusal is a row in B's peer audit (``app_call``).
+  is 502 ``app_unreachable``. Every call and every refusal is a row in B's peer audit (``app_call``);
+  an ``agent`` in the body (the outside agent that asked on A) is kept in that row as text, beside the
+  approval, and never decides anything.
 - ``GET /peer/apps/{app_id}/file?path=`` -> the bytes of one file under the app's output folder
   (resolved with its links, so a link out of the folder is outside it: 403 ``outside_output``), at
   most :data:`~athena.contracts.APP_FILE_MAX_BYTES` (413 ``too_large``).
@@ -65,7 +67,10 @@ CHUNK = 1 << 20
 OFFERED_MAX = 64
 TOOLS_MAX = 200
 REASON_MAX = 200
+#: The longest agent name B keeps in its audit row.
+AGENT_MAX = 40
 TOO_LARGE = "that file is larger than a file brought in may be"
+OVER_ALLOWANCE = "that file is larger than the agent may still bring in"
 _ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _ACCESS: tuple[str, ...] = get_args(ActionClass)
 
@@ -108,6 +113,9 @@ def call_route(host: PeerHost, daemon: Daemon, request: PeerRequest) -> Reply:
         return peer_error(404, "not_found", "no such app route")
     body = request.body
     tool, arguments, approval_id = body.get("tool"), body.get("arguments", {}), body.get("approval_id")
+    # Audit text only: who asked on A, in A's words. Nothing below reads it.
+    raw_agent = body.get("agent")
+    agent = " ".join(raw_agent.split())[:AGENT_MAX] if isinstance(raw_agent, str) else ""
 
     def audit(outcome: str) -> None:
         host.audit.record(
@@ -116,6 +124,7 @@ def call_route(host: PeerHost, daemon: Daemon, request: PeerRequest) -> Reply:
             app=app_id,
             tool=tool if isinstance(tool, str) else None,
             approval_id=approval_id if isinstance(approval_id, str) else None,
+            agent=agent or None,
             outcome=outcome,
         )
 
@@ -285,14 +294,18 @@ def call_remote(
     tool: str,
     arguments: dict[str, Any],
     approval_id: str | None,
+    agent: str | None = None,
 ) -> AppAnswer:
     """One call to the peer's app. Raises ApiError when it did not reach the app; answers the app's
-    AppAnswer (its own error included) when it did."""
+    AppAnswer (its own error included) when it did. `agent` names the outside agent that asked, for
+    B's audit only; absent, the body is what it always was."""
     url, token = _keyed(daemon, peer_id)
     name = _name(daemon, peer_id)
     body: dict[str, Any] = {"tool": tool, "arguments": arguments}
     if approval_id is not None:
         body["approval_id"] = approval_id
+    if agent is not None and " ".join(agent.split()):
+        body["agent"] = " ".join(agent.split())[:AGENT_MAX]
     path = f"{PREFIX}{quote(remote_app_id, safe='')}/call"
     answer = call(url, "POST", path, body, token=token, timeout=CALL_WAIT_S)
     if not answer.reached:
@@ -309,9 +322,15 @@ def call_remote(
     return {"text": text, "is_error": is_error}
 
 
-def fetch_remote(daemon: Daemon, peer_id: str, remote_app_id: str, path: str, dest: Path) -> int:
+def fetch_remote(
+    daemon: Daemon, peer_id: str, remote_app_id: str, path: str, dest: Path, max_bytes: int | None = None
+) -> int:
     """Streams one file from the peer's app output folder into `dest`; returns its size in bytes.
-    Nothing is left at `dest` when it fails."""
+    Nothing is left at `dest` when it fails. `max_bytes` (an agent's file allowance) stops it sooner
+    than the one-file cap, as soon as the file passes it."""
+    cap, too = APP_FILE_MAX_BYTES, TOO_LARGE
+    if max_bytes is not None and max_bytes < cap:
+        cap, too = max(0, max_bytes), OVER_ALLOWANCE
     url, token = _keyed(daemon, peer_id)
     name = _name(daemon, peer_id)
     parts = urlsplit(url)
@@ -338,8 +357,8 @@ def fetch_remote(daemon: Daemon, peer_id: str, remote_app_id: str, path: str, de
             length = int(reply.getheader("Content-Length") or "-1")
         except ValueError:
             length = -1
-        if length > APP_FILE_MAX_BYTES:
-            raise ApiError("bad_request", TOO_LARGE, 413)
+        if length > cap:
+            raise ApiError("bad_request", too, 413)
         try:
             with dest.open("wb") as out:
                 while True:
@@ -347,8 +366,8 @@ def fetch_remote(daemon: Daemon, peer_id: str, remote_app_id: str, path: str, de
                     if not block:
                         break
                     written += len(block)
-                    if written > APP_FILE_MAX_BYTES:
-                        raise ApiError("bad_request", TOO_LARGE, 413)
+                    if written > cap:
+                        raise ApiError("bad_request", too, 413)
                     out.write(block)
         except OSError:
             raise ApiError("bad_request", f"the file from {name} could not be brought in", 502) from None

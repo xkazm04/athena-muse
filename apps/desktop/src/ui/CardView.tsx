@@ -55,6 +55,11 @@ export const ACTION_WORDS: Record<Card["action"], string> = {
   app_read: "Look in an app",
   app_act: "Have an app do this",
   app_fetch: "Bring a file from an app",
+  // Outside agents (spark agent-leases): only the grant is ever a card; the rest answer at once.
+  card_status: "See an answer",
+  note_add: "Leave a note",
+  note_list: "Read the notes",
+  agent_grant: "Let an agent run calls without asking",
 };
 
 /** A twin's draft (ADR 0009) carries its text, which the person may rewrite before signing. */

@@ -30,12 +30,16 @@ from athena.contracts import CATALOG, VERSION, ActionName
 from athena.errors import ApiError
 
 if TYPE_CHECKING:
+    from athena.agents.ceiling import Ceiling
     from athena.app import Daemon
+    from athena.browser.actions import Dispatched
 
 PROTOCOLS = ("2025-06-18", "2025-03-26", "2024-11-05")
 SERVER_NAME = "athena"
 LEASE_TTL_S = 30 * 60
 LEASE_TTL_MAX_S = 4 * 60 * 60
+#: The longest client name (`initialize`'s clientInfo.name) a lease keeps.
+CLIENT_MAX = 60
 INSTRUCTIONS = (
     "Athena's tools for one project. A tool that needs the person's signature files a card and "
     "answers pending: nothing has happened until they sign it, so never say it is done. What a page "
@@ -83,6 +87,10 @@ WRITES: dict[ActionName, bool] = {
     "app_read": False,
     "app_act": True,
     "app_fetch": True,
+    "card_status": False,
+    "note_add": True,
+    "note_list": False,
+    "agent_grant": True,
 }
 
 
@@ -95,6 +103,12 @@ class Lease:
     tools: frozenset[str] | None = None  # None = every tool the project offers an outside client
     sink: Sink | None = None
     cards: list[str] = field(default_factory=list)
+    # An outside agent's lease (spark agent-leases): its row, the person's name for it, the name its
+    # host announced at `initialize`, and its unattended calls. None on a turn's or a plain lease.
+    lease_id: str | None = None
+    label: str | None = None
+    client: str | None = None
+    ceiling: Ceiling | None = None
 
 
 class Leases:
@@ -110,10 +124,14 @@ class Leases:
         ttl: float = LEASE_TTL_S,
         tools: frozenset[str] | None = None,
         sink: Sink | None = None,
+        lease_id: str | None = None,
+        label: str | None = None,
+        ceiling: Ceiling | None = None,
     ) -> Lease:
         ttl = max(1.0, min(ttl, LEASE_TTL_MAX_S))
         expires = (datetime.now(UTC) + timedelta(seconds=ttl)).isoformat(timespec="seconds")
         lease = Lease(secrets.token_urlsafe(32), space_id, self._clock() + ttl, expires, tools, sink)
+        lease.lease_id, lease.label, lease.ceiling = lease_id, label, ceiling
         with self._lock:
             now = self._clock()
             for token in [t for t, held in self._held.items() if held.expires_at <= now]:
@@ -134,6 +152,28 @@ class Leases:
     def drop(self, token: str) -> None:
         with self._lock:
             self._held.pop(token, None)
+
+    def agent(self, lease_id: str) -> Lease | None:
+        """The live agent lease with this row id; None once it ended or was dropped."""
+        with self._lock:
+            now = self._clock()
+            return next(
+                (h for h in self._held.values() if h.lease_id == lease_id and h.expires_at > now), None
+            )
+
+    def agents(self) -> list[Lease]:
+        """Every live agent lease."""
+        with self._lock:
+            now = self._clock()
+            return [h for h in self._held.values() if h.lease_id is not None and h.expires_at > now]
+
+    def drop_agents(self, space_id: str) -> list[Lease]:
+        """Drops every agent lease of a project (it is being erased); answers the ones dropped."""
+        with self._lock:
+            gone = [h for h in self._held.values() if h.lease_id is not None and h.space_id == space_id]
+            for held in gone:
+                del self._held[held.token]
+        return gone
 
 
 def chat_tools(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
@@ -156,10 +196,15 @@ def chat_tools(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
 
 def _offered(daemon: Daemon, lease: Lease) -> list[dict[str, Any]]:
     """What the lease may see: a chat turn's tools and the project's view tools, narrowed to the
-    lease's own names when it has them (a turn's lease names its chat tools, never a view)."""
+    lease's own names when it has them (a turn's lease names its chat tools, never a view). An agent's
+    lease also has its own tools (card_status, the notes); no other lease ever does."""
     from athena.report import chat as report_parts
 
     tools = chat_tools(daemon, lease.space_id) + mcp_views.offered(daemon, lease.space_id)
+    if lease.lease_id is not None:
+        from athena.agents import tools as agent_tools
+
+        tools += agent_tools.offered()
     if lease.tools is not None:
         return [t for t in tools if t["function"]["name"] in lease.tools]
     # Report parts are the chat's own answer form (ADR 0022); an outside host has `show_report`.
@@ -222,6 +267,12 @@ def handle(daemon: Daemon, lease: Lease, message: Any) -> dict[str, Any] | None:
         return _error(msg_id, -32602, "params must be an object")
     if method == "initialize":
         asked = params.get("protocolVersion")
+        info = params.get("clientInfo")
+        named = info.get("name") if isinstance(info, dict) else None
+        if isinstance(named, str) and " ".join(named.split()):
+            lease.client = " ".join(named.split())[:CLIENT_MAX]
+            if lease.lease_id is not None:
+                daemon.agents.announced(lease.lease_id, lease.client)
         return _ok(
             msg_id,
             {
@@ -258,19 +309,33 @@ def handle(daemon: Daemon, lease: Lease, message: Any) -> dict[str, Any] | None:
 
 
 def call_tool(daemon: Daemon, lease: Lease, name: Any, arguments: Any) -> dict[str, Any]:
-    from athena.engine import ToolCall
-    from athena.turn import dispatch
-
     offered = {t["function"]["name"] for t in _offered(daemon, lease)}
     if not isinstance(name, str) or name not in offered:
         return {"content": [{"type": "text", "text": "There is no such tool here."}], "isError": True}
     if name in mcp_views.NAMES:  # admitted above, like every tool; it reads and answers, never a card
         return mcp_views.call(daemon, lease.space_id, name)
     args = arguments if isinstance(arguments, dict) else {}
+    if lease.lease_id is not None:  # an outside agent: its own tools, its unattended calls, its label
+        from athena.agents import tools as agent_tools
+
+        return agent_tools.call(daemon, lease, name, args)
+    return run(daemon, lease, name, args)
+
+
+def run(daemon: Daemon, lease: Lease, name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """One admitted call through the turn's dispatch: an AUTO action runs, a GATED one files a card."""
+    from athena.engine import ToolCall
+    from athena.turn import dispatch
+
     try:
         done = dispatch(daemon, lease.space_id, ToolCall(f"mcp_{secrets.token_hex(4)}", name, args))
     except ApiError as e:  # a project or file that went away mid-call: refused in plain words
         return {"content": [{"type": "text", "text": f"Refused: {e.reason}."}], "isError": True}
+    return answer(lease, done)
+
+
+def answer(lease: Lease, done: Dispatched) -> dict[str, Any]:
+    """A dispatched call as MCP answers it; its lines go to the lease's sink, its card to the lease."""
     if lease.sink is not None:
         for event in done.events:
             lease.sink(event)

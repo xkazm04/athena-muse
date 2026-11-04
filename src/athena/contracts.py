@@ -109,6 +109,10 @@ ActionName = Literal[
     "app_read",
     "app_act",
     "app_fetch",
+    "card_status",
+    "note_add",
+    "note_list",
+    "agent_grant",
 ]
 AppEventType = Literal[
     "card_filed",
@@ -224,6 +228,13 @@ CATALOG: dict[ActionName, ActionClass] = {
     "app_read": "auto",
     "app_act": "gated",
     "app_fetch": "auto",
+    # Outside agents (spark agent-leases): offered only on an agent's lease, never to a chat turn.
+    # card_status reads a card that lease filed; notes are append-only. agent_grant is the card the
+    # daemon files for an agent's unattended calls; no caller can name it.
+    "card_status": "auto",
+    "note_add": "auto",
+    "note_list": "auto",
+    "agent_grant": "gated",
 }
 
 # --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -1100,6 +1111,7 @@ class PeerAppCall(TypedDict):
     tool: str
     arguments: dict[str, Any]
     approval_id: NotRequired[str]
+    agent: NotRequired[str]  # the asking agent's name, kept in B's audit beside the approval; never decides
 
 
 class AppAnswer(TypedDict):
@@ -1119,7 +1131,8 @@ CardWord = Literal["waiting", "approved", "declined", "unknown"]
 
 class AgentCeilingNew(TypedDict):
     """The person's limits for unattended app calls. Only app tools can be named (the daemon refuses
-    any other name). `file_mb` omitted = no unattended `app_fetch`."""
+    any other name). `file_mb` caps the bytes `app_fetch` brings in for this agent; omitted = no cap
+    beyond APP_FILE_MAX_BYTES per file (app_fetch runs without asking either way)."""
 
     tools: list[str]
     max_calls: int

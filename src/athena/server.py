@@ -31,6 +31,7 @@ from starlette.routing import BaseRoute, Route
 
 from athena import engine as engine_mod
 from athena import routes_mcp, routes_state, routes_turn
+from athena.agents import routes as routes_agents
 from athena.app import Daemon
 from athena.apps import routes as routes_apps
 from athena.browser import routes as routes_browser
@@ -95,6 +96,7 @@ def create_app(daemon: Daemon, token: str, origins: tuple[str, ...] = APP_ORIGIN
         *routes_connectors.routes(daemon),
         *routes_browser.routes(daemon),
         *routes_mcp.routes(daemon),
+        *routes_agents.routes(daemon),
         *routes_records.routes(daemon),
         *routes_report.routes(daemon),
         *routes_routines.routes(daemon),

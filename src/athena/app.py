@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from athena.agents.store import Agents
 from athena.apps.client import AppClients
 from athena.apps.store import Apps
 from athena.browser.files import Files
@@ -51,6 +52,7 @@ class Daemon:
     routines: Routines  # a project's routines and their runs; the host's claims (business Phase 2)
     apps: Apps  # a project's apps by kind, and this device's offered apps (ADR 0025, 0026)
     mcp: Leases  # who may call the MCP server, and for which project (ADR 0015)
+    agents: Agents  # outside agents connected to a project, their limits and notes (spark agent-leases)
     peers: PeerHost | None = None  # other devices (ADR 0017); None = off (tests, --no-peer, no data dir)
     mcp_url: str | None = None  # set once the server knows its port; None = no MCP (tests, unless set)
     app_clients: AppClients = field(default_factory=AppClients)  # live app connections (ADR 0025)
@@ -63,6 +65,7 @@ class Daemon:
         store = Store(data_dir / "athena.db" if data_dir is not None else ":memory:")
         busy = Busy()
         events = Events()
+        leases = Leases()
         daemon = cls(
             data_dir=data_dir,
             store=store,
@@ -83,7 +86,8 @@ class Daemon:
             records=Records(store, events),
             routines=Routines(store, events),
             apps=Apps(store, data_dir, events),
-            mcp=Leases(),
+            mcp=leases,
+            agents=Agents(store, leases),
             peers=_peer_host(data_dir, peer_port) if peers and data_dir is not None else None,
         )
         recover(daemon)  # a job still `running` on disk was cut off by the app closing

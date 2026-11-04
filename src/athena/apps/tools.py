@@ -191,6 +191,11 @@ def owns(daemon: Daemon, space_id: str, name: str) -> bool:
     return name in _entries(daemon, space_id)
 
 
+def entry(daemon: Daemon, space_id: str, name: str) -> Entry | None:
+    """The offered app tool by its name; None for any other name (`app_fetch` included)."""
+    return _entries(daemon, space_id).get(name)
+
+
 def classes(daemon: Daemon, space_id: str) -> dict[str, str]:
     """Each offered app tool's access (`auto` | `gated`), for the MCP server's annotations."""
     out: dict[str, str] = {name: e.tool["access"] for name, e in _entries(daemon, space_id).items()}
@@ -220,15 +225,22 @@ def _unreachable(daemon: Daemon, space_id: str, entry: Entry, reason: str) -> No
 
 
 def _run(
-    daemon: Daemon, space_id: str, entry: Entry, arguments: dict[str, Any], approval_id: str | None
+    daemon: Daemon,
+    space_id: str,
+    entry: Entry,
+    arguments: dict[str, Any],
+    approval_id: str | None,
+    agent: str | None = None,
 ) -> tuple[AppAnswer, bool]:
-    """(answer, reached). A transport failure marks the app unreachable."""
+    """(answer, reached). A transport failure marks the app unreachable. `agent` is the asking
+    agent's name, sent to a paired device for its audit only."""
     if entry.remote is None:
         token = daemon.apps.token(space_id, entry.row.app_id)
         answer, reached = daemon.app_clients.attempt(entry.row, token, entry.tool["name"], arguments)
     else:
         from athena.peer.apps import call_remote
 
+        named = {"agent": agent} if agent is not None else {}
         try:
             answer = call_remote(
                 daemon,
@@ -237,6 +249,7 @@ def _run(
                 entry.tool["name"],
                 arguments,
                 approval_id,
+                **named,
             )
             reached = True
         except ApiError as e:
@@ -257,7 +270,7 @@ def _label(entry: Entry, arguments: dict[str, Any]) -> str:
 def act(daemon: Daemon, space_id: str, name: str, arguments: dict[str, Any]) -> Dispatched:
     """One call she made to an app tool (or `app_fetch`), from a turn's round or the MCP server."""
     if name == FETCH:
-        return _fetch(daemon, space_id, arguments)
+        return _fetch(daemon, space_id, arguments)[0]
     entry = _entries(daemon, space_id).get(name)
     if entry is None:
         return Dispatched("That app tool is not offered here.", refused=True)
@@ -273,6 +286,22 @@ def act(daemon: Daemon, space_id: str, name: str, arguments: dict[str, Any]) -> 
     label = _label(entry, arguments)
     card = daemon.gate.file(space_id, "app_act", args, label)
     return Dispatched(FILED, [tool_event("app_act", label), {"type": "card", "card": card}], card)
+
+
+def run_unattended(
+    daemon: Daemon, space_id: str, name: str, arguments: dict[str, Any], approval_id: str, agent: str
+) -> Dispatched:
+    """A gated app tool an agent may run without a new card (its signed unattended calls, spark
+    agent-leases): it runs once, its line names the agent, and a paired device's copy gets the grant
+    card's id as its approval and the agent's name for its audit."""
+    entry = _entries(daemon, space_id).get(name)
+    if entry is None:
+        return Dispatched("That app tool is not offered here.", refused=True)
+    answer, reached = _run(daemon, space_id, entry, arguments, approval_id, agent)
+    line = tool_event("app_act", _short(f"{agent} ran without asking: {_label(entry, arguments)}", 300))
+    if not reached:
+        return Dispatched(f"Refused: {answer['text']} Nothing ran.", [line], refused=True)
+    return Dispatched(_fence(entry.where, answer["text"]), [line], refused=answer["is_error"])
 
 
 def execute(daemon: Daemon, card: Card) -> str:
@@ -313,63 +342,87 @@ def execute(daemon: Daemon, card: Card) -> str:
 # --- app_fetch -------------------------------------------------------------------------------------
 
 
-def _fetch(daemon: Daemon, space_id: str, arguments: dict[str, Any]) -> Dispatched:
+#: An agent's file allowance would be passed by this file (spark agent-leases).
+OVER_ALLOWANCE = "that file is larger than the agent may still bring in"
+
+
+def fetch(
+    daemon: Daemon, space_id: str, arguments: dict[str, Any], max_bytes: int | None = None
+) -> tuple[Dispatched, int]:
+    """`app_fetch` with an allowance: (the answer, the bytes brought in). A file over `max_bytes` is
+    refused before it is copied (a paired device's, as soon as it passes it)."""
+    return _fetch(daemon, space_id, arguments, max_bytes)
+
+
+def _fetch(
+    daemon: Daemon, space_id: str, arguments: dict[str, Any], max_bytes: int | None = None
+) -> tuple[Dispatched, int]:
     target = _targets(daemon, space_id).get(str(arguments.get("app", "")))
     if target is None:
-        return Dispatched("There is no such app in this project.", refused=True)
+        return Dispatched("There is no such app in this project.", refused=True), 0
     row, remote = target
     path = str(arguments.get("path", "")).strip()
     if not path:
-        return Dispatched("Name the file to bring in, by its path in the app's output folder.", refused=True)
+        said = "Name the file to bring in, by its path in the app's output folder."
+        return Dispatched(said, refused=True), 0
     if remote is None:
-        return _fetch_local(daemon, space_id, row, path)
-    return _fetch_remote(daemon, space_id, row, remote, path)
+        return _fetch_local(daemon, space_id, row, path, max_bytes)
+    return _fetch_remote(daemon, space_id, row, remote, path, max_bytes)
 
 
-def _fetch_local(daemon: Daemon, space_id: str, row: AppRow, path: str) -> Dispatched:
+def _fetch_local(
+    daemon: Daemon, space_id: str, row: AppRow, path: str, max_bytes: int | None = None
+) -> tuple[Dispatched, int]:
     if not row.output_dir:
-        return Dispatched(f"{row.label} has no output folder to bring files from.", refused=True)
+        return Dispatched(f"{row.label} has no output folder to bring files from.", refused=True), 0
     base = Path(row.output_dir).resolve()
     source = (base / path).resolve()
     if not source.is_relative_to(base) or source == base:
-        return Dispatched(f"Refused: that file is outside {row.label}'s output folder.", refused=True)
+        return Dispatched(f"Refused: that file is outside {row.label}'s output folder.", refused=True), 0
     try:
         size = source.stat().st_size if source.is_file() else None
     except OSError:
         size = None
     if size is None:
-        return Dispatched(f"There is no such file in {row.label}'s output folder.", refused=True)
+        return Dispatched(f"There is no such file in {row.label}'s output folder.", refused=True), 0
     if size > APP_FILE_MAX_BYTES:
-        return Dispatched("Refused: that file is larger than a file brought in may be.", refused=True)
+        return Dispatched("Refused: that file is larger than a file brought in may be.", refused=True), 0
+    if max_bytes is not None and size > max_bytes:
+        return Dispatched(f"Refused: {OVER_ALLOWANCE}.", refused=True), 0
     try:
         staged = daemon.files.incoming(space_id) / mint("app_")
         shutil.copyfile(source, staged)
         item = daemon.files.ingest(space_id, staged, source.name, origin=row.label)
     except ApiError as e:
-        return Dispatched(f"Refused: {e.reason}.", refused=True)
+        return Dispatched(f"Refused: {e.reason}.", refused=True), 0
     except OSError as e:
-        return Dispatched(f"Refused: the file could not be copied ({type(e).__name__}).", refused=True)
-    return Dispatched(
+        return Dispatched(f"Refused: the file could not be copied ({type(e).__name__}).", refused=True), 0
+    done = Dispatched(
         f"Kept {item['name']} in the project's files as {item['id']}.",
         [tool_event("app_fetch", f"{row.label}: brought in {_short(item['name'], 60)}")],
     )
+    return done, size
 
 
-def _fetch_remote(daemon: Daemon, space_id: str, row: AppRow, remote: AppRemote, path: str) -> Dispatched:
+def _fetch_remote(
+    daemon: Daemon, space_id: str, row: AppRow, remote: AppRemote, path: str, max_bytes: int | None = None
+) -> tuple[Dispatched, int]:
     from athena.peer.apps import fetch_remote
 
     where = f"{row.label} on {remote['device']}"
     name = PurePosixPath(path.replace("\\", "/")).name or "file"
     staged: Path | None = None
+    limit = {"max_bytes": max_bytes} if max_bytes is not None else {}
     try:
         staged = daemon.files.incoming(space_id) / mint("app_")
-        fetch_remote(daemon, remote["peer_id"], remote["remote_app_id"], path, staged)
+        size = fetch_remote(daemon, remote["peer_id"], remote["remote_app_id"], path, staged, **limit)
         item = daemon.files.ingest(space_id, staged, name, origin=where)
     except ApiError as e:
         if staged is not None:
             staged.unlink(missing_ok=True)  # a part that came before the failure is not kept
-        return Dispatched(f"Refused: {e.reason}.", refused=True)
-    return Dispatched(
+        return Dispatched(f"Refused: {e.reason}.", refused=True), 0
+    done = Dispatched(
         f"Kept {item['name']} in the project's files as {item['id']}.",
         [tool_event("app_fetch", f"{where}: brought in {_short(item['name'], 60)}")],
     )
+    return done, size

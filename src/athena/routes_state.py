@@ -76,6 +76,7 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
             return JSONResponse(spaces.get(space_id))
         if request.method == "DELETE":
             erased = spaces.erase(space_id)
+            daemon.agents.forget_space(space_id)  # its agents' tokens end with it
             events.publish({"type": "space_changed", "space_id": space_id, "erased": True})
             return JSONResponse(erased)
         updated = spaces.update(space_id, await _body(request))

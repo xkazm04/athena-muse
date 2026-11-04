@@ -28,7 +28,7 @@ from athena.contracts import (
 from athena.drafts.store import remove_folder
 from athena.errors import ApiError
 from athena.settings import ACTIVE_SPACE_KEY
-from athena.store import APP_TABLES, RECORD_TABLES, TWIN_TABLES, Store
+from athena.store import AGENT_TABLES, APP_TABLES, RECORD_TABLES, TWIN_TABLES, Store
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 
@@ -207,7 +207,7 @@ class Spaces:
         """Under `busy.closing`: deletes stamped memory, the conversation, cards, drafts (rows, then
         their folders once the rows are gone), files, sites (ADR 0014), records and the report
         (business Phase 1), every twin and its parts, its apps and their sealed tokens (ADR 0025),
-        then the space."""
+        the agents it connected and their notes, then the space."""
         if space_id == "" or not self.exists(space_id):
             raise ApiError("unknown_ref", "no such project")
         with self._busy.closing(space_id), self._store.tx() as db:
@@ -226,7 +226,7 @@ class Spaces:
                 )
             ]
             kept = ("memory", "turns", "cards", "page_reads", "drafts", "files", "sites")
-            for table in (*kept, *RECORD_TABLES, *TWIN_TABLES, *APP_TABLES):
+            for table in (*kept, *RECORD_TABLES, *TWIN_TABLES, *APP_TABLES, *AGENT_TABLES):
                 db.execute(f"DELETE FROM {table} WHERE space_id = ?", (space_id,))
             db.execute("DELETE FROM spaces WHERE id = ?", (space_id,))
             db.execute(

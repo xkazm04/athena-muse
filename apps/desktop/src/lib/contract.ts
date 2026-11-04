@@ -93,7 +93,11 @@ export type ActionName =
   | "show_blocks"
   | "app_read"
   | "app_act"
-  | "app_fetch";
+  | "app_fetch"
+  | "card_status"
+  | "note_add"
+  | "note_list"
+  | "agent_grant";
 export type AppEventType =
   | "card_filed"
   | "card_resolved"
@@ -202,6 +206,10 @@ export const CATALOG: Record<ActionName, ActionClass> = {
   app_read: "auto",
   app_act: "gated",
   app_fetch: "auto",
+  card_status: "auto",
+  note_add: "auto",
+  note_list: "auto",
+  agent_grant: "gated",
 };
 
 // --- chores (ADR 0005) ---------------------------------------------------------------------------
@@ -1045,6 +1053,7 @@ export interface PeerAppCall {
   tool: string;
   arguments: Record<string, unknown>;
   approval_id?: string;
+  agent?: string;
 }
 
 export interface AppAnswer {

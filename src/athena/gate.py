@@ -12,6 +12,7 @@ import json
 import logging
 import sqlite3
 from collections.abc import Callable
+from contextvars import ContextVar
 from typing import Any
 
 from athena.clock import mint, now_iso
@@ -29,6 +30,10 @@ Executor = Callable[[Card], str]
 #: The actions whose text the person may edit when signing, and how long that text may be: one
 #: Gmail message, one Notion note (as the practice page's lines are cut).
 EDITABLE: dict[str, int] = {"twin_send": TEXT_MAX, "twin_note": 4000, "twin_send_web": TEXT_MAX}
+
+#: The outside agent a call is running for (spark agent-leases), set by the MCP server around one
+#: agent's call: every card filed meanwhile starts `<label> asks:`, so the person sees who asked.
+ASKER: ContextVar[str | None] = ContextVar("athena_asker", default=None)
 
 
 def _card(r: sqlite3.Row) -> Card:
@@ -58,7 +63,10 @@ class Gate:
         self._executor = executor
 
     def file(self, space_id: str, action: ActionName, args: dict[str, Any], label: str) -> Card:
-        """Publishes `card_filed`."""
+        """Publishes `card_filed`. Inside an outside agent's call the label says who asks."""
+        asker = ASKER.get()
+        if asker:
+            label = f"{asker} asks: {label}"
         card_id = mint("card_")
         self._store.run(
             "INSERT INTO cards(id, space_id, action, label, args, state, created) "
