@@ -226,7 +226,7 @@ def test_turn_parts_match() -> None:
 def test_app_shapes_match() -> None:
     # Apps by kind (ADR 0025, 0026): every shape on both sides, optional on one exactly when on the other.
     shapes = ("AppTool", "AppRemote", "App", "AppList", "AppNew", "AppRemoteNew", "OfferedApp", "OfferedList")
-    for name in (*shapes, "PeerAppCall", "AppAnswer"):
+    for name in (*shapes, "PeerAppCall", "AppAnswer", "AppPatch"):
         assert _ts_interface_keys(name) == _py_keys(name), name
     for enum in ("AppKind", "AppStatus"):
         assert _ts_union(enum) == set(typing.get_args(getattr(contracts, enum))), enum

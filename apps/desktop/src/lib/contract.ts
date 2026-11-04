@@ -942,6 +942,12 @@ export interface AppRemoteNew {
   remote_app_id: string;
 }
 
+/** `POST /apps/{app_id}` (device level): change the offer or the output folder ("" clears it); answers App. */
+export interface AppPatch {
+  offered?: boolean;
+  output_dir?: string;
+}
+
 export interface OfferedApp {
   app_id: string;
   kind: AppKind;
@@ -1853,6 +1859,7 @@ export const ROUTES = {
   space_app: "/spaces/{id}/apps/{app_id}",
   space_app_probe: "/spaces/{id}/apps/{app_id}/probe",
   space_app_remotes: "/spaces/{id}/apps/{app_id}/remotes",
+  space_app_remote: "/spaces/{id}/apps/{app_id}/remotes/{peer_id}",
   device_apps: "/apps",
   device_app: "/apps/{app_id}",
   device_app_probe: "/apps/{app_id}/probe",

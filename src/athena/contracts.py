@@ -1062,6 +1062,13 @@ class AppRemoteNew(TypedDict):
     remote_app_id: str
 
 
+class AppPatch(TypedDict):
+    """`POST /apps/{app_id}` (device level): change the offer or the output folder; answers `App`."""
+
+    offered: NotRequired[bool]
+    output_dir: NotRequired[str]  # "" clears it
+
+
 class OfferedApp(TypedDict):
     """What a device offers its paired devices (`GET /peer/apps`): never an address, argv or token."""
 
@@ -2031,6 +2038,7 @@ ROUTES = {
     "space_app": "/spaces/{id}/apps/{app_id}",
     "space_app_probe": "/spaces/{id}/apps/{app_id}/probe",
     "space_app_remotes": "/spaces/{id}/apps/{app_id}/remotes",
+    "space_app_remote": "/spaces/{id}/apps/{app_id}/remotes/{peer_id}",
     "device_apps": "/apps",
     "device_app": "/apps/{app_id}",
     "device_app_probe": "/apps/{app_id}/probe",
