@@ -597,7 +597,7 @@
 }
 
 /* The step rail: three small stars on a thread, the one now lit. */
-.m-rail {
+.m-wsteps {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -606,13 +606,13 @@
   padding: 0;
   list-style: none;
 }
-.m-rail__step {
+.m-wsteps__step {
   position: relative;
   display: grid;
   justify-items: center;
   gap: 6px;
 }
-.m-rail__step + .m-rail__step::before {
+.m-wsteps__step + .m-wsteps__step::before {
   content: "";
   position: absolute;
   top: 6px;
@@ -620,10 +620,10 @@
   width: calc(100% - 20px);
   border-top: 1.5px solid var(--border-default);
 }
-.m-rail__step[data-state="done"] + .m-rail__step::before {
+.m-wsteps__step[data-state="done"] + .m-wsteps__step::before {
   border-top-color: var(--primary);
 }
-.m-rail__dot {
+.m-wsteps__dot {
   width: 13px;
   height: 13px;
   border-radius: var(--r-pill);
@@ -634,22 +634,22 @@
     border-color var(--dur-base) var(--ease-settle),
     box-shadow var(--dur-base) var(--ease-settle);
 }
-.m-rail__step[data-state="done"] .m-rail__dot {
+.m-wsteps__step[data-state="done"] .m-wsteps__dot {
   border-color: var(--primary);
   background: var(--primary);
 }
-.m-rail__step[data-state="now"] .m-rail__dot {
+.m-wsteps__step[data-state="now"] .m-wsteps__dot {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 30%, var(--card-bg));
   box-shadow: 0 0 0 4px var(--glow);
 }
-.m-rail__label {
+.m-wsteps__label {
   font-size: var(--fs-xs);
   letter-spacing: var(--tracking-eyebrow);
   text-transform: uppercase;
   color: var(--muted-foreground);
 }
-.m-rail__step[data-state="now"] .m-rail__label {
+.m-wsteps__step[data-state="now"] .m-wsteps__label {
   color: var(--foreground);
 }
 

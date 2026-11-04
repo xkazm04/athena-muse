@@ -291,18 +291,18 @@ export function Wizard({ model, kind, origin, spent, onAnswered, onClosed, initi
           </svg>
         </button>
       </header>
-      <ol className="m-rail" aria-label="Steps">
+      <ol className="m-wsteps" aria-label="Steps">
         {RAIL[kind].map((label, i) => {
           const at = RAIL_AT[step];
           return (
             <li
               key={label}
-              className="m-rail__step"
+              className="m-wsteps__step"
               data-state={i < at ? "done" : i === at ? "now" : "next"}
               aria-current={i === at ? "step" : undefined}
             >
-              <span className="m-rail__dot" aria-hidden="true" />
-              <span className="m-rail__label">{label}</span>
+              <span className="m-wsteps__dot" aria-hidden="true" />
+              <span className="m-wsteps__label">{label}</span>
             </li>
           );
         })}
