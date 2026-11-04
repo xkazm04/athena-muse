@@ -129,6 +129,36 @@ def _fetch_tool(targets: list[str]) -> dict[str, Any]:
     }
 
 
+COMBINATORS = ("oneOf", "anyOf", "allOf")
+
+
+def flat_schema(schema: Any) -> dict[str, Any]:
+    """An app's input schema as a model's tool parameters. Engines refuse a top-level oneOf/anyOf/allOf
+    (Gravitone's ops are a oneOf per op), so the branches' properties are merged into one object,
+    the top-level `required` kept, the combinator dropped; the app still checks the call itself."""
+    if not isinstance(schema, dict):
+        return {"type": "object"}
+    if not any(k in schema for k in COMBINATORS):
+        return schema
+    props: dict[str, Any] = dict(schema.get("properties") or {})
+    for key in COMBINATORS:
+        for branch in schema.get(key) or []:
+            if isinstance(branch, dict):
+                for name, spec in (branch.get("properties") or {}).items():
+                    if name not in props:
+                        props[name] = (
+                            {k: v for k, v in spec.items() if k != "const"}
+                            if isinstance(spec, dict)
+                            else spec
+                        )
+    out: dict[str, Any] = {"type": "object", "properties": props}
+    if isinstance(schema.get("required"), list):
+        out["required"] = list(schema["required"])
+    if isinstance(schema.get("description"), str):
+        out["description"] = schema["description"]
+    return out
+
+
 def offered(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
     """Function-tool definitions (the shape `turn.TOOLS` uses) for the space's apps; [] in core."""
     rows = _rows(daemon, space_id)
@@ -145,7 +175,7 @@ def offered(daemon: Daemon, space_id: str) -> list[dict[str, Any]]:
                 "function": {
                     "name": name,
                     "description": f"{entry.where}: {said}{needs}".strip(),
-                    "parameters": schema if isinstance(schema, dict) else {"type": "object"},
+                    "parameters": flat_schema(schema),
                 },
             }
         )

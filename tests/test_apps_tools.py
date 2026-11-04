@@ -223,3 +223,26 @@ def test_a_signed_add_app_wires_the_app_by_its_kind(signing: Daemon) -> None:
     assert signed["outcome"] == "Added Queue to the project."
     (wired,) = signing.apps.rows(space)
     assert wired.kind == "mcp_stdio" and wired.argv == ["queue-tool", "--serve"]
+
+
+def test_a_schema_with_a_top_level_one_of_is_flattened_for_the_model() -> None:
+    # Gravitone's tools are a oneOf per op; an engine refuses a top-level combinator (seam, 2026-11-04).
+    from athena.apps.tools import flat_schema
+
+    schema = {
+        "type": "object",
+        "properties": {"op": {"type": "string", "enum": ["status", "pause"]}},
+        "required": ["op"],
+        "oneOf": [
+            {"type": "object", "properties": {"op": {"const": "status"}, "jobId": {"type": "string"}}},
+            {"type": "object", "properties": {"op": {"const": "pause"}, "jobId": {"type": "string"}}},
+        ],
+    }
+    flat = flat_schema(schema)
+    assert not any(k in flat for k in ("oneOf", "anyOf", "allOf"))
+    assert flat["properties"]["op"]["enum"] == ["status", "pause"]
+    assert flat["properties"]["jobId"] == {"type": "string"}
+    assert flat["required"] == ["op"]
+    plain = {"type": "object", "properties": {"q": {"type": "string"}}}
+    assert flat_schema(plain) is plain
+    assert flat_schema(None) == {"type": "object"}
