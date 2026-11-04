@@ -1004,6 +1004,7 @@ class AppTool(TypedDict):
     name: str  # the app's own tool name
     description: str
     access: ActionClass
+    input_schema: NotRequired[dict[str, Any]]  # the tool's inputSchema as the app listed it; omitted = none
 
 
 class AppRemote(TypedDict):

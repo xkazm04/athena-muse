@@ -893,6 +893,7 @@ export interface AppTool {
   name: string;
   description: string;
   access: ActionClass;
+  input_schema?: Record<string, unknown>;
 }
 
 export interface AppRemote {
