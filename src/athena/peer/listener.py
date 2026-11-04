@@ -427,6 +427,10 @@ class PeerHost:
         #: whether that conversation was opened recently enough to keep the listener up.
         self.setup_phase: Callable[[], str | None] = lambda: None
         self.listen_for_setup: Callable[[], bool] = lambda: False
+        #: Set by :func:`athena.peer.wiring.install`: the look chosen in Settings (theme, type size,
+        #: motion), which ``GET /peer/hello`` hands the phone page so it dresses like the computer.
+        #: Nothing but the look: ``None`` on a host with no daemon behind it.
+        self.look: Callable[[], Mapping[str, object] | None] = lambda: None
         #: Threads a feature runs beside the host: called by :meth:`start`, and by :meth:`close`.
         self.on_start: list[Callable[[], None]] = []
         self.on_close: list[Callable[[], None]] = []

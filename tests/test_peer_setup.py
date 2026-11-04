@@ -441,3 +441,20 @@ def test_the_routes_open_the_conversation_and_hello_reports_the_phase(
     kinds = [json.loads(line)["type"] for line in run.text.splitlines()]
     assert kinds[0] == "start" and kinds[-1] == "done"
     assert [t["role"] for t in client.get("/devices/setup/conversation").json()["turns"]] == ["athena"]
+
+
+def test_hello_carries_the_look_chosen_in_settings_and_nothing_else_of_it(
+    setup_daemon: Daemon, host: PeerHost
+) -> None:
+    from athena.peer import routes as peer_routes
+    from athena.peer.listener import PeerRequest
+
+    create_app(setup_daemon, token=TOKEN)
+
+    def hello_look() -> object:
+        request = PeerRequest("GET", "/peer/hello", {}, {}, "127.0.0.1", None)  # type: ignore[arg-type]
+        return peer_routes.hello(host, request)[1]["look"]
+
+    assert hello_look() == {"theme": "auto", "type_scale": "standard", "motion": "system"}
+    setup_daemon.settings.set_look({"theme": "light", "motion": "calm"})
+    assert hello_look() == {"theme": "light", "type_scale": "standard", "motion": "calm"}

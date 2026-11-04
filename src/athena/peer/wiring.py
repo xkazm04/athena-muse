@@ -23,6 +23,7 @@ def install(daemon: Daemon) -> list[BaseRoute]:
     host = daemon.peers
     if host is None:
         return []
+    host.look = daemon.settings.look  # the hello carries the look, and only that
     host.add_routes(peer_replicate.peer_routes(host, daemon.memory))
     remote_turns = peer_remote.RemoteTurns()
     host.add_routes(peer_remote.peer_routes(host, daemon, remote_turns))

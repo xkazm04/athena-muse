@@ -3,7 +3,7 @@
 // the page is served over HTTPS. It caches the shell - never an API answer - so a phone that
 // cannot reach the beacon still opens the page, which then says it cannot reach the beacon.
 
-const SHELL = "athena-shell-v2";
+const SHELL = "athena-shell-v3";
 // Every name phone.py FILES serves but this worker itself (tests/test_peer_phone.py holds it).
 const FILES = ["./", "index.html", "app.js", "turn.js", "app.css", "manifest.webmanifest", "icon.svg"];
 

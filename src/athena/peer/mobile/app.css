@@ -1,21 +1,206 @@
-/* The phone page (ADR 0140, WP4). One column: what waits on you, then the conversation, then the
- * composer. Machine = teal; the one human colour is spent on "waiting on you" and nothing else,
- * as in her window (ADR 0139). */
-:root {
-  --bg: #0d1b1e;
-  --panel: #132a2e;
-  --panel-2: #183438;
-  --fg: #e8f1f0;
-  --muted: #9db3b1;
-  --line: #24464b;
-  --machine: #3fb8a8;
-  --on-machine: #06201c;
-  --human: #f0a35e;
-  --on-human: #2a1606;
-  --danger: #f08a7e;
-  --radius: 14px;
-  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+/* The phone page (ADR 0017): Loop Tide, the same look as the computer's window (the cobalt glass of
+ * her window, the book's cards, the person's pink on Sign and nothing else). One column: what waits
+ * on you, then the conversation, then the composer.
+ *
+ * Tokens. The three blocks below are copied from apps/desktop/src/theme/tokens.css, subset and all,
+ * and the values must stay identical: tests/test_peer_phone.py compares them to that file, so a
+ * re-themed colour on the computer fails there until it is copied. The phone has no build step, so
+ * it cannot import the file. Dark is the default; the computer's Settings look arrives in
+ * GET /peer/hello and app.js sets data-theme / data-type-scale / data-motion from it; with the theme
+ * on auto the page follows the phone's own light or dark setting (the media block). */
+
+:root,
+[data-theme="dark"] {
   color-scheme: dark;
+
+  --background: #060a17;
+  --foreground: #e8f1ff;
+  --muted-foreground: #a3bbe0;
+  --muted: #6b86b4;
+  --card-bg: #0b1430;
+  --card-raised: #111d42;
+  --recessed: #03060f;
+  --primary: #2b8cff;
+  --primary-fg: #020f2b;
+  --accent: #4aa3ff;
+  --accent-text: var(--accent);
+  --btn-primary: #0064e0;
+  --on-primary: #ffffff;
+  --border-subtle: rgba(130, 170, 230, 0.1);
+  --border-default: rgba(130, 170, 230, 0.18);
+  --border-emphasis: rgba(130, 170, 230, 0.38);
+  --hover-wash: rgba(74, 163, 255, 0.08);
+  --role-human: #f472b6;
+  --on-human: #2a0618;
+  --status-info: #5cb4ff;
+  --status-success: #34d399;
+  --status-warning: #fbbf24;
+  --status-error: #f87171;
+  --focus: #8cc4ff;
+  --glow: rgba(0, 128, 251, 0.26);
+  --shadow-1: 0 1px 2px rgba(0, 4, 20, 0.45);
+  --lt-arc: #6fb6ff;
+  --lt-arc-hot: #e6f2ff;
+  --lt-arc-dim: rgba(0, 100, 224, 0.55);
+  --lt-rim: rgba(255, 255, 255, 0.07);
+  --faint: #93acd8;
+  --glass: radial-gradient(130% 90% at 15% 0%, #15377a 0%, #0c1d48 40%, #060e26 100%);
+  --glass-solid: #0c1d48;
+  --edge: rgba(90, 160, 255, 0.24);
+  --recess: rgba(2, 6, 20, 0.52);
+  --raised: rgba(20, 42, 96, 0.74);
+  --wash: rgba(74, 163, 255, 0.09);
+  --coat-shadow: 0 22px 48px rgba(0, 6, 28, 0.62), 0 2px 6px rgba(0, 4, 18, 0.45);
+  --depth-0: color-mix(in srgb, var(--primary) 16%, var(--background));
+  --depth-1: color-mix(in srgb, var(--primary) 9%, var(--background));
+  --depth-2: var(--background);
+  --depth-3: color-mix(in srgb, black 35%, var(--background));
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #edf1f8;
+  --foreground: #0a1430;
+  --muted-foreground: #36486c;
+  --muted: #52668d;
+  --card-bg: #f8faff;
+  --card-raised: #ffffff;
+  --recessed: #e1e7f2;
+  --primary: #0057c8;
+  --primary-fg: #ffffff;
+  --accent: #1a73e8;
+  --accent-text: #0055c4;
+  --btn-primary: #0064e0;
+  --on-primary: #ffffff;
+  --border-subtle: rgba(10, 30, 80, 0.08);
+  --border-default: rgba(10, 30, 80, 0.14);
+  --border-emphasis: rgba(10, 30, 80, 0.34);
+  --hover-wash: rgba(0, 100, 224, 0.07);
+  --role-human: #be185d;
+  --on-human: #ffffff;
+  --status-info: #1d4ed8;
+  --status-success: #047857;
+  --status-warning: #b45309;
+  --status-error: #b91c1c;
+  --focus: #0064e0;
+  --glow: rgba(0, 100, 224, 0.18);
+  --shadow-1: 0 1px 2px rgba(10, 30, 80, 0.12);
+  --lt-arc: #0a7cff;
+  --lt-arc-hot: #7fc0ff;
+  --lt-arc-dim: rgba(0, 100, 224, 0.35);
+  --lt-rim: rgba(255, 255, 255, 0.9);
+  --faint: #4a5d82;
+  --glass: radial-gradient(130% 90% at 15% 0%, #ffffff 0%, #eef4fd 44%, #dde8f9 100%);
+  --glass-solid: #eaf1fc;
+  --edge: rgba(0, 100, 224, 0.3);
+  --recess: rgba(10, 30, 80, 0.05);
+  --raised: rgba(255, 255, 255, 0.86);
+  --wash: rgba(0, 100, 224, 0.07);
+  --coat-shadow: 0 16px 34px rgba(10, 40, 110, 0.22), 0 2px 5px rgba(10, 40, 110, 0.16);
+  --depth-0: color-mix(in srgb, var(--primary) 16%, var(--background));
+  --depth-1: color-mix(in srgb, var(--primary) 10%, var(--background));
+  --depth-2: color-mix(in srgb, var(--primary) 5%, var(--background));
+  --depth-3: var(--background);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --background: #edf1f8;
+    --foreground: #0a1430;
+    --muted-foreground: #36486c;
+    --muted: #52668d;
+    --card-bg: #f8faff;
+    --card-raised: #ffffff;
+    --recessed: #e1e7f2;
+    --primary: #0057c8;
+    --primary-fg: #ffffff;
+    --accent: #1a73e8;
+    --accent-text: #0055c4;
+    --btn-primary: #0064e0;
+    --on-primary: #ffffff;
+    --border-subtle: rgba(10, 30, 80, 0.08);
+    --border-default: rgba(10, 30, 80, 0.14);
+    --border-emphasis: rgba(10, 30, 80, 0.34);
+    --hover-wash: rgba(0, 100, 224, 0.07);
+    --role-human: #be185d;
+    --on-human: #ffffff;
+    --status-info: #1d4ed8;
+    --status-success: #047857;
+    --status-warning: #b45309;
+    --status-error: #b91c1c;
+    --focus: #0064e0;
+    --glow: rgba(0, 100, 224, 0.18);
+    --shadow-1: 0 1px 2px rgba(10, 30, 80, 0.12);
+    --lt-arc: #0a7cff;
+    --lt-arc-hot: #7fc0ff;
+    --lt-arc-dim: rgba(0, 100, 224, 0.35);
+    --lt-rim: rgba(255, 255, 255, 0.9);
+    --faint: #4a5d82;
+    --glass: radial-gradient(130% 90% at 15% 0%, #ffffff 0%, #eef4fd 44%, #dde8f9 100%);
+    --glass-solid: #eaf1fc;
+    --edge: rgba(0, 100, 224, 0.3);
+    --recess: rgba(10, 30, 80, 0.05);
+    --raised: rgba(255, 255, 255, 0.86);
+    --wash: rgba(0, 100, 224, 0.07);
+    --coat-shadow: 0 16px 34px rgba(10, 40, 110, 0.22), 0 2px 5px rgba(10, 40, 110, 0.16);
+    --depth-0: color-mix(in srgb, var(--primary) 16%, var(--background));
+    --depth-1: color-mix(in srgb, var(--primary) 10%, var(--background));
+    --depth-2: color-mix(in srgb, var(--primary) 5%, var(--background));
+    --depth-3: var(--background);
+  }
+}
+
+/* Scale tokens, from the same file's last `:root` block: the same in both themes. Outfit is her
+ * window's display face only and is not shipped to the phone; every word here is the system face,
+ * as in the main window (ADR 0016). */
+:root {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 18px;
+  --fs-xl: 24px;
+  --tracking-eyebrow: 0.14em;
+  --lh-tight: 1.25;
+  --lh-body: 1.5;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+  --r-interactive: var(--r-sm);
+  --r-card: var(--r-md);
+  --r-coat: var(--r-lg);
+
+  --ease-settle: cubic-bezier(0.22, 0.8, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+}
+
+/* The look's two attributes, as ui/look.css has them: large text is one step up under the headings,
+ * calm stills everything. */
+:root[data-type-scale="large"] {
+  --fs-xs: 14px;
+  --fs-sm: 15px;
+  --fs-md: 17px;
+}
+
+:root[data-motion="calm"] *,
+:root[data-motion="calm"] *::before,
+:root[data-motion="calm"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }
 
 * {
@@ -30,9 +215,10 @@
 html,
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.45 var(--font);
+  background: var(--background);
+  color: var(--foreground);
+  font: var(--fs-md) / var(--lh-body) var(--font-sans);
+  -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -40,69 +226,164 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  isolation: isolate;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
+}
+
+/* Her window's coat, edge to edge (theme/coat.css): a cobalt lens with one arc of light running the
+ * rim every 9 s, never closed into a shape. Transform only. */
+.rim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--glass-solid);
+}
+.rim::before {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 120deg,
+    var(--lt-arc-dim) 160deg,
+    transparent 182deg 290deg,
+    var(--lt-arc-dim) 312deg,
+    var(--lt-arc) 346deg,
+    var(--lt-arc-hot) 354deg,
+    transparent 360deg
+  );
+  animation: lt-orbit 9s linear infinite;
+  will-change: transform;
+}
+.rim::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: var(--r-coat);
+  background: var(--glass);
+  box-shadow: inset 0 1px 0 var(--lt-rim);
+}
+
+@keyframes lt-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced motion: the arc parks at the upper left, like a highlight. */
+@media (prefers-reduced-motion: reduce) {
+  .rim::before {
+    animation: none !important;
+    transform: rotate(225deg);
+  }
+}
+:root[data-motion="calm"] .rim::before {
+  transform: rotate(225deg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* A new panel takes focus on its heading so a screen reader announces it; nobody types there. */
+h2[tabindex="-1"]:focus {
+  outline: none;
 }
 
 .top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--glass-solid) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   z-index: 1;
 }
 
+.top .mark {
+  border-radius: var(--r-md);
+  flex: none;
+}
+
 .top h1 {
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 600;
+  line-height: var(--lh-tight);
   margin: 0;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* A badge (theme/base.css): a pill that says one word. Green and red only for status. */
 .status {
-  font-size: 13px;
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--sp-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-pill);
+  color: var(--muted-foreground);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.status:empty {
+  display: none;
+}
+
+.status.ok {
+  color: var(--status-success);
 }
 
 .status.off {
-  color: var(--danger);
+  color: var(--status-error);
 }
 
 main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
   max-width: 640px;
   width: 100%;
   margin: 0 auto;
 }
 
 .note {
-  color: var(--muted);
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
   margin: 0;
 }
 
+/* The plane (theme/base.css): a card on the glass. */
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
+  background: var(--card-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  padding: var(--sp-4);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 .panel h2 {
-  font-size: 18px;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: var(--lh-tight);
   margin: 0;
 }
 
@@ -113,20 +394,27 @@ main {
 label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--muted);
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
 }
 
+/* 16 px at least: a smaller field makes iOS zoom the page when it is focused. */
 input,
 textarea {
   font: inherit;
-  color: var(--fg);
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
+  font-size: max(16px, var(--fs-md));
+  color: var(--foreground);
+  background: var(--recess);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-interactive);
+  padding: 10px var(--sp-3);
   width: 100%;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
 }
 
 textarea {
@@ -136,28 +424,39 @@ textarea {
 }
 
 input:focus-visible,
-textarea:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--machine);
-  outline-offset: 2px;
+textarea:focus-visible {
+  border-color: var(--border-emphasis);
 }
 
+/* The desktop's .btn-primary, at a thumb's height. */
 button {
-  font: inherit;
-  font-weight: 600;
-  border: 0;
-  border-radius: 10px;
-  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font: 500 var(--fs-md) / 1 var(--font-sans);
+  border: 1px solid transparent;
+  border-radius: var(--r-interactive);
+  padding: 0 var(--sp-4);
   min-height: 44px;
-  background: var(--machine);
-  color: var(--on-machine);
+  background: var(--btn-primary);
+  color: var(--on-primary);
   cursor: pointer;
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    transform var(--dur-fast) ease;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button.quiet {
   background: transparent;
-  color: var(--fg);
-  border: 1px solid var(--line);
+  color: var(--foreground);
+  border-color: var(--border-emphasis);
+  font-weight: 600;
 }
 
 button:disabled {
@@ -167,47 +466,54 @@ button:disabled {
 
 .row {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 
-/* what waits on you */
+/* what waits on you: the desktop's card, waiting (ui/ui.css), signed in pills */
 .cards {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 .card {
-  border: 1px solid var(--human);
-  border-radius: var(--radius);
-  padding: 14px;
-  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--role-human) 55%, transparent);
+  border-radius: var(--r-card);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--card-raised);
+  box-shadow: var(--shadow-1);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
+/* the badge, human tone: the card's one word, in the person's pink */
 .card .eyebrow {
-  color: var(--human);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  align-self: flex-start;
+  padding: 2px var(--sp-2);
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+  color: var(--role-human);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .card .what {
-  font-weight: 600;
+  font-size: var(--fs-lg);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .card .why {
-  color: var(--muted);
-  font-size: 14px;
+  color: var(--muted-foreground);
+  font-size: var(--fs-sm);
 }
 
 .card details {
-  font-size: 13px;
-  color: var(--muted);
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
 }
 
 /* A thumb's target, like every button here; stays a list item so it keeps its marker. */
@@ -220,91 +526,151 @@ button:disabled {
 .card pre {
   white-space: pre-wrap;
   word-break: break-word;
-  margin: 6px 0 0;
-  font-size: 12px;
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid var(--role-human);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--recess);
+  font: var(--fs-xs) / 1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.card .row button {
+  border-radius: var(--r-pill);
+  padding: 0 calc(var(--sp-4) + 4px);
 }
 
 .card .sign {
-  background: var(--human);
+  background: var(--role-human);
+  border-color: transparent;
   color: var(--on-human);
+  font-weight: 600;
 }
 
 .card .fine {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--fs-xs);
+  color: var(--muted-foreground);
 }
 
-/* the conversation */
+/* the conversation: what you asked, and her answer under its eyebrow, as in the book */
 .log {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-3);
   flex: 1;
 }
 
 .msg {
   max-width: 88%;
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 10px var(--sp-3);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .msg.you {
   align-self: flex-end;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
+  background: var(--raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg);
 }
 
 .msg.her {
   align-self: flex-start;
-  background: var(--panel);
-  border: 1px solid var(--line);
+  max-width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  padding: var(--sp-3) var(--sp-4);
+  line-height: 1.5;
+}
+
+/* decoration only: the empty alternative keeps a screen reader from saying it on every answer */
+.msg.her::before {
+  content: "Her answer";
+  content: "Her answer" / "";
+  display: block;
+  margin-bottom: var(--sp-1);
+  color: var(--primary);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
 }
 
 .msg.step {
   align-self: flex-start;
-  font-size: 13px;
-  color: var(--muted);
-  padding: 2px 4px;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  font-size: var(--fs-sm);
+  color: var(--muted-foreground);
+  padding: 0 var(--sp-1);
+}
+
+.msg.step::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-emphasis);
+  transform: translateY(-1px);
 }
 
 .msg.trouble {
   align-self: flex-start;
-  color: var(--danger);
-  font-size: 14px;
+  max-width: 100%;
+  color: var(--foreground);
+  font-size: var(--fs-sm);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-card);
+  border: 1px solid color-mix(in srgb, var(--status-error) 55%, transparent);
+  background: color-mix(in srgb, var(--status-error) 9%, transparent);
 }
 
 .composer {
   position: sticky;
   bottom: 0;
-  background: var(--bg);
-  padding: 8px 0 4px;
+  background: color-mix(in srgb, var(--glass-solid) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  margin: 0 calc(var(--sp-4) * -1) calc(var(--sp-4) * -1);
+  padding: var(--sp-2) var(--sp-4) var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   align-items: flex-end;
 }
 
 .composer textarea {
   flex: 1;
+  border-radius: var(--r-lg);
+}
+
+.composer button {
+  border-radius: var(--r-pill);
+  padding: 0 calc(var(--sp-4) + 2px);
 }
 
 .banner {
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  font-size: 14px;
+  border-radius: var(--r-card);
+  padding: 10px var(--sp-3);
+  background: var(--card-raised);
+  border: 1px solid var(--border-default);
+  font-size: var(--fs-sm);
+  margin: 0;
 }
 
 .banner.off {
-  border-color: var(--danger);
+  border-color: color-mix(in srgb, var(--status-error) 55%, transparent);
+  background: color-mix(in srgb, var(--status-error) 9%, transparent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .msg,
   .card {
-    animation: rise 0.3s cubic-bezier(0.22, 0.8, 0.2, 1);
+    animation: rise 0.3s var(--ease-settle);
   }
 }
 

@@ -27,6 +27,11 @@ const CLAIM_POLL_MS = 2000;
 const CARDS_POLL_MS = 5000;
 const HELLO_POLL_MS = 15000;
 const GRANTS = ["chat", "approve"];
+const LOOK_KEY = "athena.look.v1"; // localStorage: the look the computer last sent, painted before the first hello
+// The look Settings keeps on the computer (GET /peer/hello `look`); the values the desktop's look.ts allows.
+const LOOK_CHOICES = { theme: ["auto", "dark", "light"], type_scale: ["standard", "large"], motion: ["system", "calm"] };
+// tokens.css --background, dark and light: the browser bar takes the page's colour.
+const BAR = { dark: "#060a17", light: "#edf1f8" };
 
 const app = document.getElementById("app");
 const statusLine = document.getElementById("status");
@@ -81,6 +86,29 @@ function show(...nodes) {
 function setStatus(text, off = false) {
   statusLine.textContent = text;
   statusLine.classList.toggle("off", off);
+  statusLine.classList.toggle("ok", text === "Connected");
+}
+
+/**
+ * Dress the page in the look chosen on the computer (theme, text size, calm motion), the way the
+ * desktop's ui/look.ts does. Only the three known words are taken; anything else is ignored, and
+ * `auto` leaves the choice to the phone's own light or dark setting.
+ */
+function applyLook(look) {
+  const root = document.documentElement;
+  const chosen = {};
+  for (const [key, allowed] of Object.entries(LOOK_CHOICES)) {
+    const value = look && typeof look === "object" ? look[key] : undefined;
+    chosen[key] = allowed.includes(value) ? value : allowed[0];
+  }
+  if (chosen.theme === "auto") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", chosen.theme);
+  root.setAttribute("data-type-scale", chosen.type_scale);
+  root.setAttribute("data-motion", chosen.motion);
+  const light = chosen.theme === "light" || (chosen.theme === "auto" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: light)").matches);
+  const bar = document.querySelector('meta[name="theme-color"]');
+  if (bar) bar.setAttribute("content", light ? BAR.light : BAR.dark);
+  return chosen;
 }
 
 function timeOf(iso) {
@@ -362,6 +390,7 @@ async function hello() {
     return;
   }
   if (common(answer)) return;
+  if (answer.status === 200 && answer.body.look) write(localStorage, LOOK_KEY, applyLook(answer.body.look));
   if (answer.status === 200 && answer.body.name) {
     chat.beacon = answer.body.name;
     title.textContent = `Athena on ${chat.beacon}`;
@@ -637,6 +666,7 @@ async function answerCard(card, choice, button) {
 // --- start ----------------------------------------------------------------------------------
 
 function start() {
+  applyLook(read(localStorage, LOOK_KEY));
   if ("serviceWorker" in navigator && window.isSecureContext) {
     // Only over HTTPS: on the plain-http overlay address a service worker cannot register.
     navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => {});

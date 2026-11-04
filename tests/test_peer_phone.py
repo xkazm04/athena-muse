@@ -148,6 +148,72 @@ def test_a_hidden_element_stays_hidden_whatever_its_display() -> None:
     assert re.search(r"\[hidden\]\s*\{[^}]*display:\s*none\s*!important", css)
 
 
+TOKENS = HERE.parent / "apps" / "desktop" / "src" / "theme" / "tokens.css"
+
+
+def _blocks(css: str) -> dict[str, dict[str, str]]:
+    """Custom properties per block: the dark block, the light block, the light block under the
+    system's media query, and the scale tokens (the last plain `:root`)."""
+    heads = {
+        "dark": '[data-theme="dark"] {',
+        "light": '[data-theme="light"] {',
+        "system-light": ':root:not([data-theme="dark"]) {',
+        "scale": "/* Scale tokens",
+    }
+    at = {name: css.index(head) for name, head in heads.items()}
+    out: dict[str, dict[str, str]] = {}
+    for name, start in at.items():
+        end = min([later for later in at.values() if later > start] + [len(css)])
+        body = css[start:end]
+        if name == "scale":
+            body = body[body.index(":root {") :]
+            body = body[: body.index("\n}")]  # the first block only, not the large-text overrides
+        out[name] = {
+            m.group(1): " ".join(m.group(2).split())
+            for m in re.finditer(r"^\s*--([\w-]+):\s*(.+?);", body, re.M)
+        }
+    return out
+
+
+def test_the_phone_wears_the_desktops_tokens_value_for_value() -> None:
+    # app.css copies a subset of the desktop's Loop Tide tokens (no build step to import them), so a
+    # re-themed colour or radius on the computer must be copied here or this fails.
+    desktop = _blocks(TOKENS.read_text(encoding="utf-8"))
+    phone = _blocks((MOBILE_DIR / "app.css").read_text(encoding="utf-8"))
+    for name, mine in phone.items():
+        assert mine, name
+        for token, value in mine.items():
+            assert desktop[name].get(token) == value, f"{name}: --{token} drifted from tokens.css"
+    assert {"background", "role-human", "on-human", "glass", "lt-arc"} <= set(phone["dark"])
+    assert set(phone["light"]) == set(phone["system-light"]) == set(phone["dark"])
+
+
+def test_hello_hands_the_phone_the_look_and_the_page_paints_it() -> None:
+    from athena.peer import routes as peer_routes
+    from athena.peer.listener import PeerRequest
+
+    class Host:
+        beacon = True
+        look = staticmethod(lambda: {"theme": "light", "type_scale": "large", "motion": "calm"})
+        setup_phase = staticmethod(lambda: None)
+
+        class identity:
+            class identity:
+                device_id, name = "dev_x", "Desk"
+
+        class pairings:
+            window_open = staticmethod(lambda: False)
+
+        class presence:
+            own = staticmethod(lambda: None)
+
+    request = PeerRequest("GET", "/peer/hello", {}, {}, "127.0.0.1", None)  # type: ignore[arg-type]
+    body = peer_routes.hello(Host(), request)[1]  # type: ignore[arg-type]
+    assert body["look"] == {"theme": "light", "type_scale": "large", "motion": "calm"}
+    script = (MOBILE_DIR / "app.js").read_text(encoding="utf-8")
+    assert "answer.body.look" in script and "data-type-scale" in script and "data-motion" in script
+
+
 def test_read_it_first_is_a_tap_target_a_thumb_can_hit() -> None:
     css = (MOBILE_DIR / "app.css").read_text(encoding="utf-8")
     rule = re.search(r"\.card summary\s*\{([^}]*)\}", css)

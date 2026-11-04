@@ -1,8 +1,10 @@
 """The routes another device calls on the peer listener (ADR 0017, "Data & API").
 
 ``GET /peer/hello`` (token)
-    ``{device_id, name, beacon, window_open, vitals}`` - who this is and what it is doing. ``vitals``
-    is this PC's snapshot (``VitalsView``) or ``null`` before its first reading.
+    ``{device_id, name, beacon, window_open, vitals, look}`` - who this is and what it is doing.
+    ``vitals`` is this PC's snapshot (``VitalsView``) or ``null`` before its first reading; ``look``
+    is Settings' look (``theme``, ``type_scale``, ``motion``; nothing else) or ``null``, which the
+    phone page paints on itself.
 
 ``POST /peer/pair/request`` (open, address-gated)
     ``{pairing_id, nonce}`` from a phone's QR, or ``{code}`` typed on a PC, plus ``name``,
@@ -50,6 +52,7 @@ def hello(host: PeerHost, request: PeerRequest) -> Reply:
         "window_open": host.pairings.window_open(),
         "vitals": host.presence.own(),
         "setup_phase": host.setup_phase(),
+        "look": host.look(),
     }
 
 

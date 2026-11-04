@@ -163,3 +163,35 @@ test("a waiting card is drawn inside a live region, so the person hears that Ath
   assert.equal(announced(drawn), true, "a card the person must answer is in a live region");
   phone.close();
 });
+
+// --- the look follows the computer's Settings ------------------------------------------------------
+
+test("the page takes the look the computer sends, and only its three known words", { skip }, async () => {
+  const phone = await page({
+    route: (method, path) => {
+      if (path === "/peer/hello") return json(200, { name: "Desk", look: { theme: "light", type_scale: "large", motion: "calm" } });
+      return json(200, { pending: [] });
+    },
+  });
+  const root = phone.document.documentElement;
+  await until(() => root.getAttribute("data-theme") === "light", "the light theme");
+  assert.equal(root.getAttribute("data-type-scale"), "large");
+  assert.equal(root.getAttribute("data-motion"), "calm");
+  assert.equal(phone.document.querySelector('meta[name="theme-color"]').getAttribute("content"), "#edf1f8");
+  assert.deepEqual(JSON.parse(phone.window.localStorage.getItem("athena.look.v1")), { theme: "light", type_scale: "large", motion: "calm" });
+  phone.close();
+});
+
+test("an unknown look is ignored and auto leaves the theme to the phone", { skip }, async () => {
+  const phone = await page({
+    route: (method, path) => {
+      if (path === "/peer/hello") return json(200, { name: "Desk", look: { theme: "<script>", type_scale: 3, motion: "calm" } });
+      return json(200, { pending: [] });
+    },
+  });
+  const root = phone.document.documentElement;
+  await until(() => root.getAttribute("data-motion") === "calm", "the look");
+  assert.equal(root.hasAttribute("data-theme"), false);
+  assert.equal(root.getAttribute("data-type-scale"), "standard");
+  phone.close();
+});
