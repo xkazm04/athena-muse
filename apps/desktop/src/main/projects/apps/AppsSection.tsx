@@ -163,7 +163,7 @@ function Instances({ app, spaceId, pcs, onChanged }: { app: App; spaceId: string
           <StatusBadge status={app.status} />
         </li>
         {app.remotes.map((r) => (
-          <RemoteRow key={r.peer_id} remote={r} />
+          <RemoteRow key={r.peer_id} app={app} remote={r} spaceId={spaceId} onChanged={onChanged} />
         ))}
       </ul>
       {more.map((pc) => (
@@ -173,13 +173,62 @@ function Instances({ app, spaceId, pcs, onChanged }: { app: App; spaceId: string
   );
 }
 
-function RemoteRow({ remote }: { remote: AppRemote }) {
+interface RemoteProps {
+  app: App;
+  remote: AppRemote;
+  spaceId: string;
+  onChanged: (a: App) => void;
+}
+
+/** A paired computer's copy, with "Detach" confirmed by a second press in place. */
+function RemoteRow({ app, remote, spaceId, onChanged }: RemoteProps) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+
+  const detach = async () => {
+    setBusy(true);
+    setProblem("");
+    try {
+      const apps = await api.detachRemote(spaceId, app.app_id, remote.peer_id);
+      const now = (apps ?? []).find((a) => a.app_id === app.app_id);
+      onChanged(now ?? { ...app, remotes: app.remotes.filter((r) => r.peer_id !== remote.peer_id) });
+    } catch (e) {
+      setProblem(reasonOf(e, `Could not detach ${remote.device}'s copy`));
+      setBusy(false);
+    }
+  };
+
   return (
     <li className="m-instance" data-role="instance" data-where={remote.peer_id}>
       <span>on {remote.device}</span>
       <StatusBadge status={remote.status} />
       <span className="m-muted">{toolsLine(remote)}</span>
       {remote.reason && <span className="m-muted m-instance__why">{remote.reason}</span>}
+      {asking ? (
+        <div className="m-confirm" role="group" aria-label={`Confirm detaching ${remote.device}'s copy`}>
+          <p>
+            Athena stops using {app.label} on {remote.device} in this project. {remote.device} keeps the app.
+          </p>
+          <div className="m-row">
+            <button type="button" className="btn m-btn-danger" disabled={busy} onClick={() => void detach()}>
+              {busy ? "Detaching..." : "Detach"}
+            </button>
+            <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => setAsking(false)}>
+              Keep it
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="btn btn-quiet" aria-label={`Detach ${remote.device}'s copy`} onClick={() => setAsking(true)}>
+          Detach
+        </button>
+      )}
+      {problem && (
+        <p className="m-error" role="alert">
+          {problem}
+        </p>
+      )}
     </li>
   );
 }

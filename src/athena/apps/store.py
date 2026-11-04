@@ -38,6 +38,7 @@ from athena.contracts import (
     App,
     AppKind,
     AppNew,
+    AppPatch,
     AppRemote,
     AppStatus,
     AppTool,
@@ -499,6 +500,32 @@ class Apps:
         if not path.is_dir():
             raise _bad("that output folder does not exist")
         return str(path)
+
+    def patch(self, app_id: str, body: AppPatch) -> App:
+        """Changes a device-level app's offer or its output folder ("" clears it); publishes `app`."""
+        if not isinstance(body, dict):
+            raise _bad("send the change as an object")
+        row = self.get("", app_id)  # unknown_ref first
+        if row.kind not in PROCESS_KINDS:
+            raise _bad("only an app wired outside every project can be offered to other devices")
+        unknown = set(body) - {"offered", "output_dir"}
+        if unknown or not body:
+            raise _bad("change whether it is offered, or its output folder")
+        offered = row.offered
+        if "offered" in body:
+            if not isinstance(body["offered"], bool):
+                raise _bad("offered is yes or no")
+            offered = body["offered"]
+        output_dir = row.output_dir
+        if "output_dir" in body:
+            raw: object = body["output_dir"]
+            output_dir = None if isinstance(raw, str) and not raw.strip() else self._output_dir(raw)
+        self.store.run(
+            "UPDATE apps SET offered = ?, output_dir = ? WHERE space_id = '' AND app_id = ?",
+            (1 if offered else 0, output_dir, app_id),
+        )
+        self._publish("")
+        return self.view("", app_id)
 
     def remove(self, space_id: str, app_id: str) -> None:
         row = self.get(space_id, app_id)  # unknown_ref first

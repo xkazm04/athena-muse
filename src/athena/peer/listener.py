@@ -32,6 +32,7 @@ is wanted.
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import threading
 import time
@@ -81,6 +82,8 @@ DEFAULT_PEER_PORT = 17491
 MAX_PEER_BODY_BYTES = 65_536
 #: Seconds with no read or write after which a peer connection is dropped.
 IDLE_TIMEOUT_S = 30.0
+#: A file reply is written in chunks this size: the idle timeout then bounds one chunk, not the file.
+FILE_CHUNK = 1 << 20
 TICK_S = 2.0
 #: How long an overlay answer is trusted before ``tailscale`` is asked again.
 OVERLAY_TTL_S = 30.0
@@ -148,12 +151,15 @@ class PeerRoute:
 
 @dataclass(frozen=True)
 class BinaryReply:
-    """A reply that is bytes with a content type and extra headers (the phone page's files)."""
+    """A reply that is bytes with a content type and extra headers (the phone page's files). With
+    ``path``, the body is that file, written in 1 MiB chunks so a slow link times out per chunk and
+    never on the whole file (an app's output, ADR 0026); ``body`` is then ignored."""
 
     status: int
     body: bytes
     content_type: str
     headers: Mapping[str, str] = field(default_factory=dict)
+    path: Path | None = None
 
 
 def peer_of(request: PeerRequest) -> PeerRow:
@@ -219,13 +225,17 @@ def build_peer_handler(host: PeerHost) -> type[BaseHTTPRequestHandler]:
         def _binary(self, answer: BinaryReply) -> None:
             self.send_response(answer.status)
             self.send_header("Content-Type", answer.content_type)
-            self.send_header("Content-Length", str(len(answer.body)))
+            size = answer.path.stat().st_size if answer.path is not None else len(answer.body)
+            self.send_header("Content-Length", str(size))
             self.send_header("Connection", "close")
             for name, value in answer.headers.items():
                 self.send_header(name, value)
             self.end_headers()
             self.close_connection = True
-            if answer.body:
+            if answer.path is not None:
+                with answer.path.open("rb") as source:
+                    shutil.copyfileobj(source, self.wfile, FILE_CHUNK)
+            elif answer.body:
                 self.wfile.write(answer.body)
 
         def _stream(self, answer: EventStream) -> None:

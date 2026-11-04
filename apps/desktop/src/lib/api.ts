@@ -11,6 +11,7 @@ import {
   type App,
   type AppList,
   type AppNew,
+  type AppPatch,
   type AppRemoteNew,
   type AuthorEvent,
   type AutonomyBody,
@@ -212,11 +213,16 @@ export const probeSpaceApp = (id: string, appId: string) =>
   request<App>("POST", path(ROUTES.space_app_probe, { id, app_id: appId }));
 export const attachRemote = (id: string, appId: string, body: AppRemoteNew) =>
   request<App>("POST", path(ROUTES.space_app_remotes, { id, app_id: appId }), body);
+/** Stop using a paired computer's copy of a project app; answers the project's apps. */
+export const detachRemote = async (id: string, appId: string, peerId: string) =>
+  (await request<AppList>("DELETE", path(ROUTES.space_app_remote, { id, app_id: appId, peer_id: peerId }))).apps;
 // This computer's own apps, outside every project, and the ones it offers paired computers (ADR 0026).
 export const deviceApps = async () => (await request<AppList>("GET", ROUTES.device_apps)).apps;
 export const addDeviceApp = (body: AppNew) => request<App>("POST", ROUTES.device_apps, body);
 export const removeDeviceApp = (appId: string) => request<unknown>("DELETE", path(ROUTES.device_app, { app_id: appId }));
 export const probeDeviceApp = (appId: string) => request<App>("POST", path(ROUTES.device_app_probe, { app_id: appId }));
+/** Switch a device app's offer, or change its output folder ("" clears it). */
+export const patchDeviceApp = (appId: string, body: AppPatch) => request<App>("POST", path(ROUTES.device_app, { app_id: appId }), body);
 /** What a paired computer offers this one, asked of it now. */
 export const peerOffers = async (peerId: string) =>
   (await request<OfferedList>("GET", path(ROUTES.peer_offers, { peer_id: peerId }))).offered;

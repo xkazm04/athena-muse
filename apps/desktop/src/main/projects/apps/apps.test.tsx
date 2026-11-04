@@ -250,6 +250,35 @@ describe("a project's apps", () => {
     expect(rows()[0]!.textContent).toContain("on Studio PC");
   });
 
+  it("detaches a paired computer's copy only after a second press in place", async () => {
+    const remote = { peer_id: "dev_0000000000a2", device: "Studio PC", remote_app_id: "app_b001", status: "ok" as const, tools: [READ] };
+    await mount([app({ remotes: [remote] })]);
+    vi.mocked(api.detachRemote).mockResolvedValue([app()]);
+    fireEvent.click(screen.getByRole("button", { name: "Detach Studio PC's copy" }));
+    expect(api.detachRemote).not.toHaveBeenCalled();
+    const confirm = screen.getByRole("group", { name: "Confirm detaching Studio PC's copy" });
+    expect(confirm.textContent).toContain("Athena stops using Gravitone on Studio PC in this project.");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Keep it" }));
+    expect(screen.queryByRole("group", { name: "Confirm detaching Studio PC's copy" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Detach Studio PC's copy" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Detach" })));
+    expect(api.detachRemote).toHaveBeenCalledWith("spc_a1", "app_0001", "dev_0000000000a2");
+    const instances = [...rows()[0]!.querySelectorAll<HTMLElement>('[data-role="instance"]')];
+    expect(instances.map((i) => i.firstChild!.textContent)).toEqual(["This computer"]);
+    // Detached, it can be added again.
+    expect(screen.getByRole("button", { name: "Add Studio PC's copy" })).toBeTruthy();
+  });
+
+  it("a refused detach stays in place, saying why", async () => {
+    const remote = { peer_id: "dev_0000000000a2", device: "Studio PC", remote_app_id: "app_b001", status: "ok" as const, tools: [READ] };
+    await mount([app({ remotes: [remote] })]);
+    vi.mocked(api.detachRemote).mockRejectedValue(new DaemonError(404, "unknown_ref", "That app is not one of these apps."));
+    fireEvent.click(screen.getByRole("button", { name: "Detach Studio PC's copy" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Detach" })));
+    expect(screen.getByRole("alert").textContent).toBe("That app is not one of these apps.");
+    expect(rows()[0]!.textContent).toContain("on Studio PC");
+  });
+
   it("says plainly when a paired computer cannot be asked", async () => {
     await mount([app()]);
     vi.mocked(api.peerOffers).mockRejectedValue(new DaemonError(403, "unauthorized", "Studio PC has not given this computer its apps."));
@@ -308,6 +337,55 @@ describe("apps this computer offers", () => {
     const row = document.querySelector('[data-role="device-app"]')!;
     expect(row.textContent).toContain("Offered to paired computers");
     expect(row.textContent).toContain("D:/renders");
+  });
+});
+
+describe("changing what this computer offers", () => {
+  const mount = async (one: App) => {
+    vi.mocked(api.deviceApps).mockResolvedValue([one]);
+    render(<OfferedApps />);
+    await act(async () => undefined);
+    return () => document.querySelector<HTMLElement>('[data-role="device-app"]')!;
+  };
+
+  it("the offer is a switch on the row", async () => {
+    const row = await mount(app({ offered: true, output_dir: "D:/renders" }));
+    const offer = screen.getByRole("switch", { name: "Offer Gravitone to paired computers" });
+    expect(offer.getAttribute("aria-checked")).toBe("true");
+    expect(row().textContent).toContain("Offered to paired computers");
+    vi.mocked(api.patchDeviceApp).mockResolvedValue(app({ offered: false, output_dir: "D:/renders" }));
+    await act(async () => fireEvent.click(offer));
+    expect(api.patchDeviceApp).toHaveBeenCalledWith("app_0001", { offered: false });
+    expect(screen.getByRole("switch", { name: "Offer Gravitone to paired computers" }).getAttribute("aria-checked")).toBe("false");
+    expect(row().dataset.offered).toBe("no");
+    expect(row().textContent).toContain("Kept to this computer");
+  });
+
+  it("the output folder is changed in place, and emptied to clear it", async () => {
+    const row = await mount(app({ offered: true, output_dir: "D:/renders" }));
+    expect(row().textContent).toContain("Files from D:/renders");
+    fireEvent.click(screen.getByRole("button", { name: "Change Gravitone's output folder" }));
+    const form = screen.getByRole("form", { name: "Gravitone's output folder" });
+    const field = within(form).getByLabelText("Output folder") as HTMLInputElement;
+    expect(field.value).toBe("D:/renders");
+    vi.mocked(api.patchDeviceApp).mockResolvedValue(app({ offered: true }));
+    fireEvent.change(field, { target: { value: "   " } });
+    await act(async () => fireEvent.click(within(form).getByRole("button", { name: "Save folder" })));
+    expect(api.patchDeviceApp).toHaveBeenCalledWith("app_0001", { output_dir: "" });
+    expect(screen.queryByRole("form", { name: "Gravitone's output folder" })).toBeNull();
+    expect(row().textContent).toContain("No output folder");
+  });
+
+  it("a refused folder keeps the form open with the reason", async () => {
+    await mount(app({ offered: true }));
+    vi.mocked(api.patchDeviceApp).mockRejectedValue(new DaemonError(400, "bad_request", "That output folder does not exist."));
+    fireEvent.click(screen.getByRole("button", { name: "Change Gravitone's output folder" }));
+    const form = screen.getByRole("form", { name: "Gravitone's output folder" });
+    fireEvent.change(within(form).getByLabelText("Output folder"), { target: { value: "D:/nowhere" } });
+    await act(async () => fireEvent.click(within(form).getByRole("button", { name: "Save folder" })));
+    expect(api.patchDeviceApp).toHaveBeenCalledWith("app_0001", { output_dir: "D:/nowhere" });
+    expect(screen.getByRole("alert").textContent).toBe("That output folder does not exist.");
+    expect(screen.getByRole("form", { name: "Gravitone's output folder" })).toBeTruthy();
   });
 });
 

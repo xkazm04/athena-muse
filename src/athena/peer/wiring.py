@@ -10,6 +10,7 @@ from __future__ import annotations
 from starlette.routing import BaseRoute
 
 from athena.app import Daemon
+from athena.peer import apps as peer_apps
 from athena.peer import devices as peer_devices
 from athena.peer import phone as peer_phone
 from athena.peer import remote as peer_remote
@@ -26,8 +27,10 @@ def install(daemon: Daemon) -> list[BaseRoute]:
     remote_turns = peer_remote.RemoteTurns()
     host.add_routes(peer_remote.peer_routes(host, daemon, remote_turns))
     host.add_routes(peer_phone.peer_routes(host))
+    host.add_routes(peer_apps.peer_routes(host, daemon))
     loopback: list[BaseRoute] = []
     loopback.extend(peer_remote.loopback_routes(host))
+    loopback.extend(peer_apps.loopback_routes(daemon))
     peer_setup.of(daemon)  # the hello's setup_phase and the listener's setup hold
     loopback.extend(peer_setup.routes(daemon))
     if daemon.data_dir is not None:

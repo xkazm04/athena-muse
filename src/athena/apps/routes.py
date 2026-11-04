@@ -21,7 +21,7 @@ from athena.app import Daemon
 from athena.apps.store import PROCESS_KINDS, AppRow
 from athena.browser import sites
 from athena.clock import now_iso
-from athena.contracts import App, AppList, AppNew, AppRemote, AppStatus
+from athena.contracts import App, AppList, AppNew, AppPatch, AppRemote, AppStatus
 from athena.errors import ApiError
 
 #: Seconds a plain look at a web page waits for an answer.
@@ -143,7 +143,21 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
     async def device_apps(request: Request) -> Response:
         return await _list_or_add(request, "")
 
+    async def space_app_remote(request: Request) -> Response:
+        space_id = _project(request)
+        app_id = str(request.path_params["app_id"])
+        daemon.apps.get(space_id, app_id)  # unknown_ref first
+        await run_in_threadpool(
+            daemon.apps.drop_remote, space_id, app_id, str(request.path_params["peer_id"])
+        )
+        listed: AppList = {"apps": daemon.apps.views(space_id)}
+        return JSONResponse(listed)
+
     async def device_app(request: Request) -> Response:
+        if request.method == "POST":
+            body = cast("AppPatch", await _body(request))
+            changed = await run_in_threadpool(daemon.apps.patch, str(request.path_params["app_id"]), body)
+            return JSONResponse(changed)
         return await _remove(request, "")
 
     async def device_app_probe(request: Request) -> Response:
@@ -154,7 +168,8 @@ def routes(daemon: Daemon) -> list[BaseRoute]:
         Route("/spaces/{id}/apps/{app_id}", space_app, methods=["DELETE"]),
         Route("/spaces/{id}/apps/{app_id}/probe", space_app_probe, methods=["POST"]),
         Route("/spaces/{id}/apps/{app_id}/remotes", space_app_remotes, methods=["POST"]),
+        Route("/spaces/{id}/apps/{app_id}/remotes/{peer_id}", space_app_remote, methods=["DELETE"]),
         Route("/apps", device_apps, methods=["GET", "POST"]),
-        Route("/apps/{app_id}", device_app, methods=["DELETE"]),
+        Route("/apps/{app_id}", device_app, methods=["POST", "DELETE"]),
         Route("/apps/{app_id}/probe", device_app_probe, methods=["POST"]),
     ]
