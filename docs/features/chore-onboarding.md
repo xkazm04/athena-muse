@@ -55,6 +55,8 @@ six zones, coverage arcs). One store and one set of shared parts under `apps/des
 each view's CSS scoped under its own `[data-stage-view]` root. The choice is kept per device
 (`athena.stage.view`, default Drawing); `Draft.views` counts turns per view as the evidence for which
 proves better. Pencil (dashed violet) is her guess, ink is agreed, a pink edge is the person's words.
+A node is the person's only when its label and detail are words they typed, quoted; an answer they
+picked from her suggestions is agreed but stays her wording ([ADR 0028](../adr/0028-a-quote-proves-only-the-words-it-holds-and-a-picked-answer-is-agreement.md)).
 
 **Wire** (`src/athena/contracts.py` / `apps/desktop/src/lib/contract.ts`): `POST /drafts {need}`,
 `GET /drafts/{id}`, `POST /drafts/{id}/say` (NDJSON `TurnEvent` + `sketch` / `ask` / `coverage`),

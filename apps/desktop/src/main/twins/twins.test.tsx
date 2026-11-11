@@ -110,7 +110,8 @@ describe("the setup", () => {
     show("setup-f3");
     const lit = document.querySelector('[data-role="section-lit"]')!;
     expect(lit.className).toContain("sec--voice");
-    expect(document.querySelectorAll('.doc [data-role="piece-pencil"]').length).toBe(5);
+    // "Signs as ..." is her wording of an answer the person picked: pencil until inked (ADR 0028)
+    expect(document.querySelectorAll('.doc [data-role="piece-pencil"]').length).toBe(6);
     expect(screen.getByRole("heading", { name: "Is that a bit too casual for a first message to a stranger?" })).toBeTruthy();
     expect(document.querySelectorAll('[data-role="suggestion"]')).toHaveLength(3);
   });

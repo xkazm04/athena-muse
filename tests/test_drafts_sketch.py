@@ -8,7 +8,10 @@ import pytest
 
 from athena.contracts import LABEL_MAX, SKETCH_NODES_MAX, Sketch, SketchOp
 from athena.drafts.rubric import agreed, coverage, open_slots
-from athena.drafts.sketch import SketchError, apply, confirm, drop, empty
+from athena.drafts.sketch import Said, SketchError, apply, confirm, drop, empty
+
+#: What the person typed in these tests: a quote from it inks a node whose words are the quote's.
+SAID = Said(["Each month I check the bill against the days they went"])
 
 
 def add(
@@ -16,6 +19,11 @@ def add(
 ) -> SketchOp:
     node = {"id": node_id, "kind": kind, "slot": slot, "label": label, "origin": "athena", "confirmed": False}
     return cast("SketchOp", {"op": "add", "node": {**node, **more}})
+
+
+def ink(node_id: str, label: str = "Check the bill", **more: Any) -> SketchOp:
+    """An add the sketch draws as the person's own (with SAID): its words are their quote."""
+    return add(node_id, label=label, quote="I check the bill against", **more)
 
 
 def link(a: str, b: str) -> SketchOp:
@@ -131,15 +139,70 @@ def test_agreed_is_the_contract_rule() -> None:
 
 
 def test_the_persons_own_words_cannot_be_reworded_or_removed() -> None:
-    sketch, _ = apply(empty(), [add("a", origin="you", confirmed=True), add("b", "apps", "app")])
+    sketch, _ = apply(empty(), [ink("a"), add("b", "apps", "app")], said=SAID)
+    assert (sketch["nodes"][0]["origin"], sketch["nodes"][0]["confirmed"]) == ("you", True)
     reword = cast("SketchOp", {"op": "change", "node": {"id": "a", "label": "Pay the club"}})
     with pytest.raises(SketchError, match="own words"):
         apply(sketch, [reword])
     with pytest.raises(SketchError, match="own words"):
         apply(sketch, [cast("SketchOp", {"op": "remove", "node": {"id": "a"}})])
+    # her detail on their node would read as theirs (ADR 0028)
     detail = cast("SketchOp", {"op": "change", "node": {"id": "a", "detail": "every month"}})
-    sketch, _ = apply(sketch, [detail])
-    assert sketch["nodes"][0]["confirmed"] is True and sketch["nodes"][0]["detail"] == "every month"
+    with pytest.raises(SketchError, match="own words"):
+        apply(sketch, [detail])
+
+
+def test_the_caller_never_decides_whose_a_node_is() -> None:
+    # ADR 0028: origin, confirmed and quote on an add are ignored; only a proven quote inks
+    claimed = add("a", origin="you", confirmed=True, quote="my own words here")
+    sketch, ops = apply(empty(), [claimed], said=Said(["these are my own words here"]))
+    node = sketch["nodes"][0]
+    assert (node["origin"], node["confirmed"]) == ("athena", False) and "quote" not in node
+    assert ops[0]["node"] == node
+
+
+def test_a_quote_inks_only_the_words_it_holds() -> None:
+    # ADR 0028: the quote proves the label and detail only when they are its own words
+    sketch, _ = apply(
+        empty(),
+        [
+            ink("a"),  # the label runs inside the quote
+            ink("b", label="Pay every invoice at once"),  # a true quote under her own label
+            ink("c", detail="and pay it"),  # her own detail under a true quote
+            ink("d", label="the BILL against", detail="check"),  # case ignored, both inside
+            add("e", quote="the bill against the days"),  # a true quote that lacks "Check"
+        ],
+        said=SAID,
+    )
+    assert [(n["origin"], n["confirmed"], "quote" in n) for n in sketch["nodes"]] == [
+        ("you", True, True),
+        ("athena", False, False),
+        ("athena", False, False),
+        ("you", True, True),
+        ("athena", False, False),
+    ]
+
+
+def test_an_answer_she_wrote_and_the_person_picked_is_agreed_not_theirs() -> None:
+    # ADR 0028: a picked answer confirms her words; it never makes them the person's
+    said = Said(["Each month I check the bill"], picked=["Each dispute waits for my yes"])
+    picked = add(
+        "g", "hand", "gate", label="Each dispute waits for my yes", quote="each dispute waits for my yes"
+    )
+    sketch, _ = apply(empty(), [picked], said=said)
+    node = sketch["nodes"][0]
+    assert (node["origin"], node["confirmed"]) == ("athena", True) and "quote" not in node
+    typed = Said([*said.typed, "Each dispute waits for my yes"], said.picked)  # they typed it too
+    sketch, _ = apply(empty(), [picked], said=typed)
+    assert (sketch["nodes"][0]["origin"], sketch["nodes"][0]["confirmed"]) == ("you", True)
+
+
+def test_rewriting_a_confirmed_proposals_detail_asks_for_confirmation_again() -> None:
+    sketch, _ = apply(empty(), [add("b", "apps", "app", detail="billing page")])
+    sketch, _ = confirm(sketch, ["b"])
+    detail = cast("SketchOp", {"op": "change", "node": {"id": "b", "detail": "pays the bill"}})
+    sketch, ops = apply(sketch, [detail])
+    assert sketch["nodes"][0]["confirmed"] is False and ops[0]["node"]["confirmed"] is False
 
 
 def test_rewording_a_confirmed_proposal_asks_for_confirmation_again() -> None:
@@ -151,9 +214,7 @@ def test_rewording_a_confirmed_proposal_asks_for_confirmation_again() -> None:
 
 
 def test_drop_rubs_out_her_guesses_and_their_links_only() -> None:
-    sketch, _ = apply(
-        empty(), [add("a", origin="you", confirmed=True), add("b", "apps", "app"), add("c"), link("a", "b")]
-    )
+    sketch, _ = apply(empty(), [ink("a"), add("b", "apps", "app"), add("c"), link("a", "b")], said=SAID)
     out, ops = drop(sketch, ["b"])
     assert [n["id"] for n in out["nodes"]] == ["a", "c"] and out["edges"] == []
     assert [o["op"] for o in ops] == ["remove", "remove"] and "edge" in ops[0] and ops[1]["node"]["id"] == "b"

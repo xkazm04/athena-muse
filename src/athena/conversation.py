@@ -60,16 +60,30 @@ class Conversation:
         parts: list[TurnPart] | None = None,
         duration_ms: int | None = None,
         stopped: str | None = None,
+        picked: bool = False,
     ) -> Turn:
         """`parts` is an Athena turn's text runs, tool lines and cards in the order they streamed;
         `text` stays the whole reply, which the next turn's history reads. `duration_ms` is how long
-        the turn took; `stopped` is why the engine ended it early (ADR 0024)."""
+        the turn took; `stopped` is why the engine ended it early (ADR 0024). `picked` marks a person's
+        turn that is one of her suggested answers, picked rather than typed (ADR 0028)."""
         turn_id = mint("turn_")
         stored = json.dumps(parts, ensure_ascii=False) if parts is not None else None
         self._store.run(
             "INSERT INTO turns(id, space_id, role, text, created, cost_usd, card_id, parts, duration_ms,"
-            " stopped) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (turn_id, space_id, role, text, now_iso(), cost_usd, card_id, stored, duration_ms, stopped),
+            " stopped, picked) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                turn_id,
+                space_id,
+                role,
+                text,
+                now_iso(),
+                cost_usd,
+                card_id,
+                stored,
+                duration_ms,
+                stopped,
+                1 if picked else None,
+            ),
         )
         return _turn(self._store.query("SELECT * FROM turns WHERE id = ?", (turn_id,))[0])
 
@@ -84,6 +98,16 @@ class Conversation:
         """What was said, oldest first, for a model's history: the last `limit` turns without the ones
         the engine stopped (they hold no reply of hers, and an empty assistant line misleads a model)."""
         return [t for t in self.list(space_id, limit) if "stopped" not in t]
+
+    def persons(self, space_id: str) -> tuple[builtins.list[str], builtins.list[str]]:
+        """(what the person typed, the answers they picked from her suggestions), oldest first. A
+        picked answer is her wording that the person agreed to, never their own words (ADR 0028)."""
+        rows = self._store.query(
+            "SELECT text, picked FROM turns WHERE space_id = ? AND role = 'person' ORDER BY rowid",
+            (space_id,),
+        )
+        typed = [r["text"] for r in rows if not r["picked"]]
+        return typed, [r["text"] for r in rows if r["picked"]]
 
     def erase_space(self, space_id: str) -> int:
         return self._store.run("DELETE FROM turns WHERE space_id = ?", (space_id,))

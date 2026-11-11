@@ -273,7 +273,7 @@ def _twin_stage(messages: list[dict[str, Any]], said: str) -> tuple[str, list[To
     t = _Twin()
     if step == 0:
         t.add("p_name", "who", "name", "Partnerships", "the name I'd give it")
-        t.add("p_purpose", "who", "purpose", said, quote=" ".join(said.split()[:QUOTE_WORDS]))
+        t.add("p_purpose", "who", "purpose", said, quote=said)
         t.add(
             "p_mtype",
             "mission",

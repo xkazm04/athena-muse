@@ -456,7 +456,7 @@ def say(
 ) -> Iterator[dict[str, Any]]:
     """One setup turn: TurnEvents plus the twin's `sketch`, `ask` and `coverage`. Validates before
     returning. The first say carries what the twin is for, in the person's words; afterwards the person
-    types or picks one of her suggestions (kept as their words), not both."""
+    types or picks one of her suggestions (kept as picked: their agreement, not their words), not both."""
     row = daemon.twins.row(twin_id)
     text, picked = text.strip(), (choice or "").strip()
     if text and picked:
@@ -473,7 +473,8 @@ def say(
         daemon.twins.put(twin_id, need=words)
     inked = sync(daemon, twin_id)
     design = TwinDesign(daemon, twin_id)
-    return _after_start(run_turn(daemon, engine, words, row["space_id"], design=design), inked)
+    turn = run_turn(daemon, engine, words, row["space_id"], design=design, picked=bool(picked))
+    return _after_start(turn, inked)
 
 
 def _after_start(events: Iterator[dict[str, Any]], inked: list[PieceOp]) -> Iterator[dict[str, Any]]:
@@ -542,6 +543,8 @@ def own_pieces(daemon: Daemon, twin_id: str, place: str, prefix: str, wanted: li
             sketch, _ = sketches.apply(sketch, [{"op": "add", "node": _node(place, w)}], TWIN_RUBRIC)
         except SketchError as e:  # a bug in the slip's own words, not the person's
             raise ApiError("bad_request", str(e)) from e
+        added = sketch["nodes"][-1]  # the sketch makes every added node pencil; the slip inks its own
+        added["origin"], added["confirmed"] = "you", True
         if w.get("evidence"):
             cast("dict[str, Any]", sketch["nodes"][-1])["evidence"] = list(w["evidence"])
     daemon.twins.put(twin_id, sketch=sketch)

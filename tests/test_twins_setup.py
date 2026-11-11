@@ -74,7 +74,7 @@ def test_each_reply_streams_the_twins_own_lines(world: World) -> None:
         ("p_purpose", "who", "you", True),
         ("p_mtype", "mission", "athena", False),
     ]
-    assert pieces[1]["quote"] == " ".join(NEED.split()[:8])
+    assert pieces[1]["quote"] == NEED
     (ask,) = [e["ask"] for e in of(events, "ask")]
     conforms(ask, contracts.TwinAsk)
     assert ask["place"] == "who" and "panel" not in ask and ask["follow_up"] == 0
@@ -90,15 +90,13 @@ def test_each_reply_streams_the_twins_own_lines(world: World) -> None:
 
 def test_ink_is_proven_by_the_persons_words(world: World) -> None:
     twin_id = world.create()
-    world.say(twin_id, NEED)
+    events = world.say(twin_id, NEED)
+    purpose = next(
+        op["piece"] for e in of(events, "sketch") for op in e["ops"] if op["piece"]["id"] == "p_purpose"
+    )
+    assert (purpose["origin"], purpose["confirmed"], purpose["quote"]) == ("you", True, NEED)
+    # ADR 0028: "Signs as ..." is her wording of an answer she wrote and the person picked: pencil
     events = world.say(twin_id, choice="As me, from my studio")
-    sign = next(op["piece"] for e in of(events, "sketch") for op in e["ops"] if op["piece"]["id"] == "p_sign")
-    assert (sign["origin"], sign["confirmed"], sign["quote"]) == ("you", True, "As me, from my studio")
-    # a choice too short to prove anything stays her pencil
-    other = World(world.daemon, world.client)
-    second = other.create()
-    other.say(second, NEED)
-    events = other.say(second, choice="Me")
     sign = next(op["piece"] for e in of(events, "sketch") for op in e["ops"] if op["piece"]["id"] == "p_sign")
     assert (sign["origin"], sign["confirmed"]) == ("athena", False) and "quote" not in sign
 

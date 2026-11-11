@@ -15,7 +15,7 @@ from athena.browser import sites
 from athena.browser.sites import Seen, decide
 from athena.contracts import AppEvent, Draft, Sketch
 from athena.drafts import access
-from athena.drafts.sketch import SketchError, apply, confirm, drop
+from athena.drafts.sketch import Said, SketchError, apply, confirm, drop
 from athena.engine import ToolCall
 from athena.errors import ApiError
 from athena.server import create_app
@@ -174,9 +174,10 @@ def _node(node_id: str, kind: str = "app", slot: str = "apps", **more: Any) -> d
 
 
 def test_a_site_is_her_pencil_on_an_app_node_until_the_person_confirms_it() -> None:
-    mine = _node("a", origin="you", confirmed=True)
+    mine = _node("a", quote="the club website")  # the person's own words (ADR 0028)
     ops: list[Any] = [{"op": "add", "node": mine}, {"op": "add", "node": _node("b", site={"url": OTHER})}]
-    sketch, _ = apply({"nodes": [], "edges": []}, ops)
+    sketch, _ = apply({"nodes": [], "edges": []}, ops, said=Said(["it is on the club website"]))
+    assert sketch["nodes"][0]["origin"] == "you"
     assert sketch["nodes"][1]["site"] == {
         "origin": OTHER,
         "url": OTHER + "/",

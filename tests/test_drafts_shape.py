@@ -238,22 +238,84 @@ def test_at_most_two_guesses_per_reply_and_the_persons_words_are_not_capped(daem
     assert f"at most {shape.PROPOSALS_MAX} new pieces per reply" in engine.system
 
 
-def test_a_quote_from_a_picked_suggestion_counts(client: TestClient, daemon: Daemon) -> None:
+def test_a_picked_suggestion_is_agreed_but_never_the_persons_words(
+    client: TestClient, daemon: Daemon
+) -> None:
+    # ADR 0028: her suggested answer, picked, confirms her wording; it does not become theirs
     draft = new_draft(client)
     say(client, draft["id"])
     say(client, draft["id"], "", choice="On the club's parent website")
-    engine = Stage(
+    engine = Heard(
         (
             "Drawn.",
             [
                 sketch_call(
                     1, op="add", slot="apps", kind="app", label="Club site", quote="the club's parent website"
-                )
+                ),
+                sketch_call(
+                    2,
+                    op="add",
+                    slot="apps",
+                    kind="app",
+                    label="The club's parent website",
+                    quote="the club's parent website",
+                ),
             ],
         )
     )
     events = run(daemon, engine, draft["id"], "ok")
-    assert of(events, "sketch")[0]["ops"][0]["node"]["origin"] == "you"
+    nodes = [op["node"] for e in of(events, "sketch") for op in e["ops"]]
+    assert [(n["origin"], n["confirmed"], "quote" in n) for n in nodes] == [
+        ("athena", False, False),  # her label, not the picked words
+        ("athena", True, False),  # the picked words: agreed, still hers
+    ]
+    assert daemon.conversation.persons(draft["space_id"])[1] == ["On the club's parent website"]
+
+
+def test_a_true_quote_never_inks_her_own_label_or_detail(daemon: Daemon) -> None:
+    # ADR 0028: a quote proves only the words it holds
+    draft_id = drafted(daemon)
+    engine = Heard(
+        (
+            "Drawn.",
+            [
+                sketch_call(
+                    1,
+                    op="add",
+                    slot="never",
+                    kind="never",
+                    label="Pay every invoice",
+                    quote="the school portal has",
+                ),
+                sketch_call(
+                    2,
+                    op="add",
+                    slot="apps",
+                    kind="app",
+                    label="School portal",
+                    detail="pays the club",
+                    quote="the school portal has",
+                ),
+                sketch_call(
+                    3,
+                    op="add",
+                    slot="apps",
+                    kind="app",
+                    label="the school portal",
+                    quote="the school portal has",
+                ),
+            ],
+        )
+    )
+    events = run(daemon, engine, draft_id)
+    nodes = [op["node"] for e in of(events, "sketch") for op in e["ops"]]
+    assert [(n["id"], n["origin"], n["confirmed"]) for n in nodes] == [
+        ("n1", "athena", False),
+        ("n2", "athena", False),
+        ("n3", "you", True),
+    ]
+    results = [str(m["content"]) for m in engine.heard if m.get("role") == "tool"]
+    assert "not the quoted words" in results[0] and "own words" in results[2]
 
 
 # --- acceptance 3: a failed or empty reply is an error, never progress -----------------------------

@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import copy
 import re
-from typing import Any, cast
+from collections.abc import Sequence
+from typing import Any, Literal, NamedTuple, cast
 
 from athena.contracts import (
     DETAIL_MAX,
@@ -24,6 +25,56 @@ from athena.drafts.rubric import CHORE_RUBRIC, Rubric
 from athena.errors import ApiError
 
 NODE_ID = re.compile(r"[A-Za-z0-9_-]{1,40}")
+QUOTE_WORDS_MIN = 3  # a quote shorter than this proves nothing about whose words a node holds
+QUOTE_MARKS = " \t\r\n\"'" + "".join(
+    map(chr, (0x201C, 0x201D, 0x2018, 0x2019, 0xAB, 0xBB))
+)  # curly, guillemets
+_WORD = re.compile(r"[\w']+")
+
+
+class Said(NamedTuple):
+    """What the person said in a Project (ADR 0028): what they typed (the need among it), and the
+    answers they picked from her suggestions. A picked answer is their agreement, not their words."""
+
+    typed: Sequence[str] = ()
+    picked: Sequence[str] = ()
+
+
+#: Nothing said: every added node is her proposal.
+NOBODY = Said()
+
+
+def _words(text: str) -> list[str]:
+    """The text's words, case ignored, a curly apostrophe read as a straight one."""
+    flat = text.casefold().replace(chr(0x2019), "'").replace(chr(0x2018), "'")
+    return [w for w in (w.strip("'") for w in _WORD.findall(flat)) if w]
+
+
+def _within(part: list[str], whole: list[str]) -> bool:
+    """Whether the words `part` run, in order and together, inside `whole`."""
+    n = len(part)
+    return any(whole[i : i + n] == part for i in range(len(whole) - n + 1))
+
+
+def whose(quote: str, said: Said) -> Literal["typed", "picked"] | None:
+    """Where `quote` (at least QUOTE_WORDS_MIN words, case ignored) stands verbatim in what the person
+    said: in words they typed, only in an answer they picked, or nowhere."""
+    q = _words(quote)
+    if len(q) < QUOTE_WORDS_MIN:
+        return None
+    if any(_within(q, _words(s)) for s in said.typed):
+        return "typed"
+    if any(_within(q, _words(s)) for s in said.picked):
+        return "picked"
+    return None
+
+
+def drawn_from(quote: str, label: str, detail: str = "") -> bool:
+    """Whether a node's words (its label, and its detail if it has one) are the quote's own words:
+    each runs inside the quote. Kind and slot are where it goes, never words anybody said."""
+    q = _words(quote)
+    head = _words(label)
+    return bool(head) and _within(head, q) and _within(_words(detail), q)
 
 
 class SketchError(ValueError):
@@ -109,7 +160,7 @@ def _copy(e: SketchEdge) -> SketchEdge:
     return {"from": e["from"], "to": e["to"]}
 
 
-def _add(sketch: Sketch, raw: dict[str, Any], rubric: Rubric) -> SketchOp:
+def _add(sketch: Sketch, raw: dict[str, Any], rubric: Rubric, said: Said) -> SketchOp:
     node_id = raw.get("id")
     if not isinstance(node_id, str) or not NODE_ID.fullmatch(node_id):
         raise SketchError("a new node needs an id of letters, digits, - or _ (at most 40)")
@@ -122,15 +173,21 @@ def _add(sketch: Sketch, raw: dict[str, Any], rubric: Rubric) -> SketchOp:
         "kind": _kind(raw.get("kind"), rubric),
         "slot": _slot(raw.get("slot"), rubric),
         "label": _label(raw.get("label")),
-        "origin": "you" if raw.get("origin") == "you" else "athena",
-        "confirmed": raw.get("confirmed") is True,
+        "origin": "athena",  # never the caller's to claim: set below from the quote alone
+        "confirmed": False,
     }
     _fits(node, rubric)
     detail = _detail(raw["detail"]) if raw.get("detail") is not None else ""
     if detail:
         node["detail"] = detail
-    if node["origin"] == "you" and isinstance(raw.get("quote"), str) and raw["quote"].strip():
-        node["quote"] = _detail(raw["quote"])  # the caller proved it is the person's words
+    quote = raw.get("quote")
+    if isinstance(quote, str) and drawn_from(quote, node["label"], detail):
+        who = whose(quote, said)
+        if who is not None:
+            node["confirmed"] = True  # the person said, or picked, exactly these words
+        if who == "typed":  # their own words: ink, with the words it came from
+            node["origin"] = "you"
+            node["quote"] = _detail(" ".join(quote.split()).strip(QUOTE_MARKS))
     if raw.get("site"):
         if node["kind"] != SITE_KIND:
             raise SketchError("only a place where it happens (an app) has a website")
@@ -141,7 +198,7 @@ def _add(sketch: Sketch, raw: dict[str, Any], rubric: Rubric) -> SketchOp:
 
 def _change(sketch: Sketch, raw: dict[str, Any], rubric: Rubric) -> SketchOp:
     node = sketch["nodes"][_index(sketch, raw.get("id"))]
-    reworded = any(k in raw for k in ("label", "kind", "slot"))
+    reworded = any(k in raw for k in ("label", "detail", "kind", "slot"))
     if reworded and node["origin"] == "you":
         raise SketchError("that node is in the person's own words; ask them before changing it")
     if reworded:
@@ -228,15 +285,19 @@ def _link(sketch: Sketch, op: SketchOp) -> SketchOp:
 
 
 def apply(
-    sketch: Sketch, ops: list[SketchOp], rubric: Rubric = CHORE_RUBRIC
+    sketch: Sketch, ops: list[SketchOp], rubric: Rubric = CHORE_RUBRIC, said: Said = NOBODY
 ) -> tuple[Sketch, list[SketchOp]]:
     """(the new sketch, the ops as applied). Raises SketchError and leaves `sketch` untouched.
 
-    `add` takes the whole node (its `origin` and `confirmed` are the caller's to set: the shaping
-    turn computes them, a model never claims them). `change` takes the node's id and only the fields
-    that change (label, detail, kind, slot). `remove` takes a node (by id) or an edge; removing a node
-    answers one `remove` per edge it took with it, then the node. `link` takes an edge. A kind and a
-    slot are checked against `rubric`: a kind it knows, one of its places, a kind that place allows.
+    `add` takes the node's words, place and an optional `quote`; any `origin` or `confirmed` it
+    carries is ignored (ADR 0028). A new node is her proposal unless its label and detail are the
+    quote's own words and the quote stands in `said`: typed by the person, it is theirs (`origin: you`,
+    confirmed, the quote kept); only in an answer they picked, it is hers and confirmed. `change` takes
+    the node's id and only the fields that change (label, detail, kind, slot): on the person's node
+    they are refused, on her confirmed one they ask for confirmation again. `remove` takes a node (by
+    id) or an edge; removing a node answers one `remove` per edge it took with it, then the node.
+    `link` takes an edge. A kind and a slot are checked against `rubric`: a kind it knows, one of its
+    places, a kind that place allows.
     """
     out = copy.deepcopy(sketch)
     applied: list[SketchOp] = []
@@ -244,7 +305,7 @@ def apply(
         name = op.get("op")
         raw_node = cast("dict[str, Any]", op.get("node") or {})
         if name == "add":
-            applied.append(_add(out, raw_node, rubric))
+            applied.append(_add(out, raw_node, rubric, said))
         elif name == "change":
             applied.append(_change(out, raw_node, rubric))
         elif name == "remove":

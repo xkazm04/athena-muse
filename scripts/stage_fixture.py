@@ -19,7 +19,7 @@ from typing import Any, cast
 
 from athena.contracts import BenchSummary, Draft, Sketch, SketchOp
 from athena.drafts.rubric import agreed, coverage
-from athena.drafts.sketch import apply, confirm, empty
+from athena.drafts.sketch import Said, apply, confirm, empty
 
 FIXTURE = Path(__file__).resolve().parents[1] / "apps/desktop/src/main/stage/fixture"
 SOURCE = FIXTURE / "conversation.src.json"
@@ -67,22 +67,16 @@ def draft(base: Draft, **changes: Any) -> Draft:
     return cast("Draft", out)
 
 
-def wire_ops(raw: list[dict[str, Any]], said: list[str]) -> list[SketchOp]:
-    """The source's ops as the daemon takes them: an added node's origin decides `confirmed`, and a
-    node is the person's only with a quote found in their own words (the daemon's rule)."""
-    out: list[SketchOp] = []
+def wire_ops(raw: list[dict[str, Any]], said: Said, before: Sketch) -> tuple[Sketch, list[SketchOp]]:
+    """The source's ops applied as the daemon applies them (ADR 0028): whose a new node is comes from
+    its quote and what the person typed or picked, never from the source. A node the source calls the
+    person's must come out theirs, so the fixture cannot ink what a live draft would pencil."""
+    sketch, applied = apply(before, cast("list[SketchOp]", raw), said=said)
+    drawn = {o["node"]["id"]: o["node"]["origin"] for o in applied if o["op"] == "add"}
     for op in raw:
-        if op["op"] == "add":
-            node = dict(op["node"])
-            if node["origin"] == "you":
-                quote = node.get("quote", "")
-                if len(quote.split()) < 3 or not any(quote.casefold() in s.casefold() for s in said):
-                    raise SystemExit(f"node {node['id']}: quote {quote!r} is not in the person's words")
-            node["confirmed"] = node["origin"] == "you"
-            out.append(cast("SketchOp", {"op": "add", "node": node}))
-        else:
-            out.append(cast("SketchOp", op))
-    return out
+        if op["op"] == "add" and drawn[op["node"]["id"]] != op["node"]["origin"]:
+            raise SystemExit(f"node {op['node']['id']}: the daemon draws it as {drawn[op['node']['id']]!r}")
+    return sketch, applied
 
 
 def build() -> dict[str, Any]:
@@ -105,14 +99,16 @@ def build() -> dict[str, Any]:
     )
     first = current
     frames: list[dict[str, Any]] = []
-    said = [src["need"]]
+    typed, picked = [src["need"]], []
     for i, f in enumerate(src["frames"]):
         user = f["user"]
         say: dict[str, Any] = {"text": "" if i == 0 else user.get("text", "")}
         if user.get("choice"):
             say = {"text": "", "choice": user["choice"]}
-        said.append(user.get("choice") or user.get("text", ""))
-        sketch, applied = apply(current["sketch"], wire_ops(f["ops"], said))
+            picked.append(user["choice"])
+        elif i:  # the first frame says the need, already typed
+            typed.append(user.get("text", ""))
+        sketch, applied = wire_ops(f["ops"], Said(typed, picked), current["sketch"])
         updated = clock.tick(f["elapsed_s"])
         current = draft(current, step="shape", sketch=sketch, updated=updated)
         if f.get("ask"):

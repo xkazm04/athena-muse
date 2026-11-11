@@ -17,7 +17,7 @@
             "id": "n1",
             "kind": "step",
             "slot": "need",
-            "label": "Check the club invoice against real attendance",
+            "label": "Check the after-school club's invoice",
             "origin": "you",
             "quote": "check the after-school club's invoice against the days my kids actually went"
           }
@@ -39,7 +39,7 @@
             "id": "n3",
             "kind": "app",
             "slot": "apps",
-            "label": "School portal: attendance",
+            "label": "The school portal has attendance",
             "origin": "you",
             "quote": "the school portal has attendance"
           }
@@ -60,7 +60,7 @@
             "id": "n5",
             "kind": "output",
             "slot": "output",
-            "label": "Dispute for the extra days",
+            "label": "Dispute the extra days",
             "origin": "you",
             "quote": "dispute the extra days"
           }
@@ -122,8 +122,7 @@
             "slot": "apps",
             "label": "Brightside Parents portal",
             "detail": "billing queries",
-            "origin": "you",
-            "quote": "dispute on the portal"
+            "origin": "athena"
           }
         },
         {
@@ -159,7 +158,8 @@
         }
       ],
       "confirm": [
-        "n2"
+        "n2",
+        "n6"
       ],
       "ask": {
         "slot": "inputs",
@@ -188,8 +188,7 @@
             "slot": "inputs",
             "label": "Invoice lines",
             "detail": "Mila and Teo, $18 a day",
-            "origin": "you",
-            "quote": "Mila and Teo, $18 a day each"
+            "origin": "athena"
           }
         },
         {
@@ -280,7 +279,8 @@
       ],
       "confirm": [
         "n9",
-        "n10"
+        "n10",
+        "n8"
       ],
       "ask": {
         "slot": "hand",
@@ -307,8 +307,8 @@
             "id": "n12",
             "kind": "gate",
             "slot": "hand",
-            "label": "Your yes on each billing query",
-            "origin": "you",
+            "label": "Each billing query waits for my yes",
+            "origin": "athena",
             "quote": "Each billing query waits for my yes"
           }
         },
@@ -358,7 +358,7 @@
             "id": "n13",
             "kind": "never",
             "slot": "never",
-            "label": "Leave same-day cancellations alone",
+            "label": "Same-day cancellations are still charged",
             "origin": "you",
             "quote": "Same-day cancellations are still charged"
           }
@@ -371,8 +371,7 @@
             "slot": "inputs",
             "label": "Sign-out times",
             "detail": "club register",
-            "origin": "you",
-            "quote": "if I'm late for pickup after 6pm"
+            "origin": "athena"
           }
         },
         {
@@ -381,7 +380,7 @@
             "id": "n15",
             "kind": "step",
             "slot": "steps",
-            "label": "Check late-pickup fees against sign-out",
+            "label": "Late for pickup after 6pm, check those too",
             "origin": "you",
             "quote": "late for pickup after 6pm, check those too"
           }
@@ -427,7 +426,7 @@
             "kind": "never",
             "slot": "never",
             "label": "Never pay the invoice",
-            "origin": "you",
+            "origin": "athena",
             "quote": "Never pay the invoice"
           }
         },
@@ -467,8 +466,8 @@
             "id": "n23",
             "kind": "output",
             "slot": "output",
-            "label": "Monthly list: disputed days and total",
-            "origin": "you",
+            "label": "A short list: disputed days and the total",
+            "origin": "athena",
             "quote": "A short list: disputed days and the total"
           }
         },
@@ -584,7 +583,8 @@
         "n4",
         "n7",
         "n11",
-        "n17"
+        "n17",
+        "n14"
       ],
       "ask": null
     }

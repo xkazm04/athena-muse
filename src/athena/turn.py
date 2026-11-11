@@ -189,14 +189,16 @@ def run_turn(
     *,
     portal: Portal | None = None,
     design: Design | None = None,
+    picked: bool = False,
 ) -> Iterator[dict[str, Any]]:
-    """Validates now (so the route can answer a 4xx), streams when iterated. `portal` offers a
+    """Validates now (so the route can answer a 4xx), streams when iterated. `picked`: the person's
+    `text` is one of her suggested answers, kept as picked, not typed (ADR 0028). `portal` offers a
     chore's invented app as tools (ADR 0005): its READ tools answer at once, every other files a
     `portal_act` card without ending the round loop, so one reply can file a pile. `design` makes it
     a design turn (ADR 0007, 0010): ledgered on the design's surface, offering `recall` and the
     design's own tools only, and a reply with no words that changed and asked nothing ends in `error`."""
     text = validate(daemon, text, space_id)
-    return _stream(daemon, engine, text, space_id, portal, design)
+    return _stream(daemon, engine, text, space_id, portal, design, picked)
 
 
 def _frame(daemon: Daemon, space_id: str, text: str) -> str:
@@ -605,13 +607,14 @@ def _stream(
     space_id: str,
     portal: Portal | None = None,
     design: Design | None = None,
+    picked: bool = False,
 ) -> Iterator[dict[str, Any]]:
     surface: Surface = design.surface if design is not None else "turn"
     with daemon.busy.turn(space_id), daemon.busy.chat(space_id):
         turn_id = mint("turn_")
         seen = _Parts()  # the turn's clock starts here
         yield {"type": "start", "turn_id": turn_id, "engine": engine.id, "simulated": engine.simulated}
-        daemon.conversation.append(space_id, "person", text)
+        daemon.conversation.append(space_id, "person", text, picked=picked)
         messages = _messages(daemon, space_id, text)
         if design is not None:
             tools = [TOOLS["recall"], *design.tools()]

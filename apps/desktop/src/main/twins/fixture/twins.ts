@@ -1396,7 +1396,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "label": "Answers client email for the studio: quotes, scheduling and invoices.",
           "origin": "you",
           "confirmed": true,
-          "quote": "Answers client email for the studio: quotes, scheduling"
+          "quote": "Answers client email for the studio: quotes, scheduling and invoices."
         },
         {
           "id": "p_mtype",
@@ -1410,9 +1410,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_sign",
           "place": "who",
           "label": "Signs as Alex from Low Tide Visuals",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "As Alex from Low Tide Visuals"
+          "origin": "athena",
+          "confirmed": false
         },
         {
           "id": "p_gmail",
@@ -1474,9 +1473,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_v5",
           "place": "voice",
           "label": "First message: full sentences, no slang",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "A little more formal at first contact"
+          "origin": "athena",
+          "confirmed": false
         },
         {
           "id": "p_notion",
@@ -1566,9 +1564,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_n4",
           "place": "never",
           "label": "Never write after 9 pm their time",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "never write after 9 pm their time"
+          "origin": "athena",
+          "confirmed": true
         },
         {
           "id": "a-gmail-first_message",
@@ -1618,10 +1615,9 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_ms",
           "place": "mission",
           "label": "Chase the overdue invoice from Harbor Bakery",
-          "origin": "you",
-          "confirmed": true,
-          "detail": "rehearse first",
-          "quote": "Chase the overdue invoice from Harbor Bakery"
+          "origin": "athena",
+          "confirmed": false,
+          "detail": "rehearse first"
         }
       ],
       "coverage": {
@@ -2082,7 +2078,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "label": "Handles school and club email: forms, pickups and the monthly invoice.",
           "origin": "you",
           "confirmed": true,
-          "quote": "Handles school and club email: forms, pickups and"
+          "quote": "Handles school and club email: forms, pickups and the monthly invoice."
         },
         {
           "id": "p_mtype",
@@ -2096,9 +2092,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_sign",
           "place": "who",
           "label": "Signs as Alex from Low Tide Visuals",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "As Alex from Low Tide Visuals"
+          "origin": "athena",
+          "confirmed": false
         },
         {
           "id": "p_gmail",
@@ -2160,9 +2155,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_v5",
           "place": "voice",
           "label": "First message: full sentences, no slang",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "A little more formal at first contact"
+          "origin": "athena",
+          "confirmed": false
         },
         {
           "id": "p_notion",
@@ -2252,9 +2246,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_n4",
           "place": "never",
           "label": "Never write after 9 pm their time",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "never write after 9 pm their time"
+          "origin": "athena",
+          "confirmed": true
         },
         {
           "id": "a-gmail-first_message",
@@ -2304,10 +2297,9 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_ms",
           "place": "mission",
           "label": "Dispute the extra club days in September with Brightside Club",
-          "origin": "you",
-          "confirmed": true,
-          "detail": "rehearse first",
-          "quote": "Dispute the extra club days in September with Brightside Club"
+          "origin": "athena",
+          "confirmed": false,
+          "detail": "rehearse first"
         }
       ],
       "coverage": {
@@ -2901,7 +2893,7 @@ export const TWIN_FIXTURE: TwinFixture = {
                   "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
                   "origin": "you",
                   "confirmed": true,
-                  "quote": "I want a twin that writes to Suno"
+                  "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
                 }
               }
             ]
@@ -2987,7 +2979,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -3216,9 +3208,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                   "id": "p_sign",
                   "place": "who",
                   "label": "Signs as Alex from Low Tide Visuals",
-                  "origin": "you",
-                  "confirmed": true,
-                  "quote": "As Alex from Low Tide Visuals"
+                  "origin": "athena",
+                  "confirmed": false
                 }
               }
             ]
@@ -3306,7 +3297,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -3320,9 +3311,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -3525,7 +3515,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -3832,7 +3822,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -3846,9 +3836,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -4202,7 +4191,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -4216,9 +4205,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -4566,7 +4554,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -4580,9 +4568,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -4939,9 +4926,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                   "id": "p_v5",
                   "place": "voice",
                   "label": "First message: full sentences, no slang",
-                  "origin": "you",
-                  "confirmed": true,
-                  "quote": "A little more formal at first contact"
+                  "origin": "athena",
+                  "confirmed": false
                 }
               }
             ]
@@ -5053,7 +5039,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -5067,9 +5053,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -5131,9 +5116,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -5434,7 +5418,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -5448,9 +5432,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -5892,7 +5875,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -5906,9 +5889,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -5970,9 +5952,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -6409,7 +6390,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -6423,9 +6404,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -6487,9 +6467,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -6861,7 +6840,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -6875,9 +6854,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -6939,9 +6917,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -7415,7 +7392,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -7429,9 +7406,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -7493,9 +7469,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -7911,7 +7886,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -7925,9 +7900,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -7989,9 +7963,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -8392,9 +8365,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                   "id": "p_n4",
                   "place": "never",
                   "label": "Never write after 9 pm their time",
-                  "origin": "you",
-                  "confirmed": true,
-                  "quote": "never write after 9 pm their time"
+                  "origin": "athena",
+                  "confirmed": true
                 }
               }
             ]
@@ -8481,7 +8453,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -8495,9 +8467,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -8559,9 +8530,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -8651,9 +8621,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             }
           ],
           "coverage": {
@@ -8986,7 +8955,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -9000,9 +8969,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -9064,9 +9032,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -9559,7 +9526,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -9573,9 +9540,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -9637,9 +9603,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -9729,9 +9694,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             },
             {
               "id": "a-gmail-first_message",
@@ -10092,7 +10056,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -10106,9 +10070,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -10170,9 +10133,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -10262,9 +10224,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             },
             {
               "id": "a-gmail-first_message",
@@ -10705,7 +10666,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -10719,9 +10680,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -10783,9 +10743,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -10875,9 +10834,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             },
             {
               "id": "a-gmail-first_message",
@@ -11261,7 +11219,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -11275,9 +11233,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -11339,9 +11296,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -11431,9 +11387,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             },
             {
               "id": "a-gmail-first_message",
@@ -11826,10 +11781,9 @@ export const TWIN_FIXTURE: TwinFixture = {
                   "id": "p_ms",
                   "place": "mission",
                   "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-                  "origin": "you",
-                  "confirmed": true,
-                  "detail": "rehearse first",
-                  "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+                  "origin": "athena",
+                  "confirmed": false,
+                  "detail": "rehearse first"
                 }
               }
             ]
@@ -11906,7 +11860,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -11920,9 +11874,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -11984,9 +11937,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -12076,9 +12028,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             },
             {
               "id": "a-gmail-first_message",
@@ -12128,10 +12079,9 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_ms",
               "place": "mission",
               "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-              "origin": "you",
-              "confirmed": true,
-              "detail": "rehearse first",
-              "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+              "origin": "athena",
+              "confirmed": false,
+              "detail": "rehearse first"
             }
           ],
           "coverage": {
@@ -12461,7 +12411,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -12475,9 +12425,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -12539,9 +12488,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -12631,9 +12579,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             },
             {
               "id": "a-gmail-first_message",
@@ -13181,7 +13128,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
             "origin": "you",
             "confirmed": true,
-            "quote": "I want a twin that writes to Suno"
+            "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
           },
           {
             "id": "p_mtype",
@@ -13195,9 +13142,8 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_sign",
             "place": "who",
             "label": "Signs as Alex from Low Tide Visuals",
-            "origin": "you",
-            "confirmed": true,
-            "quote": "As Alex from Low Tide Visuals"
+            "origin": "athena",
+            "confirmed": false
           },
           {
             "id": "p_gmail",
@@ -13259,9 +13205,8 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_v5",
             "place": "voice",
             "label": "First message: full sentences, no slang",
-            "origin": "you",
-            "confirmed": true,
-            "quote": "A little more formal at first contact"
+            "origin": "athena",
+            "confirmed": false
           },
           {
             "id": "p_notion",
@@ -13351,9 +13296,8 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_n4",
             "place": "never",
             "label": "Never write after 9 pm their time",
-            "origin": "you",
-            "confirmed": true,
-            "quote": "never write after 9 pm their time"
+            "origin": "athena",
+            "confirmed": true
           },
           {
             "id": "a-gmail-first_message",
@@ -13403,10 +13347,9 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_ms",
             "place": "mission",
             "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-            "origin": "you",
-            "confirmed": true,
-            "detail": "rehearse first",
-            "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+            "origin": "athena",
+            "confirmed": false,
+            "detail": "rehearse first"
           }
         ],
         "coverage": {
@@ -13880,7 +13823,7 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
                 "origin": "you",
                 "confirmed": true,
-                "quote": "I want a twin that writes to Suno"
+                "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
               },
               {
                 "id": "p_mtype",
@@ -13894,9 +13837,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_sign",
                 "place": "who",
                 "label": "Signs as Alex from Low Tide Visuals",
-                "origin": "you",
-                "confirmed": true,
-                "quote": "As Alex from Low Tide Visuals"
+                "origin": "athena",
+                "confirmed": false
               },
               {
                 "id": "p_gmail",
@@ -13958,9 +13900,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_v5",
                 "place": "voice",
                 "label": "First message: full sentences, no slang",
-                "origin": "you",
-                "confirmed": true,
-                "quote": "A little more formal at first contact"
+                "origin": "athena",
+                "confirmed": false
               },
               {
                 "id": "p_notion",
@@ -14050,9 +13991,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_n4",
                 "place": "never",
                 "label": "Never write after 9 pm their time",
-                "origin": "you",
-                "confirmed": true,
-                "quote": "never write after 9 pm their time"
+                "origin": "athena",
+                "confirmed": true
               },
               {
                 "id": "a-gmail-first_message",
@@ -14102,10 +14042,9 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_ms",
                 "place": "mission",
                 "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-                "origin": "you",
-                "confirmed": true,
-                "detail": "rehearse first",
-                "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+                "origin": "athena",
+                "confirmed": false,
+                "detail": "rehearse first"
               }
             ],
             "coverage": {
@@ -14583,7 +14522,7 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
                 "origin": "you",
                 "confirmed": true,
-                "quote": "I want a twin that writes to Suno"
+                "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
               },
               {
                 "id": "p_mtype",
@@ -14597,9 +14536,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_sign",
                 "place": "who",
                 "label": "Signs as Alex from Low Tide Visuals",
-                "origin": "you",
-                "confirmed": true,
-                "quote": "As Alex from Low Tide Visuals"
+                "origin": "athena",
+                "confirmed": false
               },
               {
                 "id": "p_gmail",
@@ -14661,9 +14599,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_v5",
                 "place": "voice",
                 "label": "First message: full sentences, no slang",
-                "origin": "you",
-                "confirmed": true,
-                "quote": "A little more formal at first contact"
+                "origin": "athena",
+                "confirmed": false
               },
               {
                 "id": "p_notion",
@@ -14753,9 +14690,8 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_n4",
                 "place": "never",
                 "label": "Never write after 9 pm their time",
-                "origin": "you",
-                "confirmed": true,
-                "quote": "never write after 9 pm their time"
+                "origin": "athena",
+                "confirmed": true
               },
               {
                 "id": "a-gmail-first_message",
@@ -14805,10 +14741,9 @@ export const TWIN_FIXTURE: TwinFixture = {
                 "id": "p_ms",
                 "place": "mission",
                 "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-                "origin": "you",
-                "confirmed": true,
-                "detail": "rehearse first",
-                "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+                "origin": "athena",
+                "confirmed": false,
+                "detail": "rehearse first"
               }
             ],
             "coverage": {
@@ -15283,7 +15218,7 @@ export const TWIN_FIXTURE: TwinFixture = {
             "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
             "origin": "you",
             "confirmed": true,
-            "quote": "I want a twin that writes to Suno"
+            "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
           },
           {
             "id": "p_mtype",
@@ -15297,9 +15232,8 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_sign",
             "place": "who",
             "label": "Signs as Alex from Low Tide Visuals",
-            "origin": "you",
-            "confirmed": true,
-            "quote": "As Alex from Low Tide Visuals"
+            "origin": "athena",
+            "confirmed": false
           },
           {
             "id": "p_gmail",
@@ -15361,9 +15295,8 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_v5",
             "place": "voice",
             "label": "First message: full sentences, no slang",
-            "origin": "you",
-            "confirmed": true,
-            "quote": "A little more formal at first contact"
+            "origin": "athena",
+            "confirmed": false
           },
           {
             "id": "p_notion",
@@ -15453,9 +15386,8 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_n4",
             "place": "never",
             "label": "Never write after 9 pm their time",
-            "origin": "you",
-            "confirmed": true,
-            "quote": "never write after 9 pm their time"
+            "origin": "athena",
+            "confirmed": true
           },
           {
             "id": "a-gmail-first_message",
@@ -15505,10 +15437,9 @@ export const TWIN_FIXTURE: TwinFixture = {
             "id": "p_ms",
             "place": "mission",
             "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-            "origin": "you",
-            "confirmed": true,
-            "detail": "rehearse first",
-            "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+            "origin": "athena",
+            "confirmed": false,
+            "detail": "rehearse first"
           }
         ],
         "coverage": {
@@ -16022,7 +15953,7 @@ export const TWIN_FIXTURE: TwinFixture = {
               "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
               "origin": "you",
               "confirmed": true,
-              "quote": "I want a twin that writes to Suno"
+              "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
             },
             {
               "id": "p_mtype",
@@ -16036,9 +15967,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_sign",
               "place": "who",
               "label": "Signs as Alex from Low Tide Visuals",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "As Alex from Low Tide Visuals"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_gmail",
@@ -16100,9 +16030,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_v5",
               "place": "voice",
               "label": "First message: full sentences, no slang",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "A little more formal at first contact"
+              "origin": "athena",
+              "confirmed": false
             },
             {
               "id": "p_notion",
@@ -16192,9 +16121,8 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_n4",
               "place": "never",
               "label": "Never write after 9 pm their time",
-              "origin": "you",
-              "confirmed": true,
-              "quote": "never write after 9 pm their time"
+              "origin": "athena",
+              "confirmed": true
             },
             {
               "id": "a-gmail-first_message",
@@ -16244,10 +16172,9 @@ export const TWIN_FIXTURE: TwinFixture = {
               "id": "p_ms",
               "place": "mission",
               "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-              "origin": "you",
-              "confirmed": true,
-              "detail": "rehearse first",
-              "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+              "origin": "athena",
+              "confirmed": false,
+              "detail": "rehearse first"
             }
           ],
           "coverage": {
@@ -16702,7 +16629,7 @@ export const TWIN_FIXTURE: TwinFixture = {
           "label": "I want a twin that writes to Suno creators whose tracks I'd like to feature on…",
           "origin": "you",
           "confirmed": true,
-          "quote": "I want a twin that writes to Suno"
+          "quote": "I want a twin that writes to Suno creators whose tracks I'd like to feature on my channel, and keeps each conversation going until we agree."
         },
         {
           "id": "p_mtype",
@@ -16716,9 +16643,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_sign",
           "place": "who",
           "label": "Signs as Alex from Low Tide Visuals",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "As Alex from Low Tide Visuals"
+          "origin": "athena",
+          "confirmed": false
         },
         {
           "id": "p_gmail",
@@ -16780,9 +16706,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_v5",
           "place": "voice",
           "label": "First message: full sentences, no slang",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "A little more formal at first contact"
+          "origin": "athena",
+          "confirmed": false
         },
         {
           "id": "p_notion",
@@ -16872,9 +16797,8 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_n4",
           "place": "never",
           "label": "Never write after 9 pm their time",
-          "origin": "you",
-          "confirmed": true,
-          "quote": "never write after 9 pm their time"
+          "origin": "athena",
+          "confirmed": true
         },
         {
           "id": "a-gmail-first_message",
@@ -16924,10 +16848,9 @@ export const TWIN_FIXTURE: TwinFixture = {
           "id": "p_ms",
           "place": "mission",
           "label": "Get Lumen Vale's yes to feature 'Glass Harbor'",
-          "origin": "you",
-          "confirmed": true,
-          "detail": "rehearse first",
-          "quote": "Get Lumen Vale's yes to feature 'Glass Harbor"
+          "origin": "athena",
+          "confirmed": false,
+          "detail": "rehearse first"
         }
       ],
       "coverage": {

@@ -39,19 +39,15 @@ from athena.contracts import (
 )
 from athena.drafts import sketch as sketches
 from athena.drafts.rubric import CHORE_RUBRIC, Rubric
-from athena.drafts.sketch import SketchError
+from athena.drafts.sketch import Said, SketchError
 from athena.engine import Engine, ToolCall
 from athena.errors import ApiError
 from athena.settings import ACTIVE_SPACE_KEY
 from athena.turn import run_turn
 
 SUGGESTIONS = (SUGGESTIONS_MIN, SUGGESTIONS_MAX)
-QUOTE_WORDS_MIN = 3  # a quote shorter than this proves nothing about whose words a node holds
 SUGGESTION_SEPARATOR = "|"
 _AUTO_ID = re.compile(r"n(\d+)")
-_QUOTE_MARKS = " \t\r\n\"'" + "".join(
-    map(chr, (0x201C, 0x201D, 0x2018, 0x2019, 0xAB, 0xBB))
-)  # curly, guillemets
 
 
 def _tool(name: str, description: str, props: dict[str, str], required: list[str]) -> dict[str, Any]:
@@ -100,7 +96,8 @@ def sketch_tool(rubric: Rubric, subject: str) -> dict[str, Any]:
             "detail": "An optional second line",
             "link_from": "link, or remove a link: the id the arrow starts at",
             "link_to": "link, or remove a link: the id the arrow ends at",
-            "quote": "add: the person's exact words this node comes from, if it does (3 words or more)",
+            "quote": "add: the person's exact words this node comes from, if it does (3 words or more); "
+            "the label and detail must be in those words, or it stays your proposal",
         },
         ["op"],
     )
@@ -391,13 +388,7 @@ class SketchDesign(ABC):
         note = ""
         try:
             if op == "add":
-                node, note = self._new_node(call)
-                cap = self.proposals_max
-                if node["origin"] == "athena" and _rubbed(node["label"], self.rubbed):
-                    return f'Not drawn: the person rubbed out "{node["label"]}". Do not propose it again.', []
-                if node["origin"] == "athena" and cap is not None and self.proposed >= cap:
-                    return TOO_MANY_PROPOSALS, []
-                ops: list[SketchOp] = [{"op": "add", "node": node}]
+                ops: list[SketchOp] = [{"op": "add", "node": self._new_node(call)}]
             elif op == "change":
                 fields: dict[str, Any] = {
                     k: _arg(call, k) for k in ("label", "detail", "kind", "slot") if _arg(call, k)
@@ -418,16 +409,25 @@ class SketchDesign(ABC):
                 ops = [cast("SketchOp", {"op": op, "edge": edge})]
             else:
                 raise SketchError("the op must be add, change, remove or link")
-            self.sketch, applied = sketches.apply(self.sketch, ops, self.rubric)
+            said = self.said()
+            sketch, applied = sketches.apply(self.sketch, ops, self.rubric, said)
         except SketchError as e:
             return f"Not drawn: {e}. The sketch is unchanged.", []
+        if op == "add":
+            node = applied[0]["node"]
+            guess = not node["confirmed"]  # neither the person's words nor an answer they picked
+            if guess and _rubbed(node["label"], self.rubbed):
+                return f'Not drawn: the person rubbed out "{node["label"]}". Do not propose it again.', []
+            if guess and self.proposals_max is not None and self.proposed >= self.proposals_max:
+                return TOO_MANY_PROPOSALS, []
+            note = _note(node, _arg(call, "quote"), said)
+        self.sketch = sketch
         self.applied += applied
-        self.proposed += sum(1 for o in applied if o["op"] == "add" and o["node"].get("origin") == "athena")
+        self.proposed += sum(1 for o in applied if o["op"] == "add" and not o["node"]["confirmed"])
         return _done(applied) + note, [{"type": "sketch", "ops": applied}]
 
-    def _new_node(self, call: ToolCall) -> tuple[SketchNode, str]:
-        quote = _arg(call, "quote")
-        theirs = self._quoted(quote)
+    def _new_node(self, call: ToolCall) -> SketchNode:
+        """The model's node as asked; whose it is, the sketch decides from the quote (ADR 0028)."""
         node = cast(
             "SketchNode",
             {
@@ -435,36 +435,45 @@ class SketchDesign(ABC):
                 "kind": _arg(call, "kind"),
                 "slot": _arg(call, "slot"),
                 "label": _arg(call, "label"),
-                "origin": "you" if theirs else "athena",
-                "confirmed": theirs,
             },
         )
         if _arg(call, "detail"):
             node["detail"] = _arg(call, "detail")
+        if _arg(call, "quote"):
+            node["quote"] = _arg(call, "quote")
         if _arg(call, "site") and "app" in self.rubric.kinds:
             # Always her pencil, even on the person's own node: they confirm the address on screen.
             node["site"] = cast("NodeSite", {"url": _arg(call, "site"), "confirmed": False})
-        if theirs:
-            node["quote"] = _plain(quote).strip(_QUOTE_MARKS)
-            return node, " It is in the person's own words, so it is theirs."
-        if quote:
-            return node, " That quote is not in the person's own words, so it stays your proposal."
-        return node, " It is your proposal until the person confirms it."
+        return node
 
     def _next_id(self) -> str:
         taken = [int(m.group(1)) for n in self.sketch["nodes"] if (m := _AUTO_ID.fullmatch(n["id"]))]
         return f"n{max(taken, default=0) + 1}"
 
+    def said(self) -> Said:
+        """What the person said in this Project: the need and the lines they typed, apart from the
+        answers they picked from her suggestions (ADR 0028)."""
+        typed, picked = self.daemon.conversation.persons(self.space_id)
+        return Said([self.need, *typed], picked)
+
     def _quoted(self, quote: str) -> bool:
-        """Whether `quote` (trimmed, case-insensitive, at least QUOTE_WORDS_MIN words) is verbatim in
-        one of the person's own messages in this Project: the need, a typed line, a picked answer."""
-        q = _plain(quote).strip(_QUOTE_MARKS).casefold()
-        if len(q.split()) < QUOTE_WORDS_MIN:
-            return False
-        said = [self.need] + [
-            t["text"] for t in self.daemon.conversation.list(self.space_id, 10_000) if t["role"] == "person"
-        ]
-        return any(q in _plain(s).casefold() for s in said)
+        """Whether `quote` (3 words or more, case ignored) is verbatim in what the person said in this
+        Project: the need, a typed line, or an answer they picked. For the person's say-so on a
+        setting; whose words a node holds, `sketches.apply` decides."""
+        return sketches.whose(quote, self.said()) is not None
+
+
+def _note(node: SketchNode, quote: str, said: Said) -> str:
+    """What a new node is, for her tool result."""
+    if node["origin"] == "you":
+        return " It is in the person's own words, so it is theirs."
+    if node["confirmed"]:
+        return " The person picked those words from your suggestions: agreed, but still your wording."
+    if quote and sketches.whose(quote, said) is not None:
+        return " Its label and detail are not the quoted words, so it stays your proposal."
+    if quote:
+        return " That quote is not in the person's own words, so it stays your proposal."
+    return " It is your proposal until the person confirms it."
 
 
 def _value(v: object) -> str:
@@ -606,7 +615,8 @@ def say(
     """One stage turn: TurnEvents plus `sketch`, `ask` and `coverage`. Validates before returning.
 
     On a `describe` draft with nothing said, the need is the person's words. Afterwards the person
-    types `text` or picks a suggestion (`choice`, kept as their words); one of the two, not both.
+    types `text` or picks a suggestion (`choice`, kept as picked: their agreement, not their words,
+    ADR 0028); one of the two, not both.
     """
     draft = daemon.drafts.get(draft_id)
     _shaping(draft)
@@ -621,7 +631,7 @@ def say(
     _busy(daemon, draft)
     asked, skipped = daemon.drafts.asked(draft_id), daemon.drafts.skipped(draft_id)
     design = ChoreDesign(daemon, draft, skipped, asked, view)
-    return run_turn(daemon, engine, words, draft["space_id"], design=design)
+    return run_turn(daemon, engine, words, draft["space_id"], design=design, picked=bool(picked))
 
 
 def confirm(daemon: Daemon, draft_id: str, node_ids: list[str]) -> Draft:

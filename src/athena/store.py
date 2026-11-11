@@ -157,6 +157,7 @@ _ADDED = (
     ("turns", "parts", "TEXT"),  # an Athena turn's parts in emitted order, JSON list (her window)
     ("turns", "duration_ms", "INTEGER"),  # ADR 0024: how long an Athena turn took, start to stored
     ("turns", "stopped", "TEXT"),  # ADR 0024: why the engine stopped the turn, in plain words
+    ("turns", "picked", "INTEGER"),  # ADR 0028: 1 on a person's turn that picked her suggestion
 )
 
 # External-content index over memory.text, kept current by triggers so a delete anywhere stays honest.
